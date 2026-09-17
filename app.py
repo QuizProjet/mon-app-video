@@ -4,6 +4,7 @@ import asyncio
 import edge_tts
 import json
 import os
+import re
 from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Générateur Short Video", layout="wide")
@@ -32,6 +33,13 @@ def create_video_frame(title, body_text, filename="frame.png"):
     img.save(filename)
     return filename
 
+# Fonction de nettoyage JSON sécurisée
+def parse_json_response(text):
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    return json.loads(text)
+
 api_key = st.sidebar.text_input("Clé API Gemini (Gratuite)", type="password")
 
 if api_key:
@@ -45,30 +53,33 @@ if api_key:
         
         if st.button("🎬 Générer le Quizz"):
             with st.spinner("Génération du contenu..."):
-                prompt = f"Génère une question de quizz sur le thème '{theme}' au format JSON avec les clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
-                # Utilisation du modèle valide
-                model = genai.GenerativeModel('gemini-1.5-flash-latest')
-                response = model.generate_content(prompt)
-                
-                clean_json = response.text.replace("```json", "").replace("```", "").strip()
-                data = json.loads(clean_json)
-                
-                # Génération Audio
-                audio_text = f"{data['question']} ... Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}."
-                async def generate_audio():
-                    communicate = edge_tts.Communicate(audio_text, "fr-FR-VivienneNeural")
-                    await communicate.save("quizz_audio.mp3")
-                asyncio.run(generate_audio())
-                
-                # Image 9:16
-                body_text = f"Q: {data['question']}\n\n"
-                for i, opt in enumerate(data['options']):
-                    body_text += f"{chr(65+i)}) {opt}\n"
-                img_path = create_video_frame("QUIZZ DU JOUR", body_text, "quizz_frame.png")
-                
-                st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
-                st.audio("quizz_audio.mp3")
-                st.success("✅ Visuel et audio générés avec succès !")
+                try:
+                    prompt = f"Génère une question de quizz sur le thème '{theme}'. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
+                    
+                    # Modèle stable
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt)
+                    
+                    data = parse_json_response(response.text)
+                    
+                    # Génération Audio
+                    audio_text = f"{data['question']} ... Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}."
+                    async def generate_audio():
+                        communicate = edge_tts.Communicate(audio_text, "fr-FR-VivienneNeural")
+                        await communicate.save("quizz_audio.mp3")
+                    asyncio.run(generate_audio())
+                    
+                    # Image 9:16
+                    body_text = f"Q: {data['question']}\n\n"
+                    for i, opt in enumerate(data['options']):
+                        body_text += f"{chr(65+i)}) {opt}\n"
+                    img_path = create_video_frame("QUIZZ DU JOUR", body_text, "quizz_frame.png")
+                    
+                    st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
+                    st.audio("quizz_audio.mp3")
+                    st.success("✅ Visuel et audio générés avec succès !")
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération : {e}")
 
     # --- MODULE 2 : LANGUES ---
     with tab2:
@@ -78,30 +89,33 @@ if api_key:
         
         if st.button("🎬 Générer la Fiche Langue"):
             with st.spinner("Génération de la fiche..."):
-                prompt = f"Génère une fiche de vocabulaire en {langue} pour niveau {niveau} au format JSON avec les clés : 'mot', 'prononciation', 'definition', 'synonymes' (liste de 3 mots), 'phrase_exemple'."
-                model = genai.GenerativeModel('gemini-1.5-flash-latest')
-                response = model.generate_content(prompt)
-                
-                clean_json = response.text.replace("```json", "").replace("```", "").strip()
-                data = json.loads(clean_json)
-                
-                voice = "en-US-ChristopherNeural" if langue == "Anglais" else "fr-FR-RemyNeural"
-                audio_text = f"Mot du jour : {data['mot']}. Synonymes : {', '.join(data['synonymes'])}. Exemple : {data['phrase_exemple']}"
-                
-                async def generate_lang_audio():
-                    communicate = edge_tts.Communicate(audio_text, voice)
-                    await communicate.save("langue_audio.mp3")
-                asyncio.run(generate_lang_audio())
-                
-                body_text = f"MOT : {data['mot']}\n({data['prononciation']})\n\n"
-                body_text += f"Définition :\n{data['definition']}\n\n"
-                body_text += f"Synonymes :\n{', '.join(data['synonymes'])}\n\n"
-                body_text += f"Exemple :\n{data['phrase_exemple']}"
-                
-                img_path = create_video_frame(f"APPRENDRE LE {langue.upper()}", body_text, "langue_frame.png")
-                
-                st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
-                st.audio("langue_audio.mp3")
-                st.success("✅ Visuel et audio générés avec succès !")
+                try:
+                    prompt = f"Génère une fiche de vocabulaire en {langue} pour niveau {niveau}. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'mot', 'prononciation', 'definition', 'synonymes' (liste de 3 mots), 'phrase_exemple'."
+                    
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt)
+                    
+                    data = parse_json_response(response.text)
+                    
+                    voice = "en-US-ChristopherNeural" if langue == "Anglais" else "fr-FR-RemyNeural"
+                    audio_text = f"Mot du jour : {data['mot']}. Synonymes : {', '.join(data['synonymes'])}. Exemple : {data['phrase_exemple']}"
+                    
+                    async def generate_lang_audio():
+                        communicate = edge_tts.Communicate(audio_text, voice)
+                        await communicate.save("langue_audio.mp3")
+                    asyncio.run(generate_lang_audio())
+                    
+                    body_text = f"MOT : {data['mot']}\n({data['prononciation']})\n\n"
+                    body_text += f"Définition :\n{data['definition']}\n\n"
+                    body_text += f"Synonymes :\n{', '.join(data['synonymes'])}\n\n"
+                    body_text += f"Exemple :\n{data['phrase_exemple']}"
+                    
+                    img_path = create_video_frame(f"APPRENDRE LE {langue.upper()}", body_text, "langue_frame.png")
+                    
+                    st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
+                    st.audio("langue_audio.mp3")
+                    st.success("✅ Visuel et audio générés avec succès !")
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération : {e}")
 else:
     st.warning("Veuillez entrer votre clé API Gemini gratuite dans le panneau de gauche pour commencer.")
