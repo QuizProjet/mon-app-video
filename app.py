@@ -46,7 +46,8 @@ if api_key:
         if st.button("🎬 Générer le Quizz"):
             with st.spinner("Génération du contenu..."):
                 prompt = f"Génère une question de quizz sur le thème '{theme}' au format JSON avec les clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # Utilisation du modèle valide
+                model = genai.GenerativeModel('gemini-1.5-flash-latest')
                 response = model.generate_content(prompt)
                 
                 clean_json = response.text.replace("```json", "").replace("```", "").strip()
@@ -78,7 +79,7 @@ if api_key:
         if st.button("🎬 Générer la Fiche Langue"):
             with st.spinner("Génération de la fiche..."):
                 prompt = f"Génère une fiche de vocabulaire en {langue} pour niveau {niveau} au format JSON avec les clés : 'mot', 'prononciation', 'definition', 'synonymes' (liste de 3 mots), 'phrase_exemple'."
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash-latest')
                 response = model.generate_content(prompt)
                 
                 clean_json = response.text.replace("```json", "").replace("```", "").strip()
