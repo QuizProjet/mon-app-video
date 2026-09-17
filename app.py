@@ -4,8 +4,6 @@ import asyncio
 import edge_tts
 import json
 import os
-import cv2
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Générateur Short Video", layout="wide")
@@ -17,7 +15,7 @@ def create_video_frame(title, body_text, filename="frame.png"):
     img = Image.new('RGB', (width, height), color=(24, 28, 36))
     draw = ImageDraw.Draw(img)
     
-    # Entête
+    # Entête visuelle
     draw.rectangle([(80, 200), (1000, 360)], fill=(79, 70, 229))
     
     font_title = ImageFont.load_default()
@@ -45,7 +43,7 @@ if api_key:
         st.header("Créer un Quizz")
         theme = st.text_input("Thème du Quizz", "Culture Générale")
         
-        if st.button("🎬 Générer le Quizz (Image & Audio)"):
+        if st.button("🎬 Générer le Quizz"):
             with st.spinner("Génération du contenu..."):
                 prompt = f"Génère une question de quizz sur le thème '{theme}' au format JSON avec les clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
                 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -69,7 +67,7 @@ if api_key:
                 
                 st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
                 st.audio("quizz_audio.mp3")
-                st.success("✅ Visuel et audio générés avec succès sans erreur !")
+                st.success("✅ Visuel et audio générés avec succès !")
 
     # --- MODULE 2 : LANGUES ---
     with tab2:
@@ -103,6 +101,6 @@ if api_key:
                 
                 st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
                 st.audio("langue_audio.mp3")
-                st.success("✅ Visuel et audio générés avec succès sans erreur !")
+                st.success("✅ Visuel et audio générés avec succès !")
 else:
     st.warning("Veuillez entrer votre clé API Gemini gratuite dans le panneau de gauche pour commencer.")
