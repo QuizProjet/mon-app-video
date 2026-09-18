@@ -34,20 +34,22 @@ def parse_json_response(text):
         return json.loads(match.group(0))
     return json.loads(text)
 
+# Force l'utilisation du modèle Gemini 3.6 Flash recommandé
 def get_working_model():
     try:
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        for name in models:
-            if 'flash' in name:
-                return name
-        return models[0] if models else 'models/gemini-1.5-flash'
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-3.6-flash' in m.name or 'gemini-3' in m.name:
+                    return m.name
+        return 'models/gemini-3.6-flash'
     except Exception:
-        return 'models/gemini-1.5-flash'
+        return 'models/gemini-3.6-flash'
 
 THEMES = {
     "Néon TikTok (Jaune & Noir)": {"bg": (10, 10, 10), "card": (25, 25, 25), "accent": (250, 204, 21), "text_accent": (0, 0, 0)},
     "Cyberpunk Pink": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (236, 72, 153), "text_accent": (255, 255, 255)},
-    "Vert Fluorescent": {"bg": (6, 78, 59), "card": (4, 120, 87), "accent": (34, 197, 94), "text_accent": (0, 0, 0)}
+    "Vert Fluorescent": {"bg": (6, 78, 59), "card": (4, 120, 87), "accent": (34, 197, 94), "text_accent": (0, 0, 0)},
+    "Minimaliste Sombre": {"bg": (0, 0, 0), "card": (24, 24, 27), "accent": (255, 255, 255), "text_accent": (0, 0, 0)}
 }
 
 def draw_hook_frame(hook_text, theme_name):
@@ -116,14 +118,14 @@ def draw_language_progressive_frame(mots, current_index, langue, theme_name):
         
     return img
 
-# --- INTERFACE ---
+# --- INTERFACE STREAMLIT ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
     genai.configure(api_key=api_key)
 
 tab1, tab2 = st.tabs(["🧠 Quizz TikTok Pro", "🗣️ Fiche Langue Pro"])
 
-VOICES_FR = {"Henri (Homme)": "fr-FR-HenriNeural", "Vivienne (Femme)": "fr-FR-VivienneNeural"}
+VOICES_FR = {"Henri (Homme Énergique)": "fr-FR-HenriNeural", "Vivienne (Femme Dynamique)": "fr-FR-VivienneNeural"}
 VOICES_MAP = {
     "Anglais": {"Emma (Femme)": "en-US-EmmaNeural", "Christopher (Homme)": "en-US-ChristopherNeural"},
     "Espagnol": {"Alvaro (Homme)": "es-ES-AlvaroNeural", "Elvira (Femme)": "es-ES-ElviraNeural"},
@@ -132,7 +134,7 @@ VOICES_MAP = {
     "Italien": {"Diego (Homme)": "it-IT-DiegoNeural", "Elsa (Femme)": "it-IT-ElsaNeural"}
 }
 
-# MODULE 1
+# --- MODULE 1 : QUIZZ ---
 with tab1:
     st.header("1. Générateur Quizz Virale")
     hook_input = st.text_input("Accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
@@ -148,10 +150,10 @@ with tab1:
     
     if mode_q == "IA Gemini":
         theme_q = st.text_input("Thème", "Culture Générale", key="t_q")
-        nb_q = st.slider("Questions", 1, 5, 3)
+        nb_q = st.slider("Questions", 1, 10, 5)
         if st.button("✨ Générer les questions"):
             if not api_key:
-                st.error("Entre ta clé API !")
+                st.error("Entre ta clé API Gemini !")
             else:
                 with st.spinner("Génération par l'IA..."):
                     try:
@@ -159,20 +161,20 @@ with tab1:
                         model = genai.GenerativeModel(get_working_model())
                         res = model.generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['q_data'])} questions générées !")
+                        st.success(f"{len(st.session_state['q_data'])} questions générées avec le modèle {get_working_model()} !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
-        num_c = st.number_input("Nombre de questions", 1, 5, 2)
+        num_c = st.number_input("Nombre de questions", 1, 10, 5)
         c_list = []
         for i in range(int(num_c)):
             st.markdown(f"**Question {i+1}**")
-            q_t = st.text_input(f"Question", key=f"q_{i}")
-            o_a = st.text_input(f"A", key=f"oa_{i}")
-            o_b = st.text_input(f"B", key=f"ob_{i}")
-            o_c = st.text_input(f"C", key=f"oc_{i}")
-            o_d = st.text_input(f"D", key=f"od_{i}")
-            rep = st.selectbox("Réponse", ["A", "B", "C", "D"], key=f"r_{i}")
+            q_t = st.text_input(f"Question {i+1}", key=f"q_{i}")
+            o_a = st.text_input(f"Option A", key=f"oa_{i}")
+            o_b = st.text_input(f"Option B", key=f"ob_{i}")
+            o_c = st.text_input(f"Option C", key=f"oc_{i}")
+            o_d = st.text_input(f"Option D", key=f"od_{i}")
+            rep = st.selectbox("Bonne réponse", ["A", "B", "C", "D"], key=f"r_{i}")
             exp = st.text_input("Explication", key=f"e_{i}")
             c_list.append({"question": q_t, "options": [o_a, o_b, o_c, o_d], "reponse_correcte": rep, "explication": exp})
         if st.button("💾 Valider les questions"):
@@ -187,6 +189,7 @@ with tab1:
                         clips = []
                         total_q = len(st.session_state['q_data'])
                         
+                        # Hook
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
                         run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
@@ -194,6 +197,8 @@ with tab1:
                         a_h = AudioFileClip(h_aud)
                         clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
+                        # Questions + Motivations
+                        motivations = ["Bravo ! On continue !", "Super effort ! Question suivante !", "Tu gères, voici la suite !"]
                         for idx, q in enumerate(st.session_state['q_data']):
                             q_aud = os.path.join(tmpdir, f"q_{idx}.mp3")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
@@ -201,7 +206,7 @@ with tab1:
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             
                             t_q = clean_text_for_tts(f"Question {idx+1}. {q['question']}. A: {q['options'][0]}. B: {q['options'][1]}. C: {q['options'][2]}. D: {q['options'][3]}.")
-                            t_r = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}")
+                            t_r = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {motivations[idx % len(motivations)]}")
                             
                             run_async(edge_tts.Communicate(t_q, voice_fr_code).save(q_aud))
                             run_async(edge_tts.Communicate(t_r, voice_fr_code).save(r_aud))
@@ -223,6 +228,7 @@ with tab1:
                             clip_r = ImageClip(r_img).set_duration(a_r.duration).set_audio(a_r)
                             clips.extend([clip_q] + t_clips + [clip_r])
                             
+                        # Outro / CTA
                         c_aud = os.path.join(tmpdir, "c.mp3")
                         c_img = os.path.join(tmpdir, "c.png")
                         run_async(edge_tts.Communicate("Écris ton score en commentaire et abonne-toi !", voice_fr_code).save(c_aud))
@@ -236,11 +242,11 @@ with tab1:
                         
                         with open(out_mp4, "rb") as f:
                             st.download_button("📥 Télécharger le MP4", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo Quizz générée !")
+                        st.success("✅ Vidéo Quizz générée avec succès !")
                 except Exception as e:
-                    st.error(f"Détails de l'erreur : {e}")
+                    st.error(f"Erreur de génération : {e}")
 
-# MODULE 2
+# --- MODULE 2 : LANGUES ---
 with tab2:
     st.header("2. Générateur Fiche Vocabulaire")
     hook_l_input = st.text_input("Accroche", "Tu prononces mal ces mots ! Vérifions ensemble.")
@@ -256,7 +262,7 @@ with tab2:
     
     if mode_l == "IA Gemini":
         theme_l = st.text_input("Thème", "Voyage", key="t_l")
-        nb_m = st.slider("Nombre de mots", 3, 6, 4)
+        nb_m = st.slider("Nombre de mots", 3, 8, 6)
         if st.button("✨ Générer les mots"):
             if not api_key:
                 st.error("Entre ta clé API !")
@@ -267,11 +273,11 @@ with tab2:
                         model = genai.GenerativeModel(get_working_model())
                         res = model.generate_content(prompt)
                         st.session_state['l_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['l_data'])} mots générés !")
+                        st.success(f"{len(st.session_state['l_data'])} mots générés avec le modèle {get_working_model()} !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
-        num_m = st.number_input("Nombre de mots à saisir", 1, 6, 4)
+        num_m = st.number_input("Nombre de mots à saisir", 1, 8, 6)
         c_m = []
         for i in range(int(num_m)):
             col_a, col_b = st.columns(2)
@@ -332,6 +338,6 @@ with tab2:
                         
                         with open(out_mp4, "rb") as f:
                             st.download_button("📥 Télécharger le MP4", data=f.read(), file_name="vocabulaire_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo Vocabulaire générée !")
+                        st.success("✅ Vidéo Vocabulaire générée avec succès !")
                 except Exception as e:
                     st.error(f"Erreur de génération : {e}")
