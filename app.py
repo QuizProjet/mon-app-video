@@ -5,85 +5,80 @@ import edge_tts
 import json
 import os
 import re
+import imageio
 from PIL import Image, ImageDraw, ImageFont
 
-st.set_page_config(page_title="Générateur Short Video Pro", layout="wide")
-st.title("🎬 Générateur de Contenu Vidéo Réseaux Sociaux")
+st.set_page_config(page_title="Générateur TikTok/Shorts MP4", layout="wide")
+st.title("🎬 Générateur de Vidéos TikTok & Shorts (.MP4)")
 
-# --- FONCTIONS VISUELLES ---
-def create_quizz_frames(data, background_img=None):
+# --- FONCTION DE CREATION DE CARTE 9:16 ---
+def draw_quizz_frame(data, show_answer=False, bg_file=None):
     width, height = 1080, 1920
-    
-    if background_img:
-        bg = Image.open(background_img).convert('RGB').resize((width, height))
+    if bg_file:
+        img = Image.open(bg_file).convert('RGB').resize((width, height))
     else:
-        bg = Image.new('RGB', (width, height), color=(18, 24, 38))
-
-    # Écran 1 : Question + Réflexion (Minuteur 5s)
-    img1 = bg.copy()
-    draw1 = ImageDraw.Draw(img1)
-    
-    draw1.rectangle([(80, 150), (1000, 270)], fill=(79, 70, 229))
-    draw1.text((120, 180), "QUIZZ DU JOUR", fill="white")
-    draw1.text((90, 320), f"Q: {data['question']}", fill="white")
-    
-    y = 550
-    for i, opt in enumerate(data['options']):
-        draw1.rectangle([(90, y), (990, y + 110)], outline="white", width=3, fill=(30, 41, 59))
-        draw1.text((120, y + 35), f"{chr(65+i)}) {opt}", fill="white")
-        y += 150
+        img = Image.new('RGB', (width, height), color=(15, 23, 42))
         
-    draw1.rectangle([(400, y + 20), (680, y + 100)], fill=(225, 29, 72))
-    draw1.text((450, y + 45), "⏱️ 00:05", fill="white")
-    img1.save("quizz_question.png")
+    draw = ImageDraw.Draw(img)
     
-    # Écran 2 : Révélation de la Bonne Réponse (Vert)
-    img2 = bg.copy()
-    draw2 = ImageDraw.Draw(img2)
+    # En-tête
+    draw.rectangle([(80, 140), (1000, 260)], fill=(79, 70, 229))
+    draw.text((120, 175), "QUIZZ DU JOUR", fill="white")
     
-    draw2.rectangle([(80, 150), (1000, 270)], fill=(79, 70, 229))
-    draw2.text((120, 180), "QUIZZ DU JOUR", fill="white")
-    draw2.text((90, 320), f"Q: {data['question']}", fill="white")
+    # Question
+    draw.text((90, 320), f"Q: {data['question']}", fill="white")
     
+    # Options
     correct_letter = str(data.get('reponse_correcte', 'A')).strip().upper()[0]
     correct_idx = ord(correct_letter) - 65 if correct_letter in ['A', 'B', 'C', 'D'] else 0
     
     y = 550
     for i, opt in enumerate(data['options']):
-        if i == correct_idx:
-            draw2.rectangle([(90, y), (990, y + 110)], fill=(34, 197, 94))
-        else:
-            draw2.rectangle([(90, y), (990, y + 110)], fill=(30, 41, 59))
-        draw2.text((120, y + 35), f"{chr(65+i)}) {opt}", fill="white")
+        fill_color = (34, 197, 94) if (show_answer and i == correct_idx) else (30, 41, 59)
+        draw.rectangle([(90, y), (990, y + 110)], fill=fill_color, outline="white", width=2)
+        draw.text((120, y + 35), f"{chr(65+i)}) {opt}", fill="white")
         y += 150
-
-    draw2.rectangle([(80, y + 10), (1000, y + 220)], fill=(15, 23, 42))
-    draw2.text((100, y + 30), f"Réponse: {data['options'][correct_idx]}\n\nExplication: {data['explication']}", fill="white")
-    img2.save("quizz_reponse.png")
-    
-    return "quizz_question.png", "quizz_reponse.png"
-
-def create_language_frame(mots, langue):
-    width, height = 1080, 1920
-    img = Image.new('RGB', (width, height), color=(15, 23, 42))
-    draw = ImageDraw.Draw(img)
-    
-    draw.rectangle([(80, 150), (1000, 280)], fill=(236, 72, 153))
-    draw.text((120, 190), f"6 MOTS EN {langue.upper()}", fill="white")
-    
-    y = 350
-    for item in mots[:6]:
-        draw.rectangle([(80, y), (1000, y + 200)], fill=(30, 41, 59))
-        draw.text((110, y + 40), f"FR: {item['fr']}", fill="white")
-        draw.text((110, y + 110), f"TRAD: {item['en']}", fill=(244, 63, 94))
-        y += 240
         
-    img.save("langue_frame.png")
-    return "langue_frame.png"
+    if show_answer:
+        draw.rectangle([(80, y + 10), (1000, y + 220)], fill=(15, 23, 42))
+        draw.text((100, y + 30), f"Explication:\n{data['explication']}", fill="white")
+    else:
+        draw.rectangle([(400, y + 20), (680, y + 100)], fill=(225, 29, 72))
+        draw.text((450, y + 45), "⏱️ 00:05", fill="white")
+        
+    return img
+
+# --- ASSEMBLAGE VIDEO MP4 ---
+def generate_mp4_video(data, output_path="video.mp4", bg_file=None):
+    frame_q = draw_quizz_frame(data, show_answer=False, bg_file=bg_file)
+    frame_r = draw_quizz_frame(data, show_answer=True, bg_file=bg_file)
+    
+    # Sauvegarde temporaire des images
+    frame_q.save("f_q.png")
+    frame_r.save("f_r.png")
+    
+    img_q = imageio.v3.imread("f_q.png")
+    img_r = imageio.v3.imread("f_r.png")
+    
+    fps = 30
+    duration_q_sec = 5  # 5 secondes de réflexion
+    duration_r_sec = 4  # 4 secondes d'affichage de la réponse
+    
+    writer = imageio.get_writer(output_path, fps=fps, codec='libx264')
+    
+    # Frames Question
+    for _ in range(duration_q_sec * fps):
+        writer.append_data(img_q)
+        
+    # Frames Réponse
+    for _ in range(duration_r_sec * fps):
+        writer.append_data(img_r)
+        
+    writer.close()
+    return output_path
 
 # --- UTILITAIRES ---
 def clean_text_for_tts(text):
-    # Enlève les caractères non imprimables et sécurise pour TTS
     return re.sub(r'[^\w\s,.?!:\'\-]', '', text).strip()
 
 def parse_json_response(text):
@@ -102,79 +97,44 @@ def get_working_model():
     except Exception:
         return 'models/gemini-3.6-flash'
 
-# --- INTERFACE STREAMLIT ---
+# --- INTERFACE ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 
 if api_key:
     genai.configure(api_key=api_key)
-    tab1, tab2 = st.tabs(["🧠 Quizz Interactif", "🗣️ Fiche 6 Mots"])
+    st.header("🧠 Générateur de Quizz Vidéo (.MP4)")
     
-    # MODULE 1 : QUIZZ
-    with tab1:
-        st.header("Créer un Quizz Dynamique")
-        theme = st.text_input("Thème du Quizz", "Culture Générale")
-        bg_file = st.file_uploader("Image de fond optionnelle (9:16)", type=["png", "jpg", "jpeg"])
-        
-        if st.button("🎬 Générer le Quizz"):
-            with st.spinner("Génération du Quizz..."):
-                try:
-                    prompt = f"Génère une question de quizz sur '{theme}'. Réponds au format JSON strict : {{'question': '...', 'options': ['...','...','...','...'], 'reponse_correcte': 'A', 'explication': '...'}}"
-                    model = genai.GenerativeModel(get_working_model())
-                    response = model.generate_content(prompt)
-                    data = parse_json_response(response.text)
+    theme = st.text_input("Thème du Quizz", "Culture Générale")
+    bg_file = st.file_uploader("Image de fond optionnelle (9:16)", type=["png", "jpg", "jpeg"])
+    
+    if st.button("🎬 Générer la Vidéo MP4"):
+        with st.spinner("Création du contenu et rendu de la vidéo MP4..."):
+            try:
+                prompt = f"Génère une question de quizz sur '{theme}'. Réponds au format JSON strict : {{'question': '...', 'options': ['...','...','...','...'], 'reponse_correcte': 'A', 'explication': '...'}}"
+                model = genai.GenerativeModel(get_working_model())
+                response = model.generate_content(prompt)
+                data = parse_json_response(response.text)
+                
+                # Génération Audio
+                audio_raw = f"{data['question']}. Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}. La bonne réponse est l'option {data['reponse_correcte']}."
+                audio_text = clean_text_for_tts(audio_raw)
+                
+                async def gen_audio():
+                    comm = edge_tts.Communicate(audio_text, "fr-FR-HenriNeural")
+                    await comm.save("quizz_audio.mp3")
+                asyncio.run(gen_audio())
+                
+                # Génération Vidéo MP4
+                mp4_file = generate_mp4_video(data, "quizz_tiktok.mp4", bg_file)
+                
+                st.video(mp4_file)
+                st.audio("quizz_audio.mp3")
+                
+                with open(mp4_file, "rb") as file:
+                    st.download_button("Télécharger la vidéo MP4", data=file, file_name="quizz_tiktok.mp4", mime="video/mp4")
                     
-                    audio_raw = f"{data['question']}. Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}. La bonne réponse est l'option {data['reponse_correcte']}."
-                    audio_text = clean_text_for_tts(audio_raw)
-                    
-                    async def gen_audio():
-                        comm = edge_tts.Communicate(audio_text, "fr-FR-HenriNeural")
-                        await comm.save("quizz.mp3")
-                    asyncio.run(gen_audio())
-                    
-                    fq, fr = create_quizz_frames(data, bg_file)
-                    
-                    st.subheader("1. Écran de réflexion (5s)")
-                    st.image(fq, width=320)
-                    st.subheader("2. Écran de Révélation")
-                    st.image(fr, width=320)
-                    
-                    st.audio("quizz.mp3")
-                    st.success("✅ Quizz généré avec succès !")
-                except Exception as e:
-                    st.error(f"Erreur Quizz : {e}")
-
-    # MODULE 2 : LANGUES (6 MOTS)
-    with tab2:
-        st.header("Créer une Fiche 6 Mots")
-        langue = st.selectbox("Langue cible", ["Anglais", "Espagnol"])
-        
-        if st.button("🎬 Générer la Fiche 6 Mots"):
-            with st.spinner("Génération de la fiche..."):
-                try:
-                    prompt = f"Génère 6 mots ou phrases courantes avec traduction en {langue}. Réponds au format JSON strict : {{'mots': [{{'fr': 'Bonjour', 'en': 'Hello'}}, ...]}}"
-                    model = genai.GenerativeModel(get_working_model())
-                    response = model.generate_content(prompt)
-                    data = parse_json_response(response.text)
-                    
-                    mots_liste = data.get('mots', [])
-                    
-                    audio_raw = ""
-                    for item in mots_liste[:6]:
-                        audio_raw += f"{item['fr']}, {item['en']}. "
-                    
-                    audio_text = clean_text_for_tts(audio_raw)
-                    voice = "en-US-EmmaNeural" if langue == "Anglais" else "es-ES-AlvaroNeural"
-                    
-                    async def gen_lang_audio():
-                        comm = edge_tts.Communicate(audio_text, voice)
-                        await comm.save("langue.mp3")
-                    asyncio.run(gen_lang_audio())
-                    
-                    frame = create_language_frame(mots_liste, langue)
-                    st.image(frame, caption="Fiche 6 Mots (9:16)", width=350)
-                    st.audio("langue.mp3")
-                    st.success("✅ Fiche 6 mots générée sans erreur !")
-                except Exception as e:
-                    st.error(f"Erreur Fiche Langue : {e}")
+                st.success("✅ Vidéo MP4 9:16 générée et prête à télécharger !")
+            except Exception as e:
+                st.error(f"Erreur lors de la génération vidéo : {e}")
 else:
     st.warning("Entre ta clé API Gemini à gauche pour commencer.")
