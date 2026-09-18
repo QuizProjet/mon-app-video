@@ -56,8 +56,8 @@ if api_key:
                 try:
                     prompt = f"Génère une question de quizz sur le thème '{theme}'. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
                     
-                    # Modèle stable
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # Utilisation du modèle gemini-pro universel
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt)
                     
                     data = parse_json_response(response.text)
@@ -92,7 +92,7 @@ if api_key:
                 try:
                     prompt = f"Génère une fiche de vocabulaire en {langue} pour niveau {niveau}. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'mot', 'prononciation', 'definition', 'synonymes' (liste de 3 mots), 'phrase_exemple'."
                     
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt)
                     
                     data = parse_json_response(response.text)
