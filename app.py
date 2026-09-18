@@ -40,6 +40,14 @@ def parse_json_response(text):
         return json.loads(match.group(0))
     return json.loads(text)
 
+# Fonction pour trouver automatiquement un modèle Gemini valide
+def get_working_model():
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            if 'gemini' in m.name:
+                return m.name
+    return 'models/gemini-1.5-flash-001'
+
 api_key = st.sidebar.text_input("Clé API Gemini (Gratuite)", type="password")
 
 if api_key:
@@ -56,8 +64,9 @@ if api_key:
                 try:
                     prompt = f"Génère une question de quizz sur le thème '{theme}'. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
                     
-                    # Utilisation du modèle gemini-pro universel
-                    model = genai.GenerativeModel('gemini-pro')
+                    # Détection automatique du modèle
+                    model_name = get_working_model()
+                    model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
                     
                     data = parse_json_response(response.text)
@@ -77,7 +86,7 @@ if api_key:
                     
                     st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
                     st.audio("quizz_audio.mp3")
-                    st.success("✅ Visuel et audio générés avec succès !")
+                    st.success(f"✅ Généré avec succès (Modèle utilisé : {model_name}) !")
                 except Exception as e:
                     st.error(f"Erreur lors de la génération : {e}")
 
@@ -92,7 +101,8 @@ if api_key:
                 try:
                     prompt = f"Génère une fiche de vocabulaire en {langue} pour niveau {niveau}. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'mot', 'prononciation', 'definition', 'synonymes' (liste de 3 mots), 'phrase_exemple'."
                     
-                    model = genai.GenerativeModel('gemini-pro')
+                    model_name = get_working_model()
+                    model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
                     
                     data = parse_json_response(response.text)
@@ -114,7 +124,7 @@ if api_key:
                     
                     st.image(img_path, caption="Visuel 9:16 pour TikTok/Shorts", width=300)
                     st.audio("langue_audio.mp3")
-                    st.success("✅ Visuel et audio générés avec succès !")
+                    st.success(f"✅ Généré avec succès (Modèle utilisé : {model_name}) !")
                 except Exception as e:
                     st.error(f"Erreur lors de la génération : {e}")
 else:
