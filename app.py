@@ -5,11 +5,11 @@ import edge_tts
 import json
 import os
 import re
-import imageio
 from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 st.set_page_config(page_title="Générateur TikTok Pro", layout="wide")
-st.title("🎬 Générateur de Vidéos TikTok & Shorts (.MP4)")
+st.title("🎬 Générateur de Vidéos TikTok & Shorts Synchronisées (.MP4)")
 
 # --- UTILITAIRES TTS & JSON ---
 def clean_text_for_tts(text):
@@ -41,7 +41,7 @@ def draw_quizz_frame(data, phase="question", timer_sec=5, bg_file=None):
         
     draw = ImageDraw.Draw(img)
     
-    # Phrase de motivation / Accroche TikTok
+    # Accroche
     draw.rectangle([(60, 100), (1020, 200)], fill=(225, 29, 72))
     draw.text((90, 130), "🔥 TESTE TES CONNAISSANCES !", fill="white")
     
@@ -67,7 +67,6 @@ def draw_quizz_frame(data, phase="question", timer_sec=5, bg_file=None):
         draw.rectangle([(80, y + 20), (1000, y + 220)], fill=(15, 23, 42))
         draw.text((100, y + 50), f"Explication :\n{data['explication']}", fill="white")
     else:
-        # Minuteur animé
         draw.rectangle([(380, y + 30), (700, y + 120)], fill=(225, 29, 72))
         draw.text((430, y + 60), f"⏱️ 00:0{timer_sec}", fill="white")
         
@@ -79,11 +78,9 @@ def draw_language_frame(mots, langue):
     img = Image.new('RGB', (width, height), color=(15, 23, 42))
     draw = ImageDraw.Draw(img)
     
-    # Accroche
     draw.rectangle([(60, 100), (1020, 200)], fill=(225, 29, 72))
     draw.text((90, 130), "💡 APPRENDS CE VOCABULAIRE !", fill="white")
     
-    # Titre
     draw.rectangle([(80, 230), (1000, 330)], fill=(236, 72, 153))
     draw.text((120, 260), f"6 MOTS EN {langue.upper()}", fill="white")
     
@@ -96,48 +93,6 @@ def draw_language_frame(mots, langue):
         
     return img
 
-# --- FABRICATION VIDEO MP4 DYNAMIQUE ---
-def make_quizz_mp4(data, bg_file=None, output_path="quizz.mp4"):
-    writer = imageio.get_writer(output_path, fps=30, codec='libx264')
-    
-    # 1. Phase Question (3 secondes)
-    img_q = draw_quizz_frame(data, phase="question", timer_sec=5, bg_file=bg_file)
-    img_q.save("temp_q.png")
-    q_data = imageio.v3.imread("temp_q.png")
-    for _ in range(3 * 30):
-        writer.append_data(q_data)
-        
-    # 2. Phase Minuteur (Compte à rebours 5s à 1s)
-    for sec in range(5, 0, -1):
-        img_t = draw_quizz_frame(data, phase="question", timer_sec=sec, bg_file=bg_file)
-        img_t.save(f"temp_t_{sec}.png")
-        t_data = imageio.v3.imread(f"temp_t_{sec}.png")
-        for _ in range(1 * 30):  # 1 seconde par chiffre
-            writer.append_data(t_data)
-            
-    # 3. Phase Révélation Réponse (4 secondes)
-    img_r = draw_quizz_frame(data, phase="reponse", bg_file=bg_file)
-    img_r.save("temp_r.png")
-    r_data = imageio.v3.imread("temp_r.png")
-    for _ in range(4 * 30):
-        writer.append_data(r_data)
-        
-    writer.close()
-    return output_path
-
-def make_langue_mp4(mots, langue, output_path="langue.mp4"):
-    writer = imageio.get_writer(output_path, fps=30, codec='libx264')
-    img = draw_language_frame(mots, langue)
-    img.save("temp_l.png")
-    l_data = imageio.v3.imread("temp_l.png")
-    
-    # Durée de 10 secondes pour laisser le temps de tout lire
-    for _ in range(10 * 30):
-        writer.append_data(l_data)
-        
-    writer.close()
-    return output_path
-
 # --- INTERFACE PRINCIPALE ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 
@@ -145,41 +100,69 @@ if api_key:
     genai.configure(api_key=api_key)
     tab1, tab2 = st.tabs(["🧠 Quizz TikTok (.MP4)", "🗣️ Fiche 6 Mots (.MP4)"])
     
-    # --- APPLICATION 1 : QUIZZ ---
+    # --- MODULE 1 : QUIZZ ---
     with tab1:
         st.header("Créer un Quizz TikTok Interactif")
         theme = st.text_input("Thème du Quizz", "Culture Générale")
         bg_file = st.file_uploader("Image de fond optionnelle (9:16)", type=["png", "jpg", "jpeg"])
         
         if st.button("🎬 Générer le Quizz MP4"):
-            with st.spinner("Génération du script, de la voix et du rendu MP4..."):
+            with st.spinner("Génération du Quizz et montage MP4 en cours..."):
                 try:
                     prompt = f"Génère une question de quizz sur '{theme}'. Réponds au format JSON strict : {{'question': '...', 'options': ['...','...','...','...'], 'reponse_correcte': 'A', 'explication': '...'}}"
                     model = genai.GenerativeModel(get_working_model())
                     response = model.generate_content(prompt)
                     data = parse_json_response(response.text)
                     
-                    # Script Audio avec accroche et pause pour minuteur
-                    audio_raw = f"Auras-tu 10 sur 10 à ce test ? {data['question']}. Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}. Attention, réfléchis bien ! ... ... La bonne réponse était la réponse {data['reponse_correcte']}."
-                    audio_text = clean_text_for_tts(audio_raw)
+                    # 1. Audios séparés pour caler la vidéo
+                    txt_q = clean_text_for_tts(f"Auras-tu 10 sur 10 ? {data['question']}. Option A: {data['options'][0]}. Option B: {data['options'][1]}. Option C: {data['options'][2]}. Option D: {data['options'][3]}. Réfléchis bien !")
+                    txt_r = clean_text_for_tts(f"La bonne réponse est l'option {data['reponse_correcte']}! {data['explication']}")
                     
-                    async def gen_audio():
-                        comm = edge_tts.Communicate(audio_text, "fr-FR-HenriNeural")
-                        await comm.save("quizz_audio.mp3")
-                    asyncio.run(gen_audio())
+                    async def gen_audios():
+                        c1 = edge_tts.Communicate(txt_q, "fr-FR-HenriNeural")
+                        await c1.save("part_q.mp3")
+                        c2 = edge_tts.Communicate(txt_r, "fr-FR-HenriNeural")
+                        await c2.save("part_r.mp3")
+                    asyncio.run(gen_audios())
                     
-                    mp4_path = make_quizz_mp4(data, bg_file, "quizz_tiktok.mp4")
+                    # 2. Création des visuels
+                    img_q = draw_quizz_frame(data, phase="question", timer_sec=5, bg_file=bg_file)
+                    img_q.save("frame_q.png")
                     
-                    st.video(mp4_path)
-                    st.audio("quizz_audio.mp3")
+                    img_r = draw_quizz_frame(data, phase="reponse", bg_file=bg_file)
+                    img_r.save("frame_r.png")
                     
-                    with open(mp4_path, "rb") as f:
+                    # 3. Assemblage des séquences vidéo
+                    audio_q = AudioFileClip("part_q.mp3")
+                    audio_r = AudioFileClip("part_r.mp3")
+                    
+                    # Clip Question (Durée de la voix off)
+                    clip_q = ImageClip("frame_q.png").set_duration(audio_q.duration).set_audio(audio_q)
+                    
+                    # Clips Minuteur (5 secondes de silence avec décompte visuel)
+                    timer_clips = []
+                    for sec in range(5, 0, -1):
+                        t_img = draw_quizz_frame(data, phase="question", timer_sec=sec, bg_file=bg_file)
+                        t_img.save(f"frame_t_{sec}.png")
+                        timer_clips.append(ImageClip(f"frame_t_{sec}.png").set_duration(1))
+                    
+                    # Clip Réponse (Durée de la voix off)
+                    clip_r = ImageClip("frame_r.png").set_duration(audio_r.duration).set_audio(audio_r)
+                    
+                    # 4. Concaténation finale
+                    final_video = concatenate_videoclips([clip_q] + timer_clips + [clip_r], method="compose")
+                    output_mp4 = "quizz_final.mp4"
+                    final_video.write_videofile(output_mp4, fps=24, codec="libx264", audio_codec="aac")
+                    
+                    st.video(output_mp4)
+                    with open(output_mp4, "rb") as f:
                         st.download_button("📥 Télécharger la vidéo Quizz MP4", data=f, file_name="quizz_tiktok.mp4", mime="video/mp4")
-                    st.success("✅ Vidéo Quizz MP4 9:16 générée avec succès !")
+                        
+                    st.success("✅ Vidéo Quizz synchronisée et générée !")
                 except Exception as e:
                     st.error(f"Erreur lors de la génération : {e}")
 
-    # --- APPLICATION 2 : FICHE LANGUE (6 MOTS) ---
+    # --- MODULE 2 : FICHE LANGUE (6 MOTS) ---
     with tab2:
         st.header("Créer une Fiche 6 Mots TikTok")
         langue = st.selectbox("Langue cible", ["Anglais", "Espagnol"])
@@ -191,7 +174,6 @@ if api_key:
                     model = genai.GenerativeModel(get_working_model())
                     response = model.generate_content(prompt)
                     data = parse_json_response(response.text)
-                    
                     mots_liste = data.get('mots', [])
                     
                     audio_raw = f"Voici 6 mots essentiels à retenir en {langue} ! "
@@ -203,17 +185,23 @@ if api_key:
                     
                     async def gen_lang_audio():
                         comm = edge_tts.Communicate(audio_text, voice)
-                        await comm.save("langue_audio.mp3")
+                        await comm.save("langue.mp3")
                     asyncio.run(gen_lang_audio())
                     
-                    mp4_path = make_langue_mp4(mots_liste, langue, "langue_tiktok.mp4")
+                    img_l = draw_language_frame(mots_liste, langue)
+                    img_l.save("frame_l.png")
                     
-                    st.video(mp4_path)
-                    st.audio("langue_audio.mp3")
+                    audio_l = AudioFileClip("langue.mp3")
+                    clip_l = ImageClip("frame_l.png").set_duration(audio_l.duration).set_audio(audio_l)
                     
-                    with open(mp4_path, "rb") as f:
-                        st.download_button("📥 Télécharger la vidéo Langue MP4", data=f, file_name="langue_tiktok.mp4", mime="video/mp4")
-                    st.success("✅ Vidéo Fiche Langue MP4 9:16 générée avec succès !")
+                    output_langue_mp4 = "langue_final.mp4"
+                    clip_l.write_videofile(output_langue_mp4, fps=24, codec="libx264", audio_codec="aac")
+                    
+                    st.video(output_langue_mp4)
+                    with open(output_langue_mp4, "rb") as f:
+                        st.download_button("📥 Télécharger la vidéo Fiche MP4", data=f, file_name="langue_tiktok.mp4", mime="video/mp4")
+                        
+                    st.success("✅ Vidéo Fiche Langue synchronisée et générée !")
                 except Exception as e:
                     st.error(f"Erreur lors de la génération : {e}")
 else:
