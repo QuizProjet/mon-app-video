@@ -6,11 +6,10 @@ import json
 import os
 import re
 import tempfile
-import uuid
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
-st.set_page_config(page_title="Studio TikTok & Shorts Viral Pro", layout="wide")
+st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok Pro : Générateur de Vidéos Virales (.MP4)")
 
 # --- UTILITAIRES ---
@@ -25,18 +24,18 @@ def parse_json_response(text):
 
 def get_working_model():
     try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini-3.6-flash' in m.name or 'gemini-3' in m.name:
-                    return m.name
-        return 'models/gemini-3.6-flash'
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        for name in models:
+            if 'flash' in name:
+                return name
+        return models[0] if models else 'models/gemini-1.5-flash'
     except Exception:
-        return 'models/gemini-3.6-flash'
+        return 'models/gemini-1.5-flash'
 
 THEMES = {
-    "Néon TikTok (Jaune & Noir)": {"bg": (10, 10, 10), "card": (25, 25, 25), "accent": (250, 204, 21), "text_accent": (0, 0, 0), "header": (236, 72, 153)},
-    "Cyberpunk Pink": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (236, 72, 153), "text_accent": (255, 255, 255), "header": (139, 92, 246)},
-    "Vert Fluorescent": {"bg": (6, 78, 59), "card": (4, 120, 87), "accent": (34, 197, 94), "text_accent": (0, 0, 0), "header": (16, 185, 129)}
+    "Néon TikTok (Jaune & Noir)": {"bg": (10, 10, 10), "card": (25, 25, 25), "accent": (250, 204, 21), "text_accent": (0, 0, 0)},
+    "Cyberpunk Pink": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (236, 72, 153), "text_accent": (255, 255, 255)},
+    "Vert Fluorescent": {"bg": (6, 78, 59), "card": (4, 120, 87), "accent": (34, 197, 94), "text_accent": (0, 0, 0)}
 }
 
 def draw_hook_frame(hook_text, theme_name):
@@ -44,7 +43,6 @@ def draw_hook_frame(hook_text, theme_name):
     colors = THEMES.get(theme_name, THEMES["Néon TikTok (Jaune & Noir)"])
     img = Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
-    
     draw.rectangle([(60, 600), (1020, 1100)], fill=colors["accent"])
     draw.text((100, 750), hook_text, fill=colors["text_accent"])
     return img
@@ -59,13 +57,11 @@ def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, to
         img = Image.new('RGB', (width, height), color=colors["bg"])
         
     draw = ImageDraw.Draw(img)
-    
     draw.rectangle([(60, 100), (1020, 200)], fill=colors["accent"])
-    draw.text((90, 130), f"🔥 QUESTION {q_num}/{total_q}", fill=colors["text_accent"])
-    
+    draw.text((90, 130), f"QUESTION {q_num}/{total_q}", fill=colors["text_accent"])
     draw.text((90, 300), f"Q: {question}", fill="white")
     
-    correct_letter = str(reponse_correcte).strip().upper()[0]
+    correct_letter = str(reponse_correcte).strip().upper()[0] if reponse_correcte else 'A'
     correct_idx = ord(correct_letter) - 65 if correct_letter in ['A', 'B', 'C', 'D'] else 0
     
     y = 550
@@ -80,7 +76,7 @@ def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, to
         draw.text((100, y + 40), f"Explication :\n{explication}", fill="white")
     else:
         draw.rectangle([(380, y + 20), (700, y + 110)], fill=(225, 29, 72))
-        draw.text((430, y + 50), f"⏱️ 00:0{timer_sec}", fill="white")
+        draw.text((430, y + 50), f"00:0{timer_sec}", fill="white")
         
     return img
 
@@ -91,7 +87,7 @@ def draw_language_progressive_frame(mots, current_index, langue, theme_name):
     draw = ImageDraw.Draw(img)
     
     draw.rectangle([(60, 100), (1020, 200)], fill=colors["accent"])
-    draw.text((90, 130), f"💡 VOCABULAIRE ({langue.upper()})", fill=colors["text_accent"])
+    draw.text((90, 130), f"VOCABULAIRE ({langue.upper()})", fill=colors["text_accent"])
     
     y = 280
     for idx, item in enumerate(mots):
@@ -108,14 +104,14 @@ def draw_language_progressive_frame(mots, current_index, langue, theme_name):
         
     return img
 
-# --- INTERFACE ---
-api_key = st.sidebar.text_input("Clé API Gemini (Facultatif si saisie manuelle)", type="password")
+# --- INTERFACE STREAMLIT ---
+api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
     genai.configure(api_key=api_key)
 
-tab1, tab2 = st.tabs(["🧠 Quizz TikTok Ultra-Viral MP4", "🗣️ Fiche Langue Ultra-Virale MP4"])
+tab1, tab2 = st.tabs(["🧠 Quizz TikTok Pro", "🗣️ Fiche Langue Pro"])
 
-VOICES_FR = {"Henri (Homme Énergique)": "fr-FR-HenriNeural", "Vivienne (Femme Dynamique)": "fr-FR-VivienneNeural"}
+VOICES_FR = {"Henri (Homme)": "fr-FR-HenriNeural", "Vivienne (Femme)": "fr-FR-VivienneNeural"}
 VOICES_MAP = {
     "Anglais": {"Emma (Femme)": "en-US-EmmaNeural", "Christopher (Homme)": "en-US-ChristopherNeural"},
     "Espagnol": {"Alvaro (Homme)": "es-ES-AlvaroNeural", "Elvira (Femme)": "es-ES-ElviraNeural"},
@@ -124,238 +120,212 @@ VOICES_MAP = {
     "Italien": {"Diego (Homme)": "it-IT-DiegoNeural", "Elsa (Femme)": "it-IT-ElsaNeural"}
 }
 
-# ==================== MODULE 1 : QUIZZ ====================
+# MODULE 1 : QUIZZ
 with tab1:
-    st.header("1. Quizz TikTok Ultra-Viral")
+    st.header("1. Générateur Quizz Virale")
+    hook_input = st.text_input("Accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
     
-    hook_input = st.text_input("Phrase d'accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
-    
-    col_a, col_b = st.columns(2)
-    with col_a:
-        voice_fr_choice = st.selectbox("Voix Off", list(VOICES_FR.keys()))
-        voice_fr_code = VOICES_FR[voice_fr_choice]
-    with col_b:
-        theme_visual_q = st.selectbox("Thème Visuel Fluo", list(THEMES.keys()), key="th_q")
+    col1, col2 = st.columns(2)
+    with col1:
+        voice_fr_code = VOICES_FR[st.selectbox("Voix Off", list(VOICES_FR.keys()))]
+    with col2:
+        theme_visual_q = st.selectbox("Thème Visuel", list(THEMES.keys()), key="th_q")
         
-    mode_q = st.radio("Source des questions", ["Génération automatique par IA", "Saisie Manuelle"], key="mode_q")
-    bg_file = st.file_uploader("Image de fond personnalisée (9:16)", type=["png", "jpg", "jpeg"], key="bg_q")
+    mode_q = st.radio("Mode", ["IA Gemini", "Saisie Manuelle"], key="mode_q")
+    bg_file = st.file_uploader("Fond 9:16 (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_q")
     
-    if mode_q == "Génération automatique par IA":
-        theme_q = st.text_input("Thème du Quizz", "Culture Générale", key="t_q")
-        nb_q = st.slider("Nombre de questions", 1, 10, 5)
-        
-        if st.button("✨ Générer les questions via l'IA"):
+    if mode_q == "IA Gemini":
+        theme_q = st.text_input("Thème", "Culture Générale", key="t_q")
+        nb_q = st.slider("Questions", 1, 5, 3)
+        if st.button("✨ Générer les questions"):
             if not api_key:
-                st.error("Clé API requise pour la génération IA !")
+                st.error("Entre ta clé API !")
             else:
-                with st.spinner("Génération des questions..."):
-                    prompt = f"Génère une liste de {nb_q} questions de quizz sur le thème '{theme_q}'. Réponds au format JSON strict : [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
-                    model = genai.GenerativeModel(get_working_model())
-                    res = model.generate_content(prompt)
-                    st.session_state['q_data'] = parse_json_response(res.text)
-                    st.success(f"{len(st.session_state['q_data'])} questions générées !")
+                with st.spinner("Génération par l'IA..."):
+                    try:
+                        prompt = f"Génère {nb_q} questions de quizz sur '{theme_q}'. Format JSON strict: [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
+                        model = genai.GenerativeModel(get_working_model())
+                        res = model.generate_content(prompt)
+                        st.session_state['q_data'] = parse_json_response(res.text)
+                        st.success(f"{len(st.session_state['q_data'])} questions générées !")
+                    except Exception as e:
+                        st.error(f"Erreur IA : {e}")
     else:
-        num_custom = st.number_input("Nombre de questions à saisir", 1, 10, 5)
-        custom_list = []
-        for i in range(int(num_custom)):
-            st.subheader(f"Question {i+1}")
-            q_txt = st.text_input(f"Question {i+1}", key=f"q_{i}")
-            opt_a = st.text_input(f"Option A", key=f"opt_a_{i}")
-            opt_b = st.text_input(f"Option B", key=f"opt_b_{i}")
-            opt_c = st.text_input(f"Option C", key=f"opt_c_{i}")
-            opt_d = st.text_input(f"Option D", key=f"opt_d_{i}")
-            rep = st.selectbox(f"Bonne réponse", ["A", "B", "C", "D"], key=f"rep_{i}")
-            exp = st.text_input(f"Explication", key=f"exp_{i}")
-            custom_list.append({"question": q_txt, "options": [opt_a, opt_b, opt_c, opt_d], "reponse_correcte": rep, "explication": exp})
+        num_c = st.number_input("Nombre de questions", 1, 5, 2)
+        c_list = []
+        for i in range(int(num_c)):
+            st.markdown(f"**Question {i+1}**")
+            q_t = st.text_input(f"Question", key=f"q_{i}")
+            o_a = st.text_input(f"A", key=f"oa_{i}")
+            o_b = st.text_input(f"B", key=f"ob_{i}")
+            o_c = st.text_input(f"C", key=f"oc_{i}")
+            o_d = st.text_input(f"D", key=f"od_{i}")
+            rep = st.selectbox("Réponse", ["A", "B", "C", "D"], key=f"r_{i}")
+            exp = st.text_input("Explication", key=f"e_{i}")
+            c_list.append({"question": q_t, "options": [o_a, o_b, o_c, o_d], "reponse_correcte": rep, "explication": exp})
         if st.button("💾 Valider les questions"):
-            st.session_state['q_data'] = custom_list
+            st.session_state['q_data'] = c_list
             st.success("Questions enregistrées !")
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
-        st.write(f"📋 **{len(st.session_state['q_data'])} questions prêtes.**")
-        
-        if st.button("🎬 Générer la Vidéo TikTok Virale (.MP4)"):
-            with st.spinner("Génération de la vidéo en cours..."):
+        if st.button("🎬 Générer le fichier MP4"):
+            with st.spinner("Montage vidéo en cours..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
-                        all_clips = []
+                        clips = []
                         total_q = len(st.session_state['q_data'])
                         
-                        # 1. Hook
-                        hook_audio_p = os.path.join(tmpdir, "hook.mp3")
-                        hook_img_p = os.path.join(tmpdir, "f_hook.png")
-                        async def gen_hook():
-                            c = edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code)
-                            await c.save(hook_audio_p)
-                        asyncio.run(gen_hook())
+                        # Hook
+                        h_aud = os.path.join(tmpdir, "h.mp3")
+                        h_img = os.path.join(tmpdir, "h.png")
+                        asyncio.run(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
+                        draw_hook_frame(hook_input, theme_visual_q).save(h_img)
+                        a_h = AudioFileClip(h_aud)
+                        clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
-                        draw_hook_frame(hook_input, theme_visual_q).save(hook_img_p)
-                        a_hook = AudioFileClip(hook_audio_p)
-                        all_clips.append(ImageClip(hook_img_p).set_duration(a_hook.duration).set_audio(a_hook))
-                        
-                        # 2. Questions
-                        motivations = ["Bravo ! On continue !", "Super effort ! Question suivante !", "Tu gères, voici la suite !"]
+                        # Questions
                         for idx, q in enumerate(st.session_state['q_data']):
-                            q_num = idx + 1
-                            txt_q = clean_text_for_tts(f"Question {q_num}. {q['question']}. A: {q['options'][0]}. B: {q['options'][1]}. C: {q['options'][2]}. D: {q['options'][3]}.")
-                            txt_r = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}! {q['explication']}. {motivations[idx % len(motivations)]}")
+                            q_aud = os.path.join(tmpdir, f"q_{idx}.mp3")
+                            r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
+                            q_img = os.path.join(tmpdir, f"q_{idx}.png")
+                            r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             
-                            p_q_aud = os.path.join(tmpdir, f"q_{idx}.mp3")
-                            p_r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
-                            p_q_img = os.path.join(tmpdir, f"fq_{idx}.png")
-                            p_r_img = os.path.join(tmpdir, f"fr_{idx}.png")
+                            t_q = clean_text_for_tts(f"Question {idx+1}. {q['question']}. A: {q['options'][0]}. B: {q['options'][1]}. C: {q['options'][2]}. D: {q['options'][3]}.")
+                            t_r = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}")
                             
-                            async def gen_auds():
-                                await edge_tts.Communicate(txt_q, voice_fr_code).save(p_q_aud)
-                                await edge_tts.Communicate(txt_r, voice_fr_code).save(p_r_aud)
-                            asyncio.run(gen_auds())
+                            asyncio.run(edge_tts.Communicate(t_q, voice_fr_code).save(q_aud))
+                            asyncio.run(edge_tts.Communicate(t_r, voice_fr_code).save(r_aud))
                             
-                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], q_num, total_q, "question", 5, bg_file, theme_visual_q).save(p_q_img)
-                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], q_num, total_q, "reponse", 0, bg_file, theme_visual_q).save(p_r_img)
+                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", 5, bg_file, theme_visual_q).save(q_img)
+                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "reponse", 0, bg_file, theme_visual_q).save(r_img)
                             
-                            aud_q = AudioFileClip(p_q_aud)
-                            aud_r = AudioFileClip(p_r_aud)
+                            a_q = AudioFileClip(q_aud)
+                            a_r = AudioFileClip(r_aud)
                             
-                            clip_q = ImageClip(p_q_img).set_duration(aud_q.duration).set_audio(aud_q)
+                            clip_q = ImageClip(q_img).set_duration(a_q.duration).set_audio(a_q)
                             
-                            timer_clips = []
+                            t_clips = []
                             for sec in range(5, 0, -1):
-                                p_t_img = os.path.join(tmpdir, f"ft_{idx}_{sec}.png")
-                                draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], q_num, total_q, "question", sec, bg_file, theme_visual_q).save(p_t_img)
-                                timer_clips.append(ImageClip(p_t_img).set_duration(1))
+                                t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
+                                draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", sec, bg_file, theme_visual_q).save(t_img)
+                                t_clips.append(ImageClip(t_img).set_duration(1))
                                 
-                            clip_r = ImageClip(p_r_img).set_duration(aud_r.duration).set_audio(aud_r)
-                            all_clips.extend([clip_q] + timer_clips + [clip_r])
+                            clip_r = ImageClip(r_img).set_duration(a_r.duration).set_audio(a_r)
+                            clips.extend([clip_q] + t_clips + [clip_r])
                             
-                        # 3. Outro CTA
-                        cta_txt = "Écris ton score sur 5 en commentaire et abonne-toi !"
-                        p_cta_aud = os.path.join(tmpdir, "cta.mp3")
-                        p_cta_img = os.path.join(tmpdir, "f_cta.png")
-                        async def gen_cta():
-                            await edge_tts.Communicate(cta_txt, voice_fr_code).save(p_cta_aud)
-                        asyncio.run(gen_cta())
+                        # Outro
+                        c_aud = os.path.join(tmpdir, "c.mp3")
+                        c_img = os.path.join(tmpdir, "c.png")
+                        asyncio.run(edge_tts.Communicate("Écris ton score en commentaire et abonne-toi !", voice_fr_code).save(c_aud))
+                        draw_hook_frame("QUEL EST TON SCORE ?\nÉcris-le en commentaire ! 💬", theme_visual_q).save(c_img)
+                        a_c = AudioFileClip(c_aud)
+                        clips.append(ImageClip(c_img).set_duration(a_c.duration).set_audio(a_c))
                         
-                        draw_hook_frame("QUEL EST TON SCORE ?\nÉcris-le en commentaire ! 💬", theme_visual_q).save(p_cta_img)
-                        a_cta = AudioFileClip(p_cta_aud)
-                        all_clips.append(ImageClip(p_cta_img).set_duration(a_cta.duration).set_audio(a_cta))
-                        
-                        # Compilation finale
-                        final_v = concatenate_videoclips(all_clips, method="compose")
+                        final_v = concatenate_videoclips(clips, method="compose")
                         out_mp4 = os.path.join(tmpdir, "quizz_final.mp4")
                         final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger la vidéo TikTok Virale MP4", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo générée avec succès !")
+                            st.download_button("📥 Télécharger le MP4", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
+                        st.success("✅ Vidéo Quizz générée !")
                 except Exception as e:
-                    st.error(f"Détails de l'erreur : {e}")
+                    st.error(f"Erreur de génération : {e}")
 
-# ==================== MODULE 2 : LANGUES ====================
+# MODULE 2 : LANGUES
 with tab2:
-    st.header("2. Fiche Langue Ultra-Virale")
+    st.header("2. Générateur Fiche Vocabulaire")
+    hook_l_input = st.text_input("Accroche", "Tu prononces mal ces mots ! Vérifions ensemble.")
     
-    hook_lang_input = st.text_input("Accroche Langues", "Tu prononces mal ces 6 mots ! Vérifions ensemble.")
-    
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        langue_choisie = st.selectbox("Langue cible", ["Anglais", "Espagnol", "Arabe", "Allemand", "Italien"])
-    with col_l2:
-        voice_target_choice = st.selectbox("Voix de la traduction", list(VOICES_MAP[langue_choisie].keys()))
-        voice_target_code = VOICES_MAP[langue_choisie][voice_target_choice]
+    col1, col2 = st.columns(2)
+    with col1:
+        langue_c = st.selectbox("Langue cible", ["Anglais", "Espagnol", "Arabe", "Allemand", "Italien"])
+    with col2:
+        voice_t_code = VOICES_MAP[langue_c][st.selectbox("Voix Traduction", list(VOICES_MAP[langue_c].keys()))]
         
-    theme_visual_l = st.selectbox("Thème Visuel Fluo", list(THEMES.keys()), key="th_l")
-    mode_l = st.radio("Source du vocabulaire", ["Génération automatique par IA", "Saisie Manuelle"], key="mode_l")
+    theme_visual_l = st.selectbox("Thème Visuel", list(THEMES.keys()), key="th_l")
+    mode_l = st.radio("Mode Vocabulaire", ["IA Gemini", "Saisie Manuelle"], key="mode_l")
     
-    if mode_l == "Génération automatique par IA":
-        theme_l = st.text_input("Thème du vocabulaire", "Voyage et Restaurant", key="t_l")
-        nb_mots = st.slider("Nombre de mots", 3, 8, 6)
-        if st.button("✨ Générer le vocabulaire par IA"):
+    if mode_l == "IA Gemini":
+        theme_l = st.text_input("Thème", "Voyage", key="t_l")
+        nb_m = st.slider("Nombre de mots", 3, 6, 4)
+        if st.button("✨ Générer les mots"):
             if not api_key:
-                st.error("Clé API requise pour l'IA !")
+                st.error("Entre ta clé API !")
             else:
                 with st.spinner("Génération des mots..."):
-                    prompt = f"Génère {nb_mots} mots ou phrases clés sur le thème '{theme_l}' avec la traduction en {langue_choisie}. Réponds au format JSON strict : [{{'fr': 'Bonjour', 'trad': 'Hello'}}, ...]"
-                    model = genai.GenerativeModel(get_working_model())
-                    res = model.generate_content(prompt)
-                    st.session_state['l_data'] = parse_json_response(res.text)
-                    st.success(f"{len(st.session_state['l_data'])} mots générés !")
+                    try:
+                        prompt = f"Génère {nb_m} mots avec traduction en {langue_c}. Format JSON strict: [{{'fr': 'Bonjour', 'trad': 'Hello'}}, ...]"
+                        model = genai.GenerativeModel(get_working_model())
+                        res = model.generate_content(prompt)
+                        st.session_state['l_data'] = parse_json_response(res.text)
+                        st.success(f"{len(st.session_state['l_data'])} mots générés !")
+                    except Exception as e:
+                        st.error(f"Erreur IA : {e}")
     else:
-        num_m = st.number_input("Nombre de mots à saisir", 1, 8, 6)
-        custom_m = []
+        num_m = st.number_input("Nombre de mots à saisir", 1, 6, 4)
+        c_m = []
         for i in range(int(num_m)):
-            col1, col2 = st.columns(2)
-            with col1:
-                fr_txt = st.text_input(f"Texte Français #{i+1}", key=f"fr_{i}")
-            with col2:
-                tr_txt = st.text_input(f"Traduction ({langue_choisie}) #{i+1}", key=f"tr_{i}")
-            custom_m.append({"fr": fr_txt, "trad": tr_txt})
-        if st.button("💾 Valider la liste de mots"):
-            st.session_state['l_data'] = custom_m
+            col_a, col_b = st.columns(2)
+            with col_a:
+                fr_t = st.text_input(f"Français #{i+1}", key=f"fr_{i}")
+            with col_b:
+                tr_t = st.text_input(f"Traduction #{i+1}", key=f"tr_{i}")
+            c_m.append({"fr": fr_t, "trad": tr_t})
+        if st.button("💾 Valider les mots"):
+            st.session_state['l_data'] = c_m
             st.success("Mots enregistrés !")
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
-        st.write(f"📋 **{len(st.session_state['l_data'])} mots prêts.**")
-        
-        if st.button("🎬 Générer la Vidéo Vocabulaire MP4"):
-            with st.spinner("Génération de la vidéo en cours..."):
+        if st.button("🎬 Générer le fichier MP4 Vocabulaire"):
+            with st.spinner("Montage vidéo en cours..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
-                        word_clips = []
+                        w_clips = []
                         mots_l = st.session_state['l_data']
                         
-                        # 1. Hook
-                        p_intro_aud = os.path.join(tmpdir, "intro_l.mp3")
-                        p_intro_img = os.path.join(tmpdir, "f_intro_l.png")
-                        async def gen_lang_hook():
-                            await edge_tts.Communicate(clean_text_for_tts(hook_lang_input), "fr-FR-HenriNeural").save(p_intro_aud)
-                        asyncio.run(gen_lang_hook())
+                        # Intro
+                        in_aud = os.path.join(tmpdir, "in.mp3")
+                        in_img = os.path.join(tmpdir, "in.png")
+                        asyncio.run(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
+                        draw_hook_frame(hook_l_input, theme_visual_l).save(in_img)
+                        a_in = AudioFileClip(in_aud)
+                        w_clips.append(ImageClip(in_img).set_duration(a_in.duration).set_audio(a_in))
                         
-                        draw_hook_frame(hook_lang_input, theme_visual_l).save(p_intro_img)
-                        a_intro = AudioFileClip(p_intro_aud)
-                        word_clips.append(ImageClip(p_intro_img).set_duration(a_intro.duration).set_audio(a_intro))
-                        
-                        # 2. Mots
+                        # Mots
                         for idx, item in enumerate(mots_l):
+                            fr_aud = os.path.join(tmpdir, f"fr_{idx}.mp3")
+                            tr_aud = os.path.join(tmpdir, f"tr_{idx}.mp3")
+                            w_img = os.path.join(tmpdir, f"w_{idx}.png")
+                            
                             t_fr = clean_text_for_tts(item['fr'])
-                            t_tr = item['trad'].strip() if langue_choisie == "Arabe" else clean_text_for_tts(item['trad'])
+                            t_tr = item['trad'].strip() if langue_c == "Arabe" else clean_text_for_tts(item['trad'])
                             
-                            p_fr_aud = os.path.join(tmpdir, f"l_fr_{idx}.mp3")
-                            p_tr_aud = os.path.join(tmpdir, f"l_tr_{idx}.mp3")
-                            p_w_img = os.path.join(tmpdir, f"fl_w_{idx}.png")
+                            asyncio.run(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(fr_aud))
+                            asyncio.run(edge_tts.Communicate(t_tr, voice_t_code).save(tr_aud))
                             
-                            async def gen_w_auds():
-                                await edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(p_fr_aud)
-                                await edge_tts.Communicate(t_tr, voice_target_code).save(p_tr_aud)
-                            asyncio.run(gen_w_auds())
+                            draw_language_progressive_frame(mots_l, idx, langue_c, theme_visual_l).save(w_img)
                             
-                            draw_language_progressive_frame(mots_l, idx, langue_choisie, theme_visual_l).save(p_w_img)
+                            a_fr = AudioFileClip(fr_aud)
+                            a_tr = AudioFileClip(tr_aud)
                             
-                            a_fr = AudioFileClip(p_fr_aud)
-                            a_tr = AudioFileClip(p_tr_aud)
+                            c_fr = ImageClip(w_img).set_duration(a_fr.duration).set_audio(a_fr)
+                            c_tr = ImageClip(w_img).set_duration(a_tr.duration + 0.5).set_audio(a_tr)
+                            w_clips.extend([c_fr, c_tr])
                             
-                            clip_fr = ImageClip(p_w_img).set_duration(a_fr.duration).set_audio(a_fr)
-                            clip_tr = ImageClip(p_w_img).set_duration(a_tr.duration + 0.5).set_audio(a_tr)
-                            
-                            word_clips.extend([clip_fr, clip_tr])
-                            
-                        # 3. Outro CTA
-                        cta_lang_txt = "Enregistre cette vidéo et abonne-toi !"
-                        p_cta_l_aud = os.path.join(tmpdir, "cta_l.mp3")
-                        p_cta_l_img = os.path.join(tmpdir, "f_cta_l.png")
-                        async def gen_lang_cta():
-                            await edge_tts.Communicate(cta_lang_txt, "fr-FR-HenriNeural").save(p_cta_l_aud)
-                        asyncio.run(gen_lang_cta())
+                        # Outro
+                        out_aud = os.path.join(tmpdir, "out.mp3")
+                        out_img = os.path.join(tmpdir, "out.png")
+                        asyncio.run(edge_tts.Communicate("Enregistre cette vidéo et abonne-toi !", "fr-FR-HenriNeural").save(out_aud))
+                        draw_hook_frame("ENREGISTRE LA VIDÉO ! 📌\nEt abonne-toi !", theme_visual_l).save(out_img)
+                        a_out = AudioFileClip(out_aud)
+                        w_clips.append(ImageClip(out_img).set_duration(a_out.duration).set_audio(a_out))
                         
-                        draw_hook_frame("ENREGISTRE LA VIDÉO ! 📌\nEt abonne-toi pour progresser !", theme_visual_l).save(p_cta_l_img)
-                        a_cta_l = AudioFileClip(p_cta_l_aud)
-                        word_clips.append(ImageClip(p_cta_l_img).set_duration(a_cta_l.duration).set_audio(a_cta_l))
+                        final_v = concatenate_videoclips(w_clips, method="compose")
+                        out_mp4 = os.path.join(tmpdir, "langue_final.mp4")
+                        final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
-                        final_v = concatenate_videoclips(word_clips, method="compose")
-                        out_lang_mp4 = os.path.join(tmpdir, "langue_final.mp4")
-                        final_v.write_videofile(out_lang_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
-                        
-                        with open(out_lang_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger la vidéo Fiche MP4", data=f.read(), file_name="vocabulaire_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo générée avec succès !")
+                        with open(out_mp4, "rb") as f:
+                            st.download_button("📥 Télécharger le MP4", data=f.read(), file_name="vocabulaire_viral.mp4", mime="video/mp4")
+                        st.success("✅ Vidéo Vocabulaire générée !")
                 except Exception as e:
-                    st.error(f"Détails de l'erreur : {e}")
+                    st.error(f"Erreur de génération : {e}")
