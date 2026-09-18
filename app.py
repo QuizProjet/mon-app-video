@@ -5,33 +5,11 @@ import edge_tts
 import json
 import os
 import re
-import math
-import wave
-import struct
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeAudioClip
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 st.set_page_config(page_title="Studio TikTok & Shorts Viral Pro", layout="wide")
 st.title("🚀 Studio TikTok Pro : Générateur de Vidéos Virales (.MP4)")
-
-# --- GENERATION DES BRUITAGES (SFX) SYNTHETIQUES ---
-def generate_sfx_files():
-    # 1. Tic-tac (0.1s)
-    if not os.path.exists("tictac.wav"):
-        with wave.open("tictac.wav", "w") as f:
-            f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-            for i in range(4410):
-                val = int(10000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500))
-                f.writeframes(struct.pack('<h', val))
-    # 2. Ding validation (0.4s)
-    if not os.path.exists("ding.wav"):
-        with wave.open("ding.wav", "w") as f:
-            f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-            for i in range(17640):
-                val = int(15000 * math.sin(2 * math.pi * 1200 * (i/44100)) * math.exp(-i/3000))
-                f.writeframes(struct.pack('<h', val))
-
-generate_sfx_files()
 
 # --- UTILITAIRES ---
 def clean_text_for_tts(text):
@@ -60,14 +38,13 @@ THEMES = {
     "Vert Fluorescent": {"bg": (6, 78, 59), "card": (4, 120, 87), "accent": (34, 197, 94), "text_accent": (0, 0, 0), "header": (16, 185, 129)}
 }
 
-# --- GENERATION DES CADRES HOOK, QUIZZ ET CTA ---
+# --- GENERATION DES CADRES ---
 def draw_hook_frame(hook_text, theme_name):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Néon TikTok (Jaune & Noir)"])
     img = Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    # Cartouche accrocheur central
     draw.rectangle([(60, 600), (1020, 1100)], fill=colors["accent"])
     draw.text((100, 750), hook_text, fill=colors["text_accent"])
     return img
@@ -83,11 +60,9 @@ def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, to
         
     draw = ImageDraw.Draw(img)
     
-    # En-tête avec progression
     draw.rectangle([(60, 100), (1020, 200)], fill=colors["accent"])
     draw.text((90, 130), f"🔥 QUESTION {q_num}/{total_q}", fill=colors["text_accent"])
     
-    # Question
     draw.text((90, 300), f"Q: {question}", fill="white")
     
     correct_letter = str(reponse_correcte).strip().upper()[0]
@@ -104,7 +79,6 @@ def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, to
         draw.rectangle([(80, y + 20), (1000, y + 220)], fill=(15, 23, 42))
         draw.text((100, y + 40), f"Explication :\n{explication}", fill="white")
     else:
-        # Minuteur Fluo
         draw.rectangle([(380, y + 20), (700, y + 110)], fill=(225, 29, 72))
         draw.text((430, y + 50), f"⏱️ 00:0{timer_sec}", fill="white")
         
@@ -141,7 +115,7 @@ if api_key:
 
 tab1, tab2 = st.tabs(["🧠 Quizz TikTok Ultra-Viral MP4", "🗣️ Fiche Langue Ultra-Virale MP4"])
 
-VOICES_FR = {"Henri (Homme Energique)": "fr-FR-HenriNeural", "Vivienne (Femme Dynamique)": "fr-FR-VivienneNeural"}
+VOICES_FR = {"Henri (Homme Énergique)": "fr-FR-HenriNeural", "Vivienne (Femme Dynamique)": "fr-FR-VivienneNeural"}
 VOICES_MAP = {
     "Anglais": {"Emma (Femme)": "en-US-EmmaNeural", "Christopher (Homme)": "en-US-ChristopherNeural"},
     "Espagnol": {"Alvaro (Homme)": "es-ES-AlvaroNeural", "Elvira (Femme)": "es-ES-ElviraNeural"},
@@ -152,9 +126,9 @@ VOICES_MAP = {
 
 # ==================== MODULE 1 : QUIZZ ====================
 with tab1:
-    st.header("1. Quizz TikTok Ultra-Viral (Hook + SFX + Multi-Questions + CTA)")
+    st.header("1. Quizz TikTok Ultra-Viral (Hook + Multi-Questions + CTA)")
     
-    hook_input = st.text_input("Phrase d'accroche (Hook 3s)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
+    hook_input = st.text_input("Phrase d'accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
     
     col_a, col_b = st.columns(2)
     with col_a:
@@ -201,12 +175,12 @@ with tab1:
         st.write(f"📋 **{len(st.session_state['q_data'])} questions prêtes.**")
         
         if st.button("🎬 Générer la Vidéo TikTok Virale (.MP4)"):
-            with st.spinner("Montage de la vidéo avec Hook, SFX Tic-Tac, Ding et CTA de fin..."):
+            with st.spinner("Montage de la vidéo avec Hook et CTA..."):
                 try:
                     all_clips = []
                     total_q = len(st.session_state['q_data'])
                     
-                    # 1. CLIP HOOK INTRO (3 sec)
+                    # 1. CLIP HOOK INTRO
                     async def gen_hook_audio():
                         c = edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code)
                         await c.save("hook.mp3")
@@ -216,7 +190,7 @@ with tab1:
                     aud_hook = AudioFileClip("hook.mp3")
                     all_clips.append(ImageClip("frame_hook.png").set_duration(aud_hook.duration).set_audio(aud_hook))
                     
-                    # 2. QUESTIONS + SFX + MOTIVATION
+                    # 2. QUESTIONS + MOTIVATION
                     motivations = ["Bravo ! On continue !", "Super effort ! Question suivante !", "Tu gères, voici la suite !"]
                     
                     for idx, q in enumerate(st.session_state['q_data']):
@@ -240,21 +214,17 @@ with tab1:
                         
                         clip_q = ImageClip(f"fq_{idx}.png").set_duration(aud_q.duration).set_audio(aud_q)
                         
-                        # Tic-Tac SFX pour minuteur
-                        sfx_tictac = AudioFileClip("tictac.wav")
+                        # Décompte visuel de 5 secondes
                         timer_clips = []
                         for sec in range(5, 0, -1):
                             draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], q_num, total_q, "question", sec, bg_file, theme_visual_q).save(f"ft_{idx}_{sec}.png")
-                            timer_clips.append(ImageClip(f"ft_{idx}_{sec}.png").set_duration(1).set_audio(sfx_tictac))
+                            timer_clips.append(ImageClip(f"ft_{idx}_{sec}.png").set_duration(1))
                             
-                        # Ding SFX pour la réponse
-                        sfx_ding = AudioFileClip("ding.wav")
-                        aud_r_combined = CompositeAudioClip([aud_r, sfx_ding])
-                        clip_r = ImageClip(f"fr_{idx}.png").set_duration(aud_r.duration).set_audio(aud_r_combined)
+                        clip_r = ImageClip(f"fr_{idx}.png").set_duration(aud_r.duration).set_audio(aud_r)
                         
                         all_clips.extend([clip_q] + timer_clips + [clip_r])
                         
-                    # 3. CLIP OUTRO CTA (3 sec)
+                    # 3. CLIP OUTRO CTA
                     cta_txt = "Écris ton score sur 5 en commentaire et abonne-toi !"
                     async def gen_cta_audio():
                         c = edge_tts.Communicate(cta_txt, voice_fr_code)
