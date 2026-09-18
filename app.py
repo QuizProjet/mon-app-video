@@ -34,7 +34,6 @@ def parse_json_response(text):
         return json.loads(match.group(0))
     return json.loads(text)
 
-# Gestion optimisée des modèles pour éviter le quota 429
 def get_working_model():
     try:
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
