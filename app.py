@@ -34,16 +34,16 @@ def parse_json_response(text):
         return json.loads(match.group(0))
     return json.loads(text)
 
-# Force l'utilisation du modèle Gemini 3.6 Flash recommandé
+# Gestion optimisée des modèles pour éviter le quota 429
 def get_working_model():
     try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini-3.6-flash' in m.name or 'gemini-3' in m.name:
-                    return m.name
-        return 'models/gemini-3.6-flash'
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        for name in models:
+            if 'gemini-1.5-flash' in name:
+                return name
+        return models[0] if models else 'models/gemini-1.5-flash'
     except Exception:
-        return 'models/gemini-3.6-flash'
+        return 'models/gemini-1.5-flash'
 
 THEMES = {
     "Néon TikTok (Jaune & Noir)": {"bg": (10, 10, 10), "card": (25, 25, 25), "accent": (250, 204, 21), "text_accent": (0, 0, 0)},
@@ -161,7 +161,7 @@ with tab1:
                         model = genai.GenerativeModel(get_working_model())
                         res = model.generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['q_data'])} questions générées avec le modèle {get_working_model()} !")
+                        st.success(f"{len(st.session_state['q_data'])} questions générées avec succès !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
@@ -273,7 +273,7 @@ with tab2:
                         model = genai.GenerativeModel(get_working_model())
                         res = model.generate_content(prompt)
                         st.session_state['l_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['l_data'])} mots générés avec le modèle {get_working_model()} !")
+                        st.success(f"{len(st.session_state['l_data'])} mots générés avec succès !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
