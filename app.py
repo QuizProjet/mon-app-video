@@ -6,11 +6,29 @@ import json
 import os
 import re
 import tempfile
-from PIL import Image, ImageDraw
+import math
+import wave
+import struct
+from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
-st.set_page_config(page_title="Studio TikTok & Shorts Viral Pro", layout="wide")
-st.title("🚀 Studio TikTok Pro : Générateur de Vidéos Virales (.MP4)")
+st.set_page_config(page_title="Studio TikTok Pro - Quizz & Vocabulaire", layout="wide")
+st.title("🚀 Studio TikTok Pro (.MP4)")
+
+# --- CHARGEMENT FONTS HD ---
+def get_font(size):
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "arial.ttf"
+    ]
+    for path in font_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
 
 # --- UTILITAIRES TTS & ASYNC ---
 def run_async(coro):
@@ -44,98 +62,107 @@ def get_working_model():
     except Exception:
         return 'models/gemini-3.6-flash'
 
-# --- THEMES FLUO & NEON HIGH-CONTRAST ---
+# --- THEMES CLASSE & NUANCE ---
 THEMES = {
-    "Néon TikTok (Jaune & Noir)": {"bg": (12, 12, 18), "card": (26, 28, 42), "accent": (250, 204, 21), "text_accent": (0, 0, 0), "neon_glow": (236, 72, 153)},
-    "Cyberpunk Pink": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (236, 72, 153), "text_accent": (255, 255, 255), "neon_glow": (56, 189, 248)},
-    "Vert Fluorescent": {"bg": (6, 28, 20), "card": (12, 54, 38), "accent": (34, 197, 94), "text_accent": (0, 0, 0), "neon_glow": (250, 204, 21)},
-    "Minimaliste Sombre": {"bg": (0, 0, 0), "card": (24, 24, 27), "accent": (255, 255, 255), "text_accent": (0, 0, 0), "neon_glow": (161, 161, 170)}
+    "Néon Doré & Noir Premium": {"bg": (15, 17, 23), "card": (28, 31, 42), "accent": (245, 158, 11), "text_accent": (0, 0, 0), "glow": (251, 191, 36)},
+    "Bleu Nuit & Violet Royal": {"bg": (11, 15, 25), "card": (23, 30, 50), "accent": (139, 92, 246), "text_accent": (255, 255, 255), "glow": (167, 139, 250)},
+    "Émeraude & Or": {"bg": (6, 24, 18), "card": (15, 45, 35), "accent": (16, 185, 129), "text_accent": (0, 0, 0), "glow": (52, 211, 153)},
+    "Rose Cyberpunk": {"bg": (18, 12, 24), "card": (38, 24, 50), "accent": (236, 72, 153), "text_accent": (255, 255, 255), "glow": (244, 114, 182)}
 }
 
-# --- RENDU VISUEL DESIGN NEON ---
-def draw_hook_frame(hook_text, theme_name):
+# --- FONCTIONS DESSIN QUIZZ ---
+def draw_hook_frame(hook_text, theme_name, bg_file=None):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Néon TikTok (Jaune & Noir)"])
-    img = Image.new('RGB', (width, height), color=colors["bg"])
+    colors = THEMES.get(theme_name, THEMES["Néon Doré & Noir Premium"])
+    img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    draw.rectangle([(20, 20), (1060, 1900)], outline=colors["accent"], width=6)
-    draw.rectangle([(60, 600), (1020, 1100)], fill=colors["accent"])
-    draw.text((90, 750), hook_text, fill=colors["text_accent"])
+    font_title = get_font(56)
+    draw.rectangle([(60, 600), (1020, 1100)], fill=colors["accent"], outline=colors["glow"], width=6)
+    draw.text((100, 750), hook_text, fill=colors["text_accent"], font=font_title)
     return img
 
-def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, total_q, phase="question", timer_sec=5, bg_file=None, theme_name="Néon TikTok (Jaune & Noir)"):
+def draw_quizz_frame(question, options, reponse_correcte, explication, q_num, total_q, phase="question", timer_sec=5, bg_file=None, theme_name="Néon Doré & Noir Premium"):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Néon TikTok (Jaune & Noir)"])
-    
-    if bg_file:
-        img = Image.open(bg_file).convert('RGB').resize((width, height))
-    else:
-        img = Image.new('RGB', (width, height), color=colors["bg"])
-        
+    colors = THEMES.get(theme_name, THEMES["Néon Doré & Noir Premium"])
+    img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    draw.rectangle([(20, 20), (1060, 1900)], outline=colors["neon_glow"], width=4)
-    draw.rectangle([(60, 100), (1020, 200)], fill=colors["accent"])
-    draw.text((90, 130), f"🔥 QUESTION {q_num}/{total_q}", fill=colors["text_accent"])
-    draw.text((90, 300), f"Q: {question}", fill="white")
+    f_head, f_q, f_opt = get_font(42), get_font(46), get_font(40)
+    
+    draw.rectangle([(60, 100), (1020, 220)], fill=colors["accent"])
+    draw.text((90, 140), f"🔥 QUESTION {q_num}/{total_q}", fill=colors["text_accent"], font=f_head)
+    
+    draw.text((90, 280), f"Q: {question}", fill="white", font=f_q)
     
     correct_letter = str(reponse_correcte).strip().upper()[0] if reponse_correcte else 'A'
     correct_idx = ord(correct_letter) - 65 if correct_letter in ['A', 'B', 'C', 'D'] else 0
     
-    y = 550
+    y = 520
     for i, opt in enumerate(options):
         is_correct = (phase == "reponse" and i == correct_idx)
-        fill_color = (34, 197, 94) if is_correct else colors["card"]
-        outline_col = (250, 204, 21) if is_correct else colors["accent"]
+        fill_col = (34, 197, 94) if is_correct else colors["card"]
+        out_col = (250, 204, 21) if is_correct else colors["accent"]
         
-        draw.rectangle([(90, y), (990, y + 120)], fill=fill_color, outline=outline_col, width=4)
-        draw.text((120, y + 40), f"{chr(65+i)}) {opt}", fill="white")
-        y += 160
+        draw.rectangle([(90, y), (990, y + 140)], fill=fill_col, outline=out_col, width=4)
+        draw.text((120, y + 45), f"{chr(65+i)}) {opt}", fill="white", font=f_opt)
+        y += 180
         
     if phase == "reponse":
-        draw.rectangle([(80, y + 20), (1000, y + 220)], fill=(15, 23, 42), outline=(34, 197, 94), width=3)
-        draw.text((100, y + 40), f"💡 Explication :\n{explication}", fill="white")
+        draw.rectangle([(80, y + 20), (1000, y + 240)], fill=(15, 23, 42), outline=(34, 197, 94), width=3)
+        draw.text((100, y + 50), f"💡 Explication :\n{explication}", fill="white", font=get_font(34))
     else:
-        draw.rectangle([(380, y + 20), (700, y + 110)], fill=(225, 29, 72), outline=(255, 255, 255), width=3)
-        draw.text((420, y + 50), f"⏱️ 00:0{timer_sec}", fill="white")
+        draw.rectangle([(380, y + 20), (700, y + 120)], fill=(225, 29, 72), outline=(255, 255, 255), width=3)
+        draw.text((430, y + 50), f"⏱️ 00:0{timer_sec}", fill="white", font=f_head)
         
     return img
 
-def draw_language_progressive_frame(mots, current_index, langue, theme_name):
+# --- FONCTIONS DESSIN VOCABULAIRE ---
+def draw_lang_step_frame(mot_fr, mot_trad, step, timer_sec, motiv_txt, langue, theme_name, bg_file=None):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Néon TikTok (Jaune & Noir)"])
-    img = Image.new('RGB', (width, height), color=colors["bg"])
+    colors = THEMES.get(theme_name, THEMES["Néon Doré & Noir Premium"])
+    img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    draw.rectangle([(20, 20), (1060, 1900)], outline=colors["accent"], width=4)
-    draw.rectangle([(60, 100), (1020, 200)], fill=colors["accent"])
-    draw.text((90, 130), f"💡 VOCABULAIRE EN {langue.upper()}", fill=colors["text_accent"])
+    f_title, f_big, f_sub = get_font(48), get_font(54), get_font(40)
     
-    y = 280
-    for idx, item in enumerate(mots):
-        if idx <= current_index:
-            is_active = (idx == current_index)
-            bg_card = colors["accent"] if is_active else colors["card"]
-            txt_col = colors["text_accent"] if is_active else "white"
-            border_col = colors["neon_glow"] if is_active else (255, 255, 255)
-            
-            draw.rectangle([(80, y), (1000, y + 180)], fill=bg_card, outline=border_col, width=4 if is_active else 2)
-            draw.text((110, y + 30), f"FR: {item['fr']}", fill=txt_col)
-            draw.text((110, y + 90), f"TRAD: {item['trad']}", fill=txt_col)
-        else:
-            draw.rectangle([(80, y), (1000, y + 180)], outline=(51, 65, 85), width=2)
-            draw.text((110, y + 70), f"Mot #{idx+1}", fill=(100, 116, 139))
-        y += 210
+    # En-tête
+    draw.rectangle([(60, 120), (1020, 240)], fill=colors["accent"])
+    draw.text((100, 160), f"💡 VOCABULAIRE ({langue.upper()})", fill=colors["text_accent"], font=f_title)
+    
+    # Cartouche Mot Français
+    draw.rectangle([(90, 450), (990, 650)], fill=colors["card"], outline=colors["accent"], width=4)
+    draw.text((130, 490), "FRANÇAIS :", fill=colors["accent"], font=f_sub)
+    draw.text((130, 550), mot_fr, fill="white", font=f_big)
+    
+    # Chrono / Réflexion
+    if step == "chrono":
+        draw.rectangle([(380, 750), (700, 860)], fill=(225, 29, 72), outline=(255, 255, 255), width=3)
+        draw.text((430, 780), f"⏱️ 00:0{timer_sec}", fill="white", font=f_title)
+        
+        # Barre de progression
+        bar_w = int(800 * (timer_sec / 3.0))
+        draw.rectangle([(140, 900), (140 + bar_w, 930)], fill=colors["accent"])
+        
+    # Affichage Traduction
+    if step in ["traduction", "motivation"]:
+        draw.rectangle([(90, 750), (990, 950)], fill=(16, 185, 129), outline=(255, 255, 255), width=4)
+        draw.text((130, 790), f"TRADUCTION ({langue.upper()}) :", fill=(15, 23, 42), font=f_sub)
+        draw.text((130, 850), mot_trad, fill="white", font=f_big)
+        
+    # Mot de Motivation
+    if step == "motivation" and motiv_txt:
+        draw.rectangle([(150, 1100), (930, 1250)], fill=colors["accent"])
+        draw.text((200, 1150), f"🔥 {motiv_txt}", fill=colors["text_accent"], font=f_title)
         
     return img
 
-# --- INTERFACE STREAMLIT ---
+# --- INTERFACE PRINCIPALE ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
     genai.configure(api_key=api_key)
 
-tab1, tab2 = st.tabs(["🧠 Quizz TikTok Ultra-Viral MP4", "🗣️ Fiche Langue Ultra-Virale MP4"])
+tab1, tab2 = st.tabs(["🧠 Quizz TikTok Pro", "🗣️ Fiche Langue Pro"])
 
 VOICES_FR = {"Henri (Homme Énergique)": "fr-FR-HenriNeural", "Vivienne (Femme Dynamique)": "fr-FR-VivienneNeural"}
 VOICES_MAP = {
@@ -146,34 +173,33 @@ VOICES_MAP = {
     "Italien": {"Diego (Homme)": "it-IT-DiegoNeural", "Elsa (Femme)": "it-IT-ElsaNeural"}
 }
 
-# --- MODULE 1 : QUIZZ ---
+# ==================== MODULE 1 : QUIZZ ====================
 with tab1:
-    st.header("1. Générateur Quizz Pro (Design Fluo + Virale)")
-    hook_input = st.text_input("Accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
+    st.header("1. Générateur Quizz Pro")
+    hook_input = st.text_input("Accroche (Hook 3s)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
     
     col1, col2 = st.columns(2)
     with col1:
         voice_fr_code = VOICES_FR[st.selectbox("Voix Off", list(VOICES_FR.keys()))]
     with col2:
-        theme_visual_q = st.selectbox("Thème Visuel Fluo", list(THEMES.keys()), key="th_q")
+        theme_visual_q = st.selectbox("Thème Visuel Classieux", list(THEMES.keys()), key="th_q")
         
     mode_q = st.radio("Mode", ["IA Gemini", "Saisie Manuelle"], key="mode_q")
-    bg_file = st.file_uploader("Fond 9:16 (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_q")
+    bg_file_q = st.file_uploader("Fond 9:16 Personnalisé (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_q")
     
     if mode_q == "IA Gemini":
         theme_q = st.text_input("Thème", "Culture Générale", key="t_q")
         nb_q = st.slider("Questions", 1, 10, 5)
         if st.button("✨ Générer les questions"):
             if not api_key:
-                st.error("Entre ta clé API Gemini !")
+                st.error("Clé API requise !")
             else:
-                with st.spinner("Génération par l'IA..."):
+                with st.spinner("Génération IA..."):
                     try:
-                        prompt = f"Génère {nb_q} questions de quizz sur '{theme_q}'. Format JSON strict: [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
-                        model = genai.GenerativeModel(get_working_model())
-                        res = model.generate_content(prompt)
+                        prompt = f"Génère {nb_q} questions de quizz sur '{theme_q}'. JSON strict: [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
+                        res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['q_data'])} questions générées avec le modèle {get_working_model()} !")
+                        st.success(f"{len(st.session_state['q_data'])} questions générées !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
@@ -194,23 +220,22 @@ with tab1:
             st.success("Questions enregistrées !")
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
-        if st.button("🎬 Générer le fichier MP4 Viral"):
-            with st.spinner("Montage vidéo en cours..."):
+        if st.button("🎬 Générer le MP4 Quizz"):
+            with st.spinner("Montage en cours..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         clips = []
                         total_q = len(st.session_state['q_data'])
                         
-                        # Hook Intro
+                        # Hook
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
                         run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
-                        draw_hook_frame(hook_input, theme_visual_q).save(h_img)
+                        draw_hook_frame(hook_input, theme_visual_q, bg_file_q).save(h_img)
                         a_h = AudioFileClip(h_aud)
                         clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
-                        # Questions + Motivations
-                        motivations = ["Bravo ! On continue !", "Super effort ! Question suivante !", "Tu gères, voici la suite !"]
+                        motivations = ["Bravo ! On continue !", "Super effort !", "Tu gères !"]
                         for idx, q in enumerate(st.session_state['q_data']):
                             q_aud = os.path.join(tmpdir, f"q_{idx}.mp3")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
@@ -223,28 +248,26 @@ with tab1:
                             run_async(edge_tts.Communicate(t_q, voice_fr_code).save(q_aud))
                             run_async(edge_tts.Communicate(t_r, voice_fr_code).save(r_aud))
                             
-                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", 5, bg_file, theme_visual_q).save(q_img)
-                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "reponse", 0, bg_file, theme_visual_q).save(r_img)
+                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", 5, bg_file_q, theme_visual_q).save(q_img)
+                            draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "reponse", 0, bg_file_q, theme_visual_q).save(r_img)
                             
-                            a_q = AudioFileClip(q_aud)
-                            a_r = AudioFileClip(r_aud)
-                            
+                            a_q, a_r = AudioFileClip(q_aud), AudioFileClip(r_aud)
                             clip_q = ImageClip(q_img).set_duration(a_q.duration).set_audio(a_q)
                             
                             t_clips = []
                             for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
-                                draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", sec, bg_file, theme_visual_q).save(t_img)
+                                draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", sec, bg_file_q, theme_visual_q).save(t_img)
                                 t_clips.append(ImageClip(t_img).set_duration(1))
                                 
                             clip_r = ImageClip(r_img).set_duration(a_r.duration).set_audio(a_r)
                             clips.extend([clip_q] + t_clips + [clip_r])
                             
-                        # Outro CTA
+                        # Outro
                         c_aud = os.path.join(tmpdir, "c.mp3")
                         c_img = os.path.join(tmpdir, "c.png")
                         run_async(edge_tts.Communicate("Écris ton score en commentaire et abonne-toi !", voice_fr_code).save(c_aud))
-                        draw_hook_frame("QUEL EST TON SCORE ?\nÉcris-le en commentaire ! 💬", theme_visual_q).save(c_img)
+                        draw_hook_frame("QUEL EST TON SCORE ?\nÉcris-le en commentaire ! 💬", theme_visual_q, bg_file_q).save(c_img)
                         a_c = AudioFileClip(c_aud)
                         clips.append(ImageClip(c_img).set_duration(a_c.duration).set_audio(a_c))
                         
@@ -253,15 +276,16 @@ with tab1:
                         final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger la vidéo MP4 Virale", data=f.read(), file_name="quizz_viral_pro.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo Quizz générée avec succès !")
+                            st.download_button("📥 Télécharger le MP4 Quizz", data=f.read(), file_name="quizz_viral_pro.mp4", mime="video/mp4")
+                        st.success("✅ Vidéo Quizz générée !")
                 except Exception as e:
                     st.error(f"Erreur de génération : {e}")
 
-# --- MODULE 2 : LANGUES ---
+# ==================== MODULE 2 : LANGUES ====================
 with tab2:
-    st.header("2. Générateur Fiche Vocabulaire Pro")
-    hook_l_input = st.text_input("Accroche", "Tu prononces mal ces mots ! Vérifions ensemble.")
+    st.header("2. Générateur Vocabulaire Rythmé Pro")
+    
+    hook_l_input = st.text_input("Accroche (Hook)", "Tu prononces mal ces 5 mots ! Vérifions ensemble.")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -269,33 +293,39 @@ with tab2:
     with col2:
         voice_t_code = VOICES_MAP[langue_c][st.selectbox("Voix Traduction", list(VOICES_MAP[langue_c].keys()))]
         
-    theme_visual_l = st.selectbox("Thème Visuel Fluo", list(THEMES.keys()), key="th_l")
+    theme_visual_l = st.selectbox("Thème Visuel Classieux", list(THEMES.keys()), key="th_l")
+    bg_file_l = st.file_uploader("Fond 9:16 Personnalisé (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_l")
+    
+    motiv_custom = st.text_input("Mots de motivation entre les mots (séparés par une virgule)", "Bravo !, Excellent !, Continue comme ça !, Super !")
+    motiv_list = [m.strip() for m in motiv_custom.split(",") if m.strip()]
+    
+    outro_custom = st.text_input("Phrase d'Outro / CTA Final", "Enregistre cette vidéo et abonne-toi pour progresser !")
+    
     mode_l = st.radio("Mode Vocabulaire", ["IA Gemini", "Saisie Manuelle"], key="mode_l")
     
     if mode_l == "IA Gemini":
         theme_l = st.text_input("Thème", "Voyage", key="t_l")
-        nb_m = st.slider("Nombre de mots", 3, 8, 6)
-        if st.button("✨ Générer les mots"):
+        nb_m = st.slider("Nombre de mots", 3, 8, 5)
+        if st.button("✨ Générer les mots par IA"):
             if not api_key:
-                st.error("Entre ta clé API !")
+                st.error("Clé API requise !")
             else:
                 with st.spinner("Génération des mots..."):
                     try:
-                        prompt = f"Génère {nb_m} mots avec traduction en {langue_c}. Format JSON strict: [{{'fr': 'Bonjour', 'trad': 'Hello'}}, ...]"
-                        model = genai.GenerativeModel(get_working_model())
-                        res = model.generate_content(prompt)
+                        prompt = f"Génère {nb_m} mots avec traduction en {langue_c}. JSON strict: [{{'fr': 'Bonjour', 'trad': 'Hello'}}, ...]"
+                        res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
                         st.session_state['l_data'] = parse_json_response(res.text)
-                        st.success(f"{len(st.session_state['l_data'])} mots générés avec le modèle {get_working_model()} !")
+                        st.success(f"{len(st.session_state['l_data'])} mots générés !")
                     except Exception as e:
                         st.error(f"Erreur IA : {e}")
     else:
-        num_m = st.number_input("Nombre de mots à saisir", 1, 8, 6)
+        num_m = st.number_input("Nombre de mots à saisir", 1, 8, 5)
         c_m = []
         for i in range(int(num_m)):
-            col_a, col_b = st.columns(2)
-            with col_a:
+            ca, cb = st.columns(2)
+            with ca:
                 fr_t = st.text_input(f"Français #{i+1}", key=f"fr_{i}")
-            with col_b:
+            with cb:
                 tr_t = st.text_input(f"Traduction #{i+1}", key=f"tr_{i}")
             c_m.append({"fr": fr_t, "trad": tr_t})
         if st.button("💾 Valider les mots"):
@@ -303,53 +333,73 @@ with tab2:
             st.success("Mots enregistrés !")
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
-        if st.button("🎬 Générer le fichier MP4 Vocabulaire"):
-            with st.spinner("Montage vidéo en cours..."):
+        if st.button("🎬 Générer le MP4 Vocabulaire Rythmé"):
+            with st.spinner("Montage de la séquence mot par mot..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         w_clips = []
                         mots_l = st.session_state['l_data']
                         
+                        # Hook Intro
                         in_aud = os.path.join(tmpdir, "in.mp3")
                         in_img = os.path.join(tmpdir, "in.png")
                         run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
-                        draw_hook_frame(hook_l_input, theme_visual_l).save(in_img)
+                        draw_hook_frame(hook_l_input, theme_visual_l, bg_file_l).save(in_img)
                         a_in = AudioFileClip(in_aud)
                         w_clips.append(ImageClip(in_img).set_duration(a_in.duration).set_audio(a_in))
                         
+                        # Boucle Mot par Mot
                         for idx, item in enumerate(mots_l):
-                            fr_aud = os.path.join(tmpdir, f"fr_{idx}.mp3")
-                            tr_aud = os.path.join(tmpdir, f"tr_{idx}.mp3")
-                            w_img = os.path.join(tmpdir, f"w_{idx}.png")
-                            
                             t_fr = clean_text_for_tts(item['fr'])
                             t_tr = item['trad'].strip() if langue_c == "Arabe" else clean_text_for_tts(item['trad'])
+                            m_txt = motiv_list[idx % len(motiv_list)] if motiv_list else "Bravo !"
                             
-                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(fr_aud))
-                            run_async(edge_tts.Communicate(t_tr, voice_t_code).save(tr_aud))
+                            # Audios
+                            p_fr = os.path.join(tmpdir, f"fr_{idx}.mp3")
+                            p_tr = os.path.join(tmpdir, f"tr_{idx}.mp3")
+                            p_mo = os.path.join(tmpdir, f"mo_{idx}.mp3")
                             
-                            draw_language_progressive_frame(mots_l, idx, langue_c, theme_visual_l).save(w_img)
+                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(p_fr))
+                            run_async(edge_tts.Communicate(t_tr, voice_t_code).save(p_tr))
+                            run_async(edge_tts.Communicate(m_txt, "fr-FR-HenriNeural").save(p_mo))
                             
-                            a_fr = AudioFileClip(fr_aud)
-                            a_tr = AudioFileClip(tr_aud)
+                            a_fr, a_tr, a_mo = AudioFileClip(p_fr), AudioFileClip(p_tr), AudioFileClip(p_mo)
                             
-                            c_fr = ImageClip(w_img).set_duration(a_fr.duration).set_audio(a_fr)
-                            c_tr = ImageClip(w_img).set_duration(a_tr.duration + 0.5).set_audio(a_tr)
-                            w_clips.extend([c_fr, c_tr])
+                            # Étape 1 : Mot FR
+                            img_step1 = os.path.join(tmpdir, f"s1_{idx}.png")
+                            draw_lang_step_frame(item['fr'], item['trad'], "mot", 0, "", langue_c, theme_visual_l, bg_file_l).save(img_step1)
+                            w_clips.append(ImageClip(img_step1).set_duration(a_fr.duration).set_audio(a_fr))
                             
+                            # Étape 2 : Chrono 3s
+                            for sec in range(3, 0, -1):
+                                img_c = os.path.join(tmpdir, f"sc_{idx}_{sec}.png")
+                                draw_lang_step_frame(item['fr'], item['trad'], "chrono", sec, "", langue_c, theme_visual_l, bg_file_l).save(img_c)
+                                w_clips.append(ImageClip(img_c).set_duration(1))
+                                
+                            # Étape 3 : Traduction
+                            img_step3 = os.path.join(tmpdir, f"s3_{idx}.png")
+                            draw_lang_step_frame(item['fr'], item['trad'], "traduction", 0, "", langue_c, theme_visual_l, bg_file_l).save(img_step3)
+                            w_clips.append(ImageClip(img_step3).set_duration(a_tr.duration).set_audio(a_tr))
+                            
+                            # Étape 4 : Motivation
+                            img_step4 = os.path.join(tmpdir, f"s4_{idx}.png")
+                            draw_lang_step_frame(item['fr'], item['trad'], "motivation", 0, m_txt, langue_c, theme_visual_l, bg_file_l).save(img_step4)
+                            w_clips.append(ImageClip(img_step4).set_duration(a_mo.duration).set_audio(a_mo))
+                            
+                        # Outro CTA
                         out_aud = os.path.join(tmpdir, "out.mp3")
                         out_img = os.path.join(tmpdir, "out.png")
-                        run_async(edge_tts.Communicate("Enregistre cette vidéo et abonne-toi !", "fr-FR-HenriNeural").save(out_aud))
-                        draw_hook_frame("ENREGISTRE LA VIDÉO ! 📌\nEt abonne-toi !", theme_visual_l).save(out_img)
+                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_custom), "fr-FR-HenriNeural").save(out_aud))
+                        draw_hook_frame(outro_custom, theme_visual_l, bg_file_l).save(out_img)
                         a_out = AudioFileClip(out_aud)
                         w_clips.append(ImageClip(out_img).set_duration(a_out.duration).set_audio(a_out))
                         
                         final_v = concatenate_videoclips(w_clips, method="compose")
-                        out_mp4 = os.path.join(tmpdir, "langue_final.mp4")
+                        out_mp4 = os.path.join(tmpdir, "vocabulaire_final.mp4")
                         final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger le MP4 Vocabulaire", data=f.read(), file_name="vocabulaire_viral_pro.mp4", mime="video/mp4")
+                            st.download_button("📥 Télécharger le MP4 Vocabulaire Rythmé", data=f.read(), file_name="vocabulaire_rythme_pro.mp4", mime="video/mp4")
                         st.success("✅ Vidéo Vocabulaire générée avec succès !")
                 except Exception as e:
                     st.error(f"Erreur de génération : {e}")
