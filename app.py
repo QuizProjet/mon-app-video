@@ -12,7 +12,19 @@ from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok Pro : Générateur de Vidéos Virales (.MP4)")
 
-# --- UTILITAIRES ---
+# --- UTILITAIRES TTS & ASYNC ---
+def run_async(coro):
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    if loop.is_running():
+        new_loop = asyncio.new_event_loop()
+        return new_loop.run_until_complete(coro)
+    else:
+        return loop.run_until_complete(coro)
+
 def clean_text_for_tts(text):
     return re.sub(r'[^\w\s,.?!:\'\-]', '', text).strip()
 
@@ -104,7 +116,7 @@ def draw_language_progressive_frame(mots, current_index, langue, theme_name):
         
     return img
 
-# --- INTERFACE STREAMLIT ---
+# --- INTERFACE ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
     genai.configure(api_key=api_key)
@@ -120,7 +132,7 @@ VOICES_MAP = {
     "Italien": {"Diego (Homme)": "it-IT-DiegoNeural", "Elsa (Femme)": "it-IT-ElsaNeural"}
 }
 
-# MODULE 1 : QUIZZ
+# MODULE 1
 with tab1:
     st.header("1. Générateur Quizz Virale")
     hook_input = st.text_input("Accroche (Hook)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
@@ -175,15 +187,13 @@ with tab1:
                         clips = []
                         total_q = len(st.session_state['q_data'])
                         
-                        # Hook
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
-                        asyncio.run(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
                         draw_hook_frame(hook_input, theme_visual_q).save(h_img)
                         a_h = AudioFileClip(h_aud)
                         clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
-                        # Questions
                         for idx, q in enumerate(st.session_state['q_data']):
                             q_aud = os.path.join(tmpdir, f"q_{idx}.mp3")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
@@ -193,8 +203,8 @@ with tab1:
                             t_q = clean_text_for_tts(f"Question {idx+1}. {q['question']}. A: {q['options'][0]}. B: {q['options'][1]}. C: {q['options'][2]}. D: {q['options'][3]}.")
                             t_r = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}")
                             
-                            asyncio.run(edge_tts.Communicate(t_q, voice_fr_code).save(q_aud))
-                            asyncio.run(edge_tts.Communicate(t_r, voice_fr_code).save(r_aud))
+                            run_async(edge_tts.Communicate(t_q, voice_fr_code).save(q_aud))
+                            run_async(edge_tts.Communicate(t_r, voice_fr_code).save(r_aud))
                             
                             draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "question", 5, bg_file, theme_visual_q).save(q_img)
                             draw_quizz_frame(q['question'], q['options'], q['reponse_correcte'], q['explication'], idx+1, total_q, "reponse", 0, bg_file, theme_visual_q).save(r_img)
@@ -213,10 +223,9 @@ with tab1:
                             clip_r = ImageClip(r_img).set_duration(a_r.duration).set_audio(a_r)
                             clips.extend([clip_q] + t_clips + [clip_r])
                             
-                        # Outro
                         c_aud = os.path.join(tmpdir, "c.mp3")
                         c_img = os.path.join(tmpdir, "c.png")
-                        asyncio.run(edge_tts.Communicate("Écris ton score en commentaire et abonne-toi !", voice_fr_code).save(c_aud))
+                        run_async(edge_tts.Communicate("Écris ton score en commentaire et abonne-toi !", voice_fr_code).save(c_aud))
                         draw_hook_frame("QUEL EST TON SCORE ?\nÉcris-le en commentaire ! 💬", theme_visual_q).save(c_img)
                         a_c = AudioFileClip(c_aud)
                         clips.append(ImageClip(c_img).set_duration(a_c.duration).set_audio(a_c))
@@ -229,9 +238,9 @@ with tab1:
                             st.download_button("📥 Télécharger le MP4", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
                         st.success("✅ Vidéo Quizz générée !")
                 except Exception as e:
-                    st.error(f"Erreur de génération : {e}")
+                    st.error(f"Détails de l'erreur : {e}")
 
-# MODULE 2 : LANGUES
+# MODULE 2
 with tab2:
     st.header("2. Générateur Fiche Vocabulaire")
     hook_l_input = st.text_input("Accroche", "Tu prononces mal ces mots ! Vérifions ensemble.")
@@ -283,15 +292,13 @@ with tab2:
                         w_clips = []
                         mots_l = st.session_state['l_data']
                         
-                        # Intro
                         in_aud = os.path.join(tmpdir, "in.mp3")
                         in_img = os.path.join(tmpdir, "in.png")
-                        asyncio.run(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
                         draw_hook_frame(hook_l_input, theme_visual_l).save(in_img)
                         a_in = AudioFileClip(in_aud)
                         w_clips.append(ImageClip(in_img).set_duration(a_in.duration).set_audio(a_in))
                         
-                        # Mots
                         for idx, item in enumerate(mots_l):
                             fr_aud = os.path.join(tmpdir, f"fr_{idx}.mp3")
                             tr_aud = os.path.join(tmpdir, f"tr_{idx}.mp3")
@@ -300,8 +307,8 @@ with tab2:
                             t_fr = clean_text_for_tts(item['fr'])
                             t_tr = item['trad'].strip() if langue_c == "Arabe" else clean_text_for_tts(item['trad'])
                             
-                            asyncio.run(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(fr_aud))
-                            asyncio.run(edge_tts.Communicate(t_tr, voice_t_code).save(tr_aud))
+                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(fr_aud))
+                            run_async(edge_tts.Communicate(t_tr, voice_t_code).save(tr_aud))
                             
                             draw_language_progressive_frame(mots_l, idx, langue_c, theme_visual_l).save(w_img)
                             
@@ -312,10 +319,9 @@ with tab2:
                             c_tr = ImageClip(w_img).set_duration(a_tr.duration + 0.5).set_audio(a_tr)
                             w_clips.extend([c_fr, c_tr])
                             
-                        # Outro
                         out_aud = os.path.join(tmpdir, "out.mp3")
                         out_img = os.path.join(tmpdir, "out.png")
-                        asyncio.run(edge_tts.Communicate("Enregistre cette vidéo et abonne-toi !", "fr-FR-HenriNeural").save(out_aud))
+                        run_async(edge_tts.Communicate("Enregistre cette vidéo et abonne-toi !", "fr-FR-HenriNeural").save(out_aud))
                         draw_hook_frame("ENREGISTRE LA VIDÉO ! 📌\nEt abonne-toi !", theme_visual_l).save(out_img)
                         a_out = AudioFileClip(out_aud)
                         w_clips.append(ImageClip(out_img).set_duration(a_out.duration).set_audio(a_out))
