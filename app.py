@@ -12,22 +12,22 @@ import struct
 from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeAudioClip
 
-st.set_page_config(page_title="Studio TikTok Pro - Shorts Viraux", layout="wide")
+st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- GENERATION DES BRUITAGES SFX (TIC-TAC & DING) ---
+# --- BRUITAGES SFX SÉCURISÉS (TIC-TAC & DING) ---
 def ensure_sfx_files(tmpdir):
     tictac_path = os.path.join(tmpdir, "tictac.wav")
     ding_path = os.path.join(tmpdir, "ding.wav")
     
-    # Tic-Tac (0.15s)
+    # 1. Tic-Tac montre (0.15s)
     with wave.open(tictac_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
         for i in range(6615):
             val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500))
             f.writeframes(struct.pack('<h', val))
             
-    # Ding validation (0.4s)
+    # 2. Ding validation (0.4s)
     with wave.open(ding_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
         for i in range(17640):
@@ -36,7 +36,7 @@ def ensure_sfx_files(tmpdir):
             
     return tictac_path, ding_path
 
-# --- CHARGEMENT FONTS HD & WRAP TEXT ---
+# --- FONTS & DECOUPAGE TEXTE ---
 def get_font(size):
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -74,7 +74,7 @@ def wrap_text(text, font, max_width):
         lines.append(' '.join(current_line))
     return lines
 
-# --- UTILITAIRES TTS & ASYNC ---
+# --- TTS & ASYNC ---
 def run_async(coro):
     try:
         loop = asyncio.get_event_loop()
@@ -106,18 +106,18 @@ def get_working_model():
     except Exception:
         return 'models/gemini-3.6-flash'
 
-# --- THEMES DE COULEURS ASSORTIES ---
+# --- THEMES NUANCÉS & ASSORTIS ---
 THEMES = {
-    "Bleu Nuit & Or (Style YouTube Shorts)": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (250, 204, 21), "glow": (255, 255, 255)},
-    "Chocolat & Doré Premium": {"bg": (28, 18, 12), "card": (54, 38, 28), "accent": (245, 158, 11), "glow": (251, 191, 36)},
-    "Émeraude & Noir Chic": {"bg": (6, 24, 18), "card": (15, 45, 35), "accent": (16, 185, 129), "glow": (52, 211, 153)},
-    "Cyberpunk Fluo": {"bg": (18, 12, 24), "card": (38, 24, 50), "accent": (236, 72, 153), "glow": (244, 114, 182)}
+    "Bleu Nuit & Or (Style Shorts)": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (250, 204, 21), "glow": (255, 255, 255)},
+    "Chocolat Noir & Or Chaud": {"bg": (28, 18, 12), "card": (54, 38, 28), "accent": (245, 158, 11), "glow": (251, 191, 36)},
+    "Violet Deep & Neon Pink": {"bg": (24, 15, 38), "card": (48, 30, 74), "accent": (236, 72, 153), "glow": (244, 114, 182)},
+    "Émeraude Deep & Mint": {"bg": (6, 28, 20), "card": (15, 52, 38), "accent": (52, 211, 153), "glow": (167, 243, 208)}
 }
 
 # --- RENDU VISUEL SUR-MESURE ---
 def draw_hook_frame(hook_text, theme_name, bg_file=None):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style YouTube Shorts)"])
+    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
@@ -126,21 +126,20 @@ def draw_hook_frame(hook_text, theme_name, bg_file=None):
     
     y = 800 - (len(lines) * 35)
     for line in lines:
-        # Ombre portée textuelle
         draw.text((104, y + 4), line, fill=(0, 0, 0), font=font_title)
         draw.text((100, y), line, fill=colors["accent"], font=font_title)
         y += 70
     return img
 
-def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, phase="question", timer_sec=5, bg_file=None, theme_name="Bleu Nuit & Or (Style YouTube Shorts)"):
+def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, phase="question", timer_sec=5, bg_file=None, theme_name="Bleu Nuit & Or (Style Shorts)"):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style YouTube Shorts)"])
+    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
     f_head, f_q, f_opt = get_font(44), get_font(46), get_font(38)
     
-    # Header Texte sans carreau opaque
+    # En-tête sans bloc jaune
     draw.text((94, 134), f"🧠 QUIZ CULTURE GÉNÉRALE {q_num}/{total_q}", fill=(0, 0, 0), font=f_head)
     draw.text((90, 130), f"🧠 QUIZ CULTURE GÉNÉRALE {q_num}/{total_q}", fill=colors["accent"], font=f_head)
     
@@ -152,26 +151,35 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
         draw.text((90, y_q), line, fill="white", font=f_q)
         y_q += 60
         
-    correct_letter = str(reponse_correcte).strip().upper()[0] if reponse_correcte else 'A'
-    correct_idx = ord(correct_letter) - 65 if correct_letter in ['A', 'B', 'C', 'D'] else 0
-    
+    # LOGIQUE DE DÉTECTION EXACTE DE LA RÉPONSE
+    rep_clean = str(reponse_correcte).strip().upper()
+    correct_idx = -1
+    if 'A' in rep_clean: correct_idx = 0
+    elif 'B' in rep_clean: correct_idx = 1
+    elif 'C' in rep_clean: correct_idx = 2
+    elif 'D' in rep_clean: correct_idx = 3
+    else:
+        for idx_o, opt_val in enumerate(options):
+            if opt_val.lower() in rep_clean.lower():
+                correct_idx = idx_o
+                break
+
     y_opt = max(550, y_q + 40)
     for i, opt in enumerate(options):
-        if i <= max_opt_visible:
+        if i <= max_opt_visible or max_opt_visible == -1:
             is_correct = (phase == "reponse" and i == correct_idx)
             fill_col = (34, 197, 94) if is_correct else colors["card"]
             out_col = (250, 204, 21) if is_correct else (255, 255, 255)
             
-            # Forme arrondie (Pill Shape)
             draw.rounded_rectangle([(90, y_opt), (990, y_opt + 130)], radius=25, fill=fill_col, outline=out_col, width=4)
-            
             opt_lines = wrap_text(f"{chr(65+i)}) {opt}", f_opt, 850)
             draw.text((130, y_opt + 40), opt_lines[0], fill="white", font=f_opt)
         y_opt += 160
         
+    # CHRONO STYLE NÉON CAPSULE
     if phase == "chrono":
-        draw.rounded_rectangle([(380, y_opt + 20), (700, y_opt + 120)], radius=20, fill=(225, 29, 72), outline=(255, 255, 255), width=3)
-        draw.text((430, y_opt + 50), f"⏱️ 00:0{timer_sec}", fill="white", font=f_head)
+        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=50, fill=(15, 23, 42), outline=colors["accent"], width=4)
+        draw.text((410, y_opt + 50), f"⏳ 00:0{timer_sec}", fill="white", font=f_head)
     elif phase == "reponse":
         draw.rounded_rectangle([(80, y_opt + 20), (1000, y_opt + 220)], radius=20, fill=(15, 23, 42), outline=(34, 197, 94), width=3)
         exp_lines = wrap_text(f"💡 Explication : {explication}", get_font(34), 880)
@@ -184,7 +192,7 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
 
 def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt, langue, theme_name, bg_file=None):
     width, height = 1080, 1920
-    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style YouTube Shorts)"])
+    colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (Style Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
@@ -206,7 +214,7 @@ def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt
             if phase_item in ["traduction", "motivation"]:
                 draw.text((110, y + 90), f"TRAD: {item['trad']}", fill="white", font=f_text)
             elif phase_item == "chrono":
-                draw.rounded_rectangle([(750, y + 40), (960, y + 120)], radius=15, fill=(225, 29, 72))
+                draw.rounded_rectangle([(750, y + 40), (960, y + 120)], radius=25, fill=(15, 23, 42), outline=colors["accent"], width=2)
                 draw.text((780, y + 55), f"⏱️ 00:0{timer_sec}", fill="white", font=f_sub)
         else:
             draw.rounded_rectangle([(80, y), (1000, y + 160)], radius=20, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
@@ -244,7 +252,7 @@ with tab1:
     with col1:
         voice_fr_code = VOICES_FR[st.selectbox("Voix Off", list(VOICES_FR.keys()))]
     with col2:
-        theme_visual_q = st.selectbox("Thème Visuel", list(THEMES.keys()), key="th_q")
+        theme_visual_q = st.selectbox("Thème Visuel Classieux", list(THEMES.keys()), key="th_q")
         
     motiv_q_custom = st.text_input("Mots de motivation Quizz (séparés par une virgule)", "Bravo !, Excellent !, Tu gères !", key="mq")
     motiv_q_list = [m.strip() for m in motiv_q_custom.split(",") if m.strip()]
@@ -288,7 +296,7 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer le MP4 Quizz Rythmé"):
-            with st.spinner("Montage de la vidéo avec voix et effets sonores (Tic-Tac & Ding)..."):
+            with st.spinner("Montage de la vidéo avec lecture de la question..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -304,6 +312,17 @@ with tab1:
                         clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
                         for idx, q in enumerate(st.session_state['q_data']):
+                            # 1. LECTURE VOCALE DE LA QUESTION
+                            q_speech_txt = clean_text_for_tts(f"Question {idx+1}. {q['question']}")
+                            q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
+                            q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
+                            
+                            run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code).save(q_speech_aud))
+                            draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, "question", 5, bg_file_q, theme_visual_q).save(q_speech_img)
+                            a_q_speech = AudioFileClip(q_speech_aud)
+                            clips.append(ImageClip(q_speech_img).set_duration(a_q_speech.duration).set_audio(a_q_speech))
+                            
+                            # 2. LECTURE PROGRESSIVE DES OPTIONS A, B, C, D
                             for opt_idx in range(4):
                                 opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
                                 opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
@@ -315,12 +334,14 @@ with tab1:
                                 a_opt = AudioFileClip(opt_aud)
                                 clips.append(ImageClip(opt_img).set_duration(a_opt.duration).set_audio(a_opt))
                                 
+                            # 3. CHRONO 5S AVEC TIC-TAC
                             sfx_tictac_clip = AudioFileClip(tictac_sfx)
                             for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
                                 clips.append(ImageClip(t_img).set_duration(1).set_audio(sfx_tictac_clip))
                                 
+                            # 4. RÉPONSE + EXPLICATION + MOTIVATION + DING
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
                             r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
