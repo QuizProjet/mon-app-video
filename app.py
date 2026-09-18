@@ -42,11 +42,15 @@ def parse_json_response(text):
 
 # Fonction pour trouver automatiquement un modèle Gemini valide
 def get_working_model():
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            if 'gemini' in m.name:
-                return m.name
-    return 'models/gemini-1.5-flash-001'
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-3.6-flash' in m.name or 'gemini-3' in m.name:
+                    return m.name
+        # Modèle recommandé par l'API
+        return 'models/gemini-3.6-flash'
+    except Exception:
+        return 'models/gemini-3.6-flash'
 
 api_key = st.sidebar.text_input("Clé API Gemini (Gratuite)", type="password")
 
@@ -64,7 +68,7 @@ if api_key:
                 try:
                     prompt = f"Génère une question de quizz sur le thème '{theme}'. Réponds uniquement avec un objet JSON valide ayant exactement ces clés : 'question', 'options' (liste de 4 choix), 'reponse_correcte', 'explication'."
                     
-                    # Détection automatique du modèle
+                    # Détection automatique ou modèle gemini-3.6-flash
                     model_name = get_working_model()
                     model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
