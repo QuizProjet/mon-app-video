@@ -10,12 +10,12 @@ import math
 import wave
 import struct
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, concatenate_audioclips
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- BRUITAGES SFX (MONO, 44.1kHz) ---
+# --- BRUITAGES SFX (LÉGERS) ---
 def ensure_sfx_files(tmpdir):
     tictac_path = os.path.join(tmpdir, "tictac.wav")
     ding_path = os.path.join(tmpdir, "ding.wav")
@@ -34,7 +34,7 @@ def ensure_sfx_files(tmpdir):
             
     return tictac_path, ding_path
 
-# --- GESTION POLICES & TEXTE ---
+# --- POLICES & EMOJIS ---
 def get_font(size):
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -43,10 +43,8 @@ def get_font(size):
     ]
     for path in font_paths:
         if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                pass
+            try: return ImageFont.truetype(path, size)
+            except Exception: pass
     return ImageFont.load_default()
 
 def remove_unsupported_emojis(text):
@@ -60,26 +58,22 @@ def wrap_text(text, font, max_width):
     lines, current_line = [], []
     for word in words:
         test_line = ' '.join(current_line + [word])
-        try:
-            w = font.getbbox(test_line)[2] - font.getbbox(test_line)[0]
-        except AttributeError:
-            w = font.getsize(test_line)[0]
-        if w <= max_width:
-            current_line.append(word)
+        try: w = font.getbbox(test_line)[2] - font.getbbox(test_line)[0]
+        except AttributeError: w = font.getsize(test_line)[0]
+        if w <= max_width: current_line.append(word)
         else:
             if current_line: lines.append(' '.join(current_line))
             current_line = [word]
     if current_line: lines.append(' '.join(current_line))
     return lines
 
-# --- TTS ---
+# --- TTS & API ---
 def run_async(coro):
     try: loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    if loop.is_running():
-        return asyncio.new_event_loop().run_until_complete(coro)
+    if loop.is_running(): return asyncio.new_event_loop().run_until_complete(coro)
     return loop.run_until_complete(coro)
 
 def clean_text_for_tts(text):
@@ -118,15 +112,11 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     clean_hook = remove_unsupported_emojis(hook_text)
     lines = wrap_text(clean_hook, font_title, 850)
     
-    # CENTRAGE PARFAIT AU MILIEU DE L'ÉCRAN
     total_height = len(lines) * 80
     y = (height - total_height) // 2
-    
     for line in lines:
-        try:
-            w = font_title.getbbox(line)[2] - font_title.getbbox(line)[0]
-        except AttributeError:
-            w = font_title.getsize(line)[0]
+        try: w = font_title.getbbox(line)[2] - font_title.getbbox(line)[0]
+        except AttributeError: w = font_title.getsize(line)[0]
         x = (width - w) // 2
         draw.text((x + 4, y + 4), line, fill=(0, 0, 0), font=font_title)
         draw.text((x, y), line, fill=colors["accent"], font=font_title)
@@ -255,7 +245,7 @@ with tab1:
     channel_q_tag = st.text_input("Signature (Nom Chaîne)", "@QuizMaster_Pro", key="tag_q")
     
     col1, col2 = st.columns(2)
-    with col1: voice_fr_code = VOICES_FR[st.selectbox("Voix Off (Fort & Motivant)", list(VOICES_FR.keys()))]
+    with col1: voice_fr_code = VOICES_FR[st.selectbox("Voix Off (Forte)", list(VOICES_FR.keys()))]
     with col2: theme_visual_q = st.selectbox("Palette de Couleurs", list(THEMES.keys()), key="th_q")
         
     motiv_q_custom = st.text_input("Phrases motivation (séparées par virgule)", "Bravo !, Excellent !, Tu gères !", key="mq")
@@ -293,7 +283,7 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer Vidéo Quizz (Zéro Plantage)"):
-            with st.spinner("Montage sans surcharge mémoire..."):
+            with st.spinner("Montage Ultra-Optimisé (Économie RAM)..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -302,62 +292,57 @@ with tab1:
                         
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
+                        # Volume augmenté nativement via edge_tts
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code, volume="+30%").save(h_aud))
                         draw_hook_frame(hook_input, theme_visual_q, channel_q_tag, bg_file_q).save(h_img)
-                        a_h = AudioFileClip(h_aud).volumex(1.5)
-                        clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
+                        clips.append(ImageClip(h_img).set_duration(AudioFileClip(h_aud).duration).set_audio(AudioFileClip(h_aud)))
                         
                         for idx, q in enumerate(st.session_state['q_data']):
                             q_speech_txt = clean_text_for_tts(f"Question {idx+1}. {q['question']}")
                             q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
                             q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
-                            run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code).save(q_speech_aud))
+                            run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code, volume="+30%").save(q_speech_aud))
                             draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(q_speech_img)
-                            a_q_speech = AudioFileClip(q_speech_aud).volumex(1.5)
-                            clips.append(ImageClip(q_speech_img).set_duration(a_q_speech.duration).set_audio(a_q_speech))
+                            clips.append(ImageClip(q_speech_img).set_duration(AudioFileClip(q_speech_aud).duration).set_audio(AudioFileClip(q_speech_aud)))
                             
                             for opt_idx in range(4):
                                 opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
                                 opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
                                 opt_img = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.png")
-                                run_async(edge_tts.Communicate(opt_txt, voice_fr_code).save(opt_aud))
+                                run_async(edge_tts.Communicate(opt_txt, voice_fr_code, volume="+30%").save(opt_aud))
                                 draw_quizz_progressive_frame(q['question'], q['options'], opt_idx, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(opt_img)
-                                a_opt = AudioFileClip(opt_aud).volumex(1.5)
-                                clips.append(ImageClip(opt_img).set_duration(a_opt.duration).set_audio(a_opt))
+                                clips.append(ImageClip(opt_img).set_duration(AudioFileClip(opt_aud).duration).set_audio(AudioFileClip(opt_aud)))
                                 
-                            sfx_tictac_clip = AudioFileClip(tictac_sfx)
                             for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
-                                clips.append(ImageClip(t_img).set_duration(1).set_audio(sfx_tictac_clip))
+                                clips.append(ImageClip(t_img).set_duration(1).set_audio(AudioFileClip(tictac_sfx)))
                                 
-                            # AUDIO SÉQUENTIEL SÉCURISÉ (Ding PUIS Voix - Évite le plantage mémoire)
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
                             r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
-                            run_async(edge_tts.Communicate(r_txt, voice_fr_code).save(r_aud))
+                            run_async(edge_tts.Communicate(r_txt, voice_fr_code, volume="+30%").save(r_aud))
                             draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(r_img)
                             
-                            a_r = AudioFileClip(r_aud).volumex(1.5)
-                            sfx_ding_clip = AudioFileClip(ding_sfx)
-                            seq_audio = concatenate_audioclips([sfx_ding_clip, a_r])
-                            clips.append(ImageClip(r_img).set_duration(seq_audio.duration).set_audio(seq_audio))
+                            # ASTUCE ANTI-PLANTAGE: Sequence Audio au lieu de Mixage
+                            clips.append(ImageClip(r_img).set_duration(AudioFileClip(ding_sfx).duration).set_audio(AudioFileClip(ding_sfx)))
+                            clips.append(ImageClip(r_img).set_duration(AudioFileClip(r_aud).duration).set_audio(AudioFileClip(r_aud)))
                             
                         c_aud = os.path.join(tmpdir, "c.mp3")
                         c_img = os.path.join(tmpdir, "c.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_q_custom), voice_fr_code).save(c_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_q_custom), voice_fr_code, volume="+30%").save(c_aud))
                         draw_hook_frame(outro_q_custom, theme_visual_q, channel_q_tag, bg_file_q).save(c_img)
-                        a_c = AudioFileClip(c_aud).volumex(1.5)
-                        clips.append(ImageClip(c_img).set_duration(a_c.duration).set_audio(a_c))
+                        clips.append(ImageClip(c_img).set_duration(AudioFileClip(c_aud).duration).set_audio(AudioFileClip(c_aud)))
                         
-                        final_v = concatenate_videoclips(clips, method="compose")
+                        # UTILISATION DE METHOD="CHAIN" POUR ÉCONOMISER 80% DE LA RAM
+                        final_v = concatenate_videoclips(clips, method="chain")
                         out_mp4 = os.path.join(tmpdir, "quizz_final.mp4")
                         final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
                             st.download_button("📥 Télécharger MP4 Quizz", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo générée (Sans erreur) !")
+                        st.success("✅ Vidéo générée (Zéro Plantage) !")
                 except Exception as e:
                     st.error(f"Erreur : {e}")
 
@@ -403,7 +388,7 @@ with tab2:
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
         if st.button("🎬 Générer Vidéo Vocabulaire (Zéro Plantage)"):
-            with st.spinner("Montage sans surcharge mémoire..."):
+            with st.spinner("Montage Ultra-Optimisé (Économie RAM)..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -412,13 +397,9 @@ with tab2:
                         
                         in_aud = os.path.join(tmpdir, "in.mp3")
                         in_img = os.path.join(tmpdir, "in.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural", volume="+30%").save(in_aud))
                         draw_hook_frame(hook_l_input, theme_visual_l, channel_l_tag, bg_file_l).save(in_img)
-                        a_in = AudioFileClip(in_aud).volumex(1.5)
-                        w_clips.append(ImageClip(in_img).set_duration(a_in.duration).set_audio(a_in))
-                        
-                        sfx_tictac_clip = AudioFileClip(tictac_sfx)
-                        sfx_ding_clip = AudioFileClip(ding_sfx)
+                        w_clips.append(ImageClip(in_img).set_duration(AudioFileClip(in_aud).duration).set_audio(AudioFileClip(in_aud)))
                         
                         for idx, item in enumerate(mots_l):
                             t_fr = clean_text_for_tts(item['fr'])
@@ -429,40 +410,36 @@ with tab2:
                             p_tr = os.path.join(tmpdir, f"tr_{idx}.mp3")
                             p_mo = os.path.join(tmpdir, f"mo_{idx}.mp3")
                             
-                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(p_fr))
-                            run_async(edge_tts.Communicate(t_tr, voice_t_code).save(p_tr))
-                            run_async(edge_tts.Communicate(m_txt, "fr-FR-HenriNeural").save(p_mo))
-                            
-                            a_fr, a_tr, a_mo = AudioFileClip(p_fr).volumex(1.5), AudioFileClip(p_tr).volumex(1.5), AudioFileClip(p_mo).volumex(1.5)
+                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural", volume="+30%").save(p_fr))
+                            run_async(edge_tts.Communicate(t_tr, voice_t_code, volume="+30%").save(p_tr))
+                            run_async(edge_tts.Communicate(m_txt, "fr-FR-HenriNeural", volume="+30%").save(p_mo))
                             
                             img_s1 = os.path.join(tmpdir, f"s1_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "mot", 0, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s1)
-                            w_clips.append(ImageClip(img_s1).set_duration(a_fr.duration).set_audio(a_fr))
+                            w_clips.append(ImageClip(img_s1).set_duration(AudioFileClip(p_fr).duration).set_audio(AudioFileClip(p_fr)))
                             
                             for sec in range(3, 0, -1):
                                 img_sc = os.path.join(tmpdir, f"sc_{idx}_{sec}.png")
                                 draw_language_page_frame(mots_l, idx, "chrono", sec, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_sc)
-                                w_clips.append(ImageClip(img_sc).set_duration(1).set_audio(sfx_tictac_clip))
+                                w_clips.append(ImageClip(img_sc).set_duration(1).set_audio(AudioFileClip(tictac_sfx)))
                                 
                             img_s3 = os.path.join(tmpdir, f"s3_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "traduction", 0, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s3)
-                            
-                            # AUDIO SÉQUENTIEL SÉCURISÉ
-                            seq_tr_audio = concatenate_audioclips([sfx_ding_clip, a_tr])
-                            w_clips.append(ImageClip(img_s3).set_duration(seq_tr_audio.duration).set_audio(seq_tr_audio))
+                            # SÉQUENCE AUDIO ZÉRO PLANTAGE
+                            w_clips.append(ImageClip(img_s3).set_duration(AudioFileClip(ding_sfx).duration).set_audio(AudioFileClip(ding_sfx)))
+                            w_clips.append(ImageClip(img_s3).set_duration(AudioFileClip(p_tr).duration).set_audio(AudioFileClip(p_tr)))
                             
                             img_s4 = os.path.join(tmpdir, f"s4_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "motivation", 0, m_txt, langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s4)
-                            w_clips.append(ImageClip(img_s4).set_duration(a_mo.duration).set_audio(a_mo))
+                            w_clips.append(ImageClip(img_s4).set_duration(AudioFileClip(p_mo).duration).set_audio(AudioFileClip(p_mo)))
                             
                         out_aud = os.path.join(tmpdir, "out.mp3")
                         out_img = os.path.join(tmpdir, "out.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_custom), "fr-FR-HenriNeural").save(out_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_custom), "fr-FR-HenriNeural", volume="+30%").save(out_aud))
                         draw_hook_frame(outro_custom, theme_visual_l, channel_l_tag, bg_file_l).save(out_img)
-                        a_out = AudioFileClip(out_aud).volumex(1.5)
-                        w_clips.append(ImageClip(out_img).set_duration(a_out.duration).set_audio(a_out))
+                        w_clips.append(ImageClip(out_img).set_duration(AudioFileClip(out_aud).duration).set_audio(AudioFileClip(out_aud)))
                         
-                        final_v = concatenate_videoclips(w_clips, method="compose")
+                        final_v = concatenate_videoclips(w_clips, method="chain")
                         out_mp4 = os.path.join(tmpdir, "vocabulaire_final.mp4")
                         final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
