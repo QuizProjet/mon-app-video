@@ -10,6 +10,7 @@ import math
 import wave
 import struct
 import subprocess
+import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Studio TikTok Pro", layout="wide")
@@ -36,15 +37,21 @@ def ensure_sfx_files(tmpdir):
 
 def get_audio_duration(audio_path):
     try:
-        cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_path]
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        cmd = [ffmpeg_exe, "-i", audio_path]
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return float(res.stdout.strip())
+        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
+        if match:
+            hours, minutes, seconds = match.groups()
+            return float(hours) * 3600 + float(minutes) * 60 + float(seconds)
+        return 1.5
     except Exception:
         return 1.5
 
 def create_clip_ffmpeg(img_path, audio_path, duration, output_path):
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     cmd = [
-        "ffmpeg", "-y", "-loop", "1", "-i", img_path,
+        ffmpeg_exe, "-y", "-loop", "1", "-i", img_path,
         "-i", audio_path, "-c:v", "libx264", "-preset", "ultrafast",
         "-c:a", "aac", "-b:a", "96k", "-pix_fmt", "yuv420p",
         "-t", str(duration), output_path
@@ -52,11 +59,12 @@ def create_clip_ffmpeg(img_path, audio_path, duration, output_path):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
 def concatenate_clips_ffmpeg(clip_paths, output_path, tmpdir):
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     list_file = os.path.join(tmpdir, "files.txt")
     with open(list_file, "w") as f:
         for p in clip_paths:
             f.write(f"file '{p}'\n")
-    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_path]
+    cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_path]
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
 # --- POLICES & TEXTE ---
