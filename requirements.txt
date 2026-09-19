@@ -2,6 +2,3 @@ streamlit
 google-generativeai
 edge-tts
 Pillow
-moviepy==1.0.3
-decorator==4.4.2
-proglog
