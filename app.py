@@ -23,13 +23,13 @@ def ensure_sfx_files(tmpdir):
     with wave.open(tictac_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
         for i in range(4410):
-            val = int(12000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/400))
+            val = int(10000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/400))
             f.writeframes(struct.pack('<h', val))
             
     with wave.open(ding_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(13230):
-            val = int(14000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/2500))
+        for i in range(11025):
+            val = int(12000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/2500))
             f.writeframes(struct.pack('<h', val))
             
     return tictac_path, ding_path
@@ -40,13 +40,13 @@ def get_audio_duration(audio_path):
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return float(res.stdout.strip())
     except Exception:
-        return 2.0
+        return 1.5
 
 def create_clip_ffmpeg(img_path, audio_path, duration, output_path):
     cmd = [
         "ffmpeg", "-y", "-loop", "1", "-i", img_path,
         "-i", audio_path, "-c:v", "libx264", "-preset", "ultrafast",
-        "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "96k", "-pix_fmt", "yuv420p",
         "-t", str(duration), output_path
     ]
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
@@ -147,7 +147,7 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     draw.text((width//2 - 140, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
     return img
 
-def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=5, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
+def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=3, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
@@ -279,7 +279,7 @@ with tab1:
     
     if mode_q == "IA Gemini":
         theme_q = st.text_input("Thème", "Culture Générale", key="t_q")
-        nb_q = st.slider("Questions", 1, 10, 5)
+        nb_q = st.slider("Questions", 1, 5, 3)
         if st.button("✨ Générer les questions"):
             if not api_key: st.error("Clé API requise !")
             else:
@@ -291,7 +291,7 @@ with tab1:
                         st.success("Généré !")
                     except Exception as e: st.error(f"Erreur : {e}")
     else:
-        num_c = st.number_input("Nombre de questions", 1, 10, 5)
+        num_c = st.number_input("Nombre de questions", 1, 5, 3)
         c_list = []
         for i in range(int(num_c)):
             st.markdown(f"**Question {i+1}**")
@@ -328,26 +328,14 @@ with tab1:
                             q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
                             q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
                             run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code, volume="+30%").save(q_speech_aud))
-                            draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(q_speech_img)
+                            draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 3, bg_file_q, theme_visual_q).save(q_speech_img)
                             dur = get_audio_duration(q_speech_aud)
                             out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
                             create_clip_ffmpeg(q_speech_img, q_speech_aud, dur, out_clip)
                             clip_files.append(out_clip)
                             clip_counter += 1
                             
-                            for opt_idx in range(4):
-                                opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
-                                opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
-                                opt_img = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.png")
-                                run_async(edge_tts.Communicate(opt_txt, voice_fr_code, volume="+30%").save(opt_aud))
-                                draw_quizz_progressive_frame(q['question'], q['options'], opt_idx, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(opt_img)
-                                dur = get_audio_duration(opt_aud)
-                                out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                                create_clip_ffmpeg(opt_img, opt_aud, dur, out_clip)
-                                clip_files.append(out_clip)
-                                clip_counter += 1
-                                
-                            for sec in range(5, 0, -1):
+                            for sec in range(3, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
                                 out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
@@ -356,17 +344,11 @@ with tab1:
                                 clip_counter += 1
                                 
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
-                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
+                            r_txt = clean_text_for_tts(f"La bonne réponse est {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             run_async(edge_tts.Communicate(r_txt, voice_fr_code, volume="+30%").save(r_aud))
                             draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(r_img)
-                            
-                            ding_dur = get_audio_duration(ding_sfx)
-                            out_clip_ding = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(r_img, ding_sfx, ding_dur, out_clip_ding)
-                            clip_files.append(out_clip_ding)
-                            clip_counter += 1
                             
                             r_dur = get_audio_duration(r_aud)
                             out_clip_r = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
@@ -413,7 +395,7 @@ with tab2:
     
     if mode_l == "IA Gemini":
         theme_l = st.text_input("Thème", "Voyage", key="t_l")
-        nb_m = st.slider("Mots", 3, 6, 5)
+        nb_m = st.slider("Mots", 3, 5, 3)
         if st.button("✨ Générer les mots"):
             if not api_key: st.error("Clé API !")
             else:
@@ -425,7 +407,7 @@ with tab2:
                         st.success("Généré !")
                     except Exception as e: st.error(f"Erreur : {e}")
     else:
-        num_m = st.number_input("Mots à saisir", 1, 6, 5)
+        num_m = st.number_input("Mots à saisir", 1, 5, 3)
         c_m = []
         for i in range(int(num_m)):
             ca, cb = st.columns(2)
@@ -473,7 +455,7 @@ with tab2:
                             clip_files.append(out_clip)
                             clip_counter += 1
                             
-                            for sec in range(3, 0, -1):
+                            for sec in range(2, 0, -1):
                                 img_sc = os.path.join(tmpdir, f"sc_{idx}_{sec}.png")
                                 draw_language_page_frame(mots_l, idx, "chrono", sec, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_sc)
                                 out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
@@ -483,13 +465,6 @@ with tab2:
                                 
                             img_s3 = os.path.join(tmpdir, f"s3_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "traduction", 0, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s3)
-                            
-                            ding_dur = get_audio_duration(ding_sfx)
-                            out_clip_ding = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(img_s3, ding_sfx, ding_dur, out_clip_ding)
-                            clip_files.append(out_clip_ding)
-                            clip_counter += 1
-                            
                             tr_dur = get_audio_duration(p_tr)
                             out_clip_tr = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
                             create_clip_ffmpeg(img_s3, p_tr, tr_dur, out_clip_tr)
