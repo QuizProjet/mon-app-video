@@ -24,7 +24,6 @@ def get_font(size):
             return ImageFont.truetype(font_filename, size)
         except Exception:
             pass
-    # Secours si le fichier n'est pas encore téléversé
     return ImageFont.load_default()
 
 # --- BRUITAGES SFX ---
@@ -34,13 +33,13 @@ def ensure_sfx_files(tmpdir):
     
     with wave.open(tictac_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(6615):
-            val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500))
+        for i in range(44100): # Exactement 1 seconde
+            val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500)) if (i % 22050 < 6615) else 0
             f.writeframes(struct.pack('<h', val))
             
     with wave.open(ding_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(17640):
+        for i in range(22050): # 0.5 seconde
             val = int(16000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/3000))
             f.writeframes(struct.pack('<h', val))
             
@@ -174,17 +173,25 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=f_tag)
     return img
 
+def parse_correct_index(reponse_correcte, options):
+    rep_clean = str(reponse_correcte).strip().upper()
+    if 'A' in rep_clean or rep_clean == '1': return 0
+    if 'B' in rep_clean or rep_clean == '2': return 1
+    if 'C' in rep_clean or rep_clean == '3': return 2
+    if 'D' in rep_clean or rep_clean == '4': return 3
+    for idx, opt in enumerate(options):
+        if opt.strip().lower() in rep_clean.lower():
+            return idx
+    return 0
+
 def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=5, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_head = get_font(48)
-    f_q = get_font(52)
-    f_opt = get_font(44)
+    f_head, f_q, f_opt = get_font(48), get_font(52), get_font(44)
     
-    # Header
     header_text = f"QUIZ CULTURE GENERALE {q_num} sur {total_q}"
     try:
         hw = f_head.getbbox(header_text)[2] - f_head.getbbox(header_text)[0]
@@ -194,7 +201,6 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
     draw.text((hx + 3, 113), header_text, fill=(0, 0, 0), font=f_head)
     draw.text((hx, 110), header_text, fill=colors["accent"], font=f_head)
     
-    # Question Géante
     clean_q = remove_unsupported_emojis(question)
     q_lines = wrap_text(f"Q: {clean_q}", f_q, 900)
     y_q = 220
@@ -208,17 +214,7 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
         draw.text((qx, y_q), line, fill="white", font=f_q)
         y_q += 75
         
-    rep_clean = str(reponse_correcte).strip().upper()
-    correct_idx = -1
-    if rep_clean.startswith('A') or rep_clean == 'OPTION A': correct_idx = 0
-    elif rep_clean.startswith('B') or rep_clean == 'OPTION B': correct_idx = 1
-    elif rep_clean.startswith('C') or rep_clean == 'OPTION C': correct_idx = 2
-    elif rep_clean.startswith('D') or rep_clean == 'OPTION D': correct_idx = 3
-    else:
-        for idx_o, opt_val in enumerate(options):
-            if opt_val.strip().lower() in rep_clean.lower():
-                correct_idx = idx_o
-                break
+    correct_idx = parse_correct_index(reponse_correcte, options)
 
     y_opt = max(580, y_q + 30)
     for i, opt in enumerate(options):
@@ -233,15 +229,8 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
             draw.text((110, y_opt + 45), opt_lines[0], fill="white", font=f_opt)
         y_opt += 175
         
-    # CHRONO CENTRAL STYLE SHORTS
     if phase == "chrono":
-        if timer_sec >= 4:
-            timer_color = (34, 197, 94)
-        elif timer_sec >= 2:
-            timer_color = (245, 158, 11)
-        else:
-            timer_color = (239, 68, 68)
-
+        timer_color = (34, 197, 94) if timer_sec >= 4 else ((245, 158, 11) if timer_sec >= 2 else (239, 68, 68))
         draw.rounded_rectangle([(340, y_opt + 15), (740, y_opt + 125)], radius=50, fill=(15, 23, 42), outline=timer_color, width=5)
         f_timer = get_font(54)
         t_str = f"00:0{timer_sec}"
@@ -418,6 +407,7 @@ with tab1:
                         clip_counter += 1
                         
                         for idx, q in enumerate(st.session_state['q_data']):
+                            # Question audio
                             q_speech_txt = clean_text_for_tts(f"Question {idx+1}. {q['question']}")
                             q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
                             q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
@@ -430,6 +420,7 @@ with tab1:
                             clip_files.append(out_clip)
                             clip_counter += 1
                             
+                            # Options audio
                             for opt_idx in range(4):
                                 opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
                                 opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
@@ -443,6 +434,7 @@ with tab1:
                                 clip_files.append(out_clip)
                                 clip_counter += 1
                                 
+                            # Chrono 5 secondes
                             for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
@@ -451,23 +443,24 @@ with tab1:
                                 clip_files.append(out_clip)
                                 clip_counter += 1
                                 
+                            # Effet sonore "Ding" au moment du passage au vert
+                            ding_img = os.path.join(tmpdir, f"ding_{idx}.png")
+                            draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(ding_img)
+                            ding_dur = get_audio_duration(ding_sfx)
+                            out_clip_ding = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
+                            create_clip_ffmpeg(ding_img, ding_sfx, ding_dur, out_clip_ding, volume=1.0)
+                            clip_files.append(out_clip_ding)
+                            clip_counter += 1
+
+                            # Explication orale + Motivation
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
                             r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
-                            r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             
                             run_async(edge_tts.Communicate(r_txt, voice_fr_code).save(r_aud))
-                            draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(r_img)
-                            
-                            ding_dur = get_audio_duration(ding_sfx)
-                            out_clip_ding = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(r_img, ding_sfx, ding_dur, out_clip_ding, volume=1.0)
-                            clip_files.append(out_clip_ding)
-                            clip_counter += 1
-                            
                             r_dur = get_audio_duration(r_aud)
                             out_clip_r = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(r_img, r_aud, r_dur, out_clip_r, volume=1.3)
+                            create_clip_ffmpeg(ding_img, r_aud, r_dur, out_clip_r, volume=1.3)
                             clip_files.append(out_clip_r)
                             clip_counter += 1
                             
