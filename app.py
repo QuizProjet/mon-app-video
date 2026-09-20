@@ -22,7 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 st.title("🎬 Studio TikTok & Shorts Pro V2")
-st.caption("Quiz + Vocabulaire • Synchro mot par mot • Format Shorts 9:16")
+st.caption("Quiz + Vocabulaire • Format Shorts 9:16 Dynamique")
 
 WIDTH = 1080
 HEIGHT = 1920
@@ -134,7 +134,7 @@ def make_base_image(theme_name, bg_file=None):
     return Image.new("RGB", (WIDTH, HEIGHT), colors["bg"])
 
 # ============================================================
-# TTS AVEC RECURRENCE MOT PAR MOT (WORDBOUNDARY)
+# SYNTHESE AUDIO & OUTILS FFMPEG
 # ============================================================
 async def _tts_with_boundaries(text, voice, output_path, rate="+15%"):
     communicate = edge_tts.Communicate(clean_text(text), voice, rate=rate, boundary="WordBoundary")
@@ -211,14 +211,9 @@ def concatenate_clips(clips, output_path, tmpdir):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
 # ============================================================
-# DESSIN DYNAMIQUE DES FRAMES
+# RENDU DES FRAMES VISUELLES
 # ============================================================
 def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total_q, channel_tag, bg_file=None, correct_idx=None, timer=None):
-    """Frame quiz V2 :
-    question + 4 réponses visibles immédiatement,
-    petit chrono à droite des réponses,
-    bonne réponse en vert lors de la révélation.
-    """
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
     img = make_base_image(theme_name, bg_file)
     draw = ImageDraw.Draw(img)
@@ -240,7 +235,6 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
         )
         y_q += 75
 
-    # Les 4 réponses apparaissent ensemble dès le début.
     y_opt = max(540, y_q + 25)
     card_left, card_right = 55, 850
     card_h, gap = 130, 22
@@ -264,7 +258,6 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
 
         y_opt += card_h + gap
 
-    # Petit compte à rebours à droite du bloc des réponses.
     if timer is not None:
         timer_color = colors["accent"]
         if timer == 2:
@@ -292,7 +285,6 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
             label, fill=timer_color, font=small
         )
 
-    # Révélation visuelle de la bonne réponse.
     if correct_idx is not None:
         reveal = "✓ BONNE RÉPONSE"
         rf = get_font(34)
@@ -310,7 +302,6 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
         channel_tag, fill=(180, 180, 180), font=get_font(36)
     )
     return img
-
 
 def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, bg_file=None, timer=None, motiv_txt=""):
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
@@ -361,7 +352,7 @@ def draw_hook_frame(text, theme_name, channel_tag, bg_file=None):
     return img
 
 # ============================================================
-# APPLICATION STREAMLIT ET MODEL GEMINI CORRIGE
+# APPLICATION STREAMLIT & GEMINI
 # ============================================================
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
@@ -369,11 +360,6 @@ if api_key:
 
 voice_rate = st.sidebar.slider("⚡ Vitesse de la Voix Off", 0, 30, 15, help="15% = vitesse recommandée Shorts/TikTok")
 tts_rate_str = f"+{voice_rate}%"
-
-def get_working_model():
-    # Modèle Gemini stable actuel.
-    # On évite list_models() et les anciens modèles retirés.
-    return "gemini-3.6-flash"
 
 def parse_json_response(text):
     match = re.search(r"\[.*\]|\{.*\}", text, re.DOTALL)
@@ -405,7 +391,6 @@ with tab1:
                 with st.spinner("Génération..."):
                     try:
                         prompt = f"Génère {nb_q} questions de quiz sur '{th_q}'. Format JSON strict: [{{'question':'...', 'options':['A','B','C','D'], 'reponse_correcte':'A', 'explication':'...'}}]"
-                        model_name = get_working_model()
                         res = genai.GenerativeModel("gemini-3.6-flash").generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
                         st.success("Questions prêtes !")
@@ -444,7 +429,7 @@ with tab1:
                         # Énoncé
                         q_aud = os.path.join(tmpdir, f"q_{idx}.mp3"); q_img = os.path.join(tmpdir, f"q_{idx}.png")
                         synthesize_audio(f"Question {idx+1}. {q['question']}", voice_q, q_aud, tts_rate_str)
-                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_q).save(q_img)
+                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q).save(q_img)
                         c_q = os.path.join(tmpdir, f"clip_q_{idx}.mp4")
                         create_clip_ffmpeg(q_img, q_aud, get_audio_duration(q_aud), c_q)
                         clips.append(c_q)
@@ -452,7 +437,7 @@ with tab1:
                         # Chrono
                         for sec in range(3, 0, -1):
                             t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
-                            draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_q, timer=sec).save(t_img)
+                            draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, timer=sec).save(t_img)
                             c_t = os.path.join(tmpdir, f"clip_t_{idx}_{sec}.mp4")
                             create_clip_ffmpeg(t_img, tic, 1.0, c_t, volume=1.0)
                             clips.append(c_t)
@@ -460,7 +445,7 @@ with tab1:
                         # Réponse & Explication
                         corr_idx = "ABCD".index(q['reponse_correcte'][0].upper()) if q['reponse_correcte'][0].upper() in "ABCD" else 0
                         r_img = os.path.join(tmpdir, f"r_{idx}.png")
-                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_q, correct_idx=corr_idx).save(r_img)
+                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, correct_idx=corr_idx).save(r_img)
                         c_ding = os.path.join(tmpdir, f"clip_d_{idx}.mp4")
                         create_clip_ffmpeg(r_img, ding, get_audio_duration(ding), c_ding, volume=1.0)
                         clips.append(c_ding)
@@ -485,13 +470,7 @@ with tab1:
                     with open(final, "rb") as f:
                         video_bytes = f.read()
                         st.video(video_bytes)
-                        st.download_button(
-                            "⬇️ Télécharger la vidéo Quiz",
-                            data=video_bytes,
-                            file_name="quizvideo_pro.mp4",
-                            mime="video/mp4",
-                            key="download_quiz"
-                        )
+                        st.download_button("⬇️ Télécharger la vidéo Quiz", data=video_bytes, file_name="quizvideo_pro.mp4", mime="video/mp4")
 
 # --- MODULE 2 : VOCABULAIRE ---
 with tab2:
@@ -519,7 +498,6 @@ with tab2:
                 with st.spinner("Génération..."):
                     try:
                         prompt = f"Génère {nb_v} mots avec leur traduction en {langue_v}. Format JSON strict: [{{'fr':'Bonjour', 'trad':'Hello'}}]"
-                        model_name = get_working_model()
                         res = genai.GenerativeModel("gemini-3.6-flash").generate_content(prompt)
                         st.session_state['v_data'] = parse_json_response(res.text)
                         st.success("Mots prêts !")
@@ -590,10 +568,4 @@ with tab2:
                     with open(final, "rb") as f:
                         video_bytes = f.read()
                         st.video(video_bytes)
-                        st.download_button(
-                            "⬇️ Télécharger la vidéo Vocabulaire",
-                            data=video_bytes,
-                            file_name="vocabulaire_pro.mp4",
-                            mime="video/mp4",
-                            key="download_vocab"
-                        )
+                        st.download_button("⬇️ Télécharger la vidéo Vocabulaire", data=video_bytes, file_name="vocabulaire_pro.mp4", mime="video/mp4")
