@@ -214,40 +214,103 @@ def concatenate_clips(clips, output_path, tmpdir):
 # DESSIN DYNAMIQUE DES FRAMES
 # ============================================================
 def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total_q, channel_tag, bg_file=None, correct_idx=None, timer=None):
+    """Frame quiz V2 :
+    question + 4 réponses visibles immédiatement,
+    petit chrono à droite des réponses,
+    bonne réponse en vert lors de la révélation.
+    """
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
     img = make_base_image(theme_name, bg_file)
     draw = ImageDraw.Draw(img)
-    
-    f_head, f_q, f_opt = get_font(42), get_font(52), get_font(40)
-    
+
+    f_head, f_q, f_opt = get_font(42), get_font(52), get_font(36)
+
     header = f"QUIZ • {q_num}/{total_q}"
-    draw.text(((WIDTH - text_width(draw, header, f_head)) // 2, 90), header, fill=colors["accent"], font=f_head)
-    
+    draw.text(
+        ((WIDTH - text_width(draw, header, f_head)) // 2, 90),
+        header, fill=colors["accent"], font=f_head
+    )
+
     q_lines = wrap_text(question, f_q, 880)
     y_q = 210
     for line in q_lines[:3]:
-        draw.text(((WIDTH - text_width(draw, line, f_q)) // 2, y_q), line, fill="white", font=f_q)
+        draw.text(
+            ((WIDTH - text_width(draw, line, f_q)) // 2, y_q),
+            line, fill="white", font=f_q
+        )
         y_q += 75
-        
-    y_opt = max(550, y_q + 30)
-    for i, opt in enumerate(options):
-        if i >= visible_options:
-            break
+
+    # Les 4 réponses apparaissent ensemble dès le début.
+    y_opt = max(540, y_q + 25)
+    card_left, card_right = 55, 850
+    card_h, gap = 130, 22
+
+    for i, opt in enumerate(options[:visible_options]):
         is_correct = (correct_idx is not None and i == correct_idx)
         fill_col = colors["success"] if is_correct else colors["card"]
         out_col = (255, 255, 255) if is_correct else colors["accent"]
-        
-        draw.rounded_rectangle([(70, y_opt), (1010, y_opt + 135)], radius=25, fill=fill_col, outline=out_col, width=4)
-        draw.text((110, y_opt + 40), f"{chr(65+i)}) {clean_text(opt)}", fill="white", font=f_opt)
-        y_opt += 165
-        
-    if timer is not None:
-        draw.rounded_rectangle([(400, y_opt + 10), (680, y_opt + 130)], radius=40, fill=colors["bg"], outline=colors["accent"], width=5)
-        t_str = f"00:0{timer}"
-        draw.text(((WIDTH - text_width(draw, t_str, get_font(52))) // 2, y_opt + 40), t_str, fill=colors["accent"], font=get_font(52))
 
-    draw.text(((WIDTH - text_width(draw, channel_tag, get_font(36))) // 2, 1800), channel_tag, fill=(180, 180, 180), font=get_font(36))
+        draw.rounded_rectangle(
+            [(card_left, y_opt), (card_right, y_opt + card_h)],
+            radius=24, fill=fill_col, outline=out_col, width=4
+        )
+
+        label = f"{chr(65+i)}) {clean_text(opt)}"
+        lines = wrap_text(label, f_opt, card_right - card_left - 60)
+        text_y = y_opt + 34 - (len(lines) - 1) * 18
+        for line in lines[:2]:
+            draw.text((95, text_y), line, fill="white", font=f_opt)
+            text_y += 45
+
+        y_opt += card_h + gap
+
+    # Petit compte à rebours à droite du bloc des réponses.
+    if timer is not None:
+        timer_color = colors["accent"]
+        if timer == 2:
+            timer_color = (249, 115, 22)
+        elif timer == 1:
+            timer_color = colors["danger"]
+
+        cx, cy, radius = 940, 820, 72
+        draw.ellipse(
+            [(cx-radius, cy-radius), (cx+radius, cy+radius)],
+            fill=colors["bg"], outline=timer_color, width=7
+        )
+
+        tf = get_font(58)
+        timer_text = str(timer)
+        draw.text(
+            (cx - text_width(draw, timer_text, tf)//2, cy - 38),
+            timer_text, fill=timer_color, font=tf
+        )
+
+        small = get_font(26)
+        label = "TEMPS"
+        draw.text(
+            (cx - text_width(draw, label, small)//2, cy + 40),
+            label, fill=timer_color, font=small
+        )
+
+    # Révélation visuelle de la bonne réponse.
+    if correct_idx is not None:
+        reveal = "✓ BONNE RÉPONSE"
+        rf = get_font(34)
+        draw.rounded_rectangle(
+            [(250, 1460), (830, 1550)], radius=28,
+            fill=colors["success"], outline=(255, 255, 255), width=2
+        )
+        draw.text(
+            ((WIDTH - text_width(draw, reveal, rf)) // 2, 1482),
+            reveal, fill="white", font=rf
+        )
+
+    draw.text(
+        ((WIDTH - text_width(draw, channel_tag, get_font(36))) // 2, 1800),
+        channel_tag, fill=(180, 180, 180), font=get_font(36)
+    )
     return img
+
 
 def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, bg_file=None, timer=None, motiv_txt=""):
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
@@ -298,7 +361,7 @@ def draw_hook_frame(text, theme_name, channel_tag, bg_file=None):
     return img
 
 # ============================================================
-# APPLICATION STREAMLIT ET MODEL GEMINI DYNAMIQUE
+# APPLICATION STREAMLIT ET MODEL GEMINI CORRIGE
 # ============================================================
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
@@ -309,18 +372,16 @@ tts_rate_str = f"+{voice_rate}%"
 
 def get_working_model():
     try:
-        available_models = [
-            m.name for m in genai.list_models()
-            if 'generateContent' in m.supported_generation_methods
-        ]
-        for name in available_models:
-            if 'gemini-3' in name.lower() or 'flash' in name.lower():
-                return name
-        if available_models:
-            return available_models[0]
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-1.5-flash' in m.name or 'gemini-2.0-flash' in m.name:
+                    return m.name
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                return m.name
     except Exception:
         pass
-    return "models/gemini-3.6-flash"
+    return "models/gemini-1.5-flash"
 
 def parse_json_response(text):
     match = re.search(r"\[.*\]|\{.*\}", text, re.DOTALL)
@@ -430,7 +491,15 @@ with tab1:
                     concatenate_clips(clips, final, tmpdir)
                     st.success("✅ Vidéo Quiz V2 prête !")
                     with open(final, "rb") as f:
-                        st.video(f.read())
+                        video_bytes = f.read()
+                        st.video(video_bytes)
+                        st.download_button(
+                            "⬇️ Télécharger la vidéo Quiz",
+                            data=video_bytes,
+                            file_name="quizvideo_pro.mp4",
+                            mime="video/mp4",
+                            key="download_quiz"
+                        )
 
 # --- MODULE 2 : VOCABULAIRE ---
 with tab2:
@@ -527,4 +596,12 @@ with tab2:
                     concatenate_clips(clips, final, tmpdir)
                     st.success("✅ Vidéo Vocabulaire V2 prête !")
                     with open(final, "rb") as f:
-                        st.video(f.read())
+                        video_bytes = f.read()
+                        st.video(video_bytes)
+                        st.download_button(
+                            "⬇️ Télécharger la vidéo Vocabulaire",
+                            data=video_bytes,
+                            file_name="vocabulaire_pro.mp4",
+                            mime="video/mp4",
+                            key="download_vocab"
+                        )
