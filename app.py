@@ -10,13 +10,36 @@ import math
 import wave
 import struct
 import subprocess
+import urllib.request
 import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- BRUITAGES SFX (TIC-TAC & DING) ---
+# --- TELECHARGEMENT GARANTI DE LA POLICE ROBOTO BOLD ---
+@st.cache_resource
+def load_custom_font():
+    font_path = os.path.join(tempfile.gettempdir(), "Roboto-Bold.ttf")
+    if not os.path.exists(font_path):
+        url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Bold.ttf"
+        try:
+            urllib.request.urlretrieve(url, font_path)
+        except Exception:
+            pass
+    return font_path
+
+FONT_FILE_PATH = load_custom_font()
+
+def get_font(size):
+    if os.path.exists(FONT_FILE_PATH):
+        try:
+            return ImageFont.truetype(FONT_FILE_PATH, size)
+        except Exception:
+            pass
+    return ImageFont.load_default()
+
+# --- BRUITAGES SFX ---
 def ensure_sfx_files(tmpdir):
     tictac_path = os.path.join(tmpdir, "tictac.wav")
     ding_path = os.path.join(tmpdir, "ding.wav")
@@ -35,7 +58,6 @@ def ensure_sfx_files(tmpdir):
             
     return tictac_path, ding_path
 
-# --- MOTEUR DE RENDU VIDEO ULTRA-LIGHT & STABLE (REMPLACE MOVIEPY) ---
 def get_audio_duration(audio_path):
     try:
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -71,39 +93,15 @@ def concatenate_clips_ffmpeg(clip_paths, output_path, tmpdir):
     cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_path]
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
-# --- GESTION DES POLICES & ADAPTATION SANS EMOJI CASSE ---
-def get_font(size):
-    font_paths = [
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-        "arial.ttf"
-    ]
-    for path in font_paths:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                pass
-    try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
-    except Exception:
-        return ImageFont.load_default()
-
 def remove_unsupported_emojis(text):
-    emoji_map = {
-        "🧠": "", "💡": "", "🔥": "", "⏱️": "", 
-        "⏳": "", "💬": "", "📌": "", "✨": ""
-    }
+    emoji_map = {"🧠": "", "💡": "", "🔥": "", "⏱️": "", "⏳": "", "💬": "", "📌": "", "✨": ""}
     for em, replacement in emoji_map.items():
         text = text.replace(em, replacement)
     return text
 
 def wrap_text(text, font, max_width):
     words = text.split()
-    lines = []
-    current_line = []
-    
+    lines, current_line = [], []
     for word in words:
         test_line = ' '.join(current_line + [word])
         try:
@@ -111,7 +109,6 @@ def wrap_text(text, font, max_width):
             w = bbox[2] - bbox[0]
         except AttributeError:
             w = font.getsize(test_line)[0]
-            
         if w <= max_width:
             current_line.append(word)
         else:
@@ -122,7 +119,6 @@ def wrap_text(text, font, max_width):
         lines.append(' '.join(current_line))
     return lines
 
-# --- TTS & NETTOYAGE TEXTE ---
 def run_async(coro):
     try:
         loop = asyncio.get_event_loop()
@@ -130,10 +126,8 @@ def run_async(coro):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     if loop.is_running():
-        new_loop = asyncio.new_event_loop()
-        return new_loop.run_until_complete(coro)
-    else:
-        return loop.run_until_complete(coro)
+        return asyncio.new_event_loop().run_until_complete(coro)
+    return loop.run_until_complete(coro)
 
 def clean_text_for_tts(text):
     text = re.sub(r'(\d+)/(\d+)', r'\1 sur \2', text)
@@ -155,7 +149,6 @@ def get_working_model():
     except Exception:
         return 'models/gemini-3.6-flash'
 
-# --- THEMES & PALETTES DE COULEURS ---
 THEMES = {
     "Bleu Nuit & Or (YouTube Shorts)": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (250, 204, 21)},
     "Chocolat Noir & Or Chaud": {"bg": (28, 18, 12), "card": (54, 38, 28), "accent": (245, 158, 11)},
@@ -163,7 +156,6 @@ THEMES = {
     "Émeraude Deep & Mint": {"bg": (6, 28, 20), "card": (15, 52, 38), "accent": (52, 211, 153)}
 }
 
-# --- DESSIN DES IMAGES ---
 def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
@@ -174,7 +166,7 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     clean_hook = remove_unsupported_emojis(hook_text)
     lines = wrap_text(clean_hook, font_title, 850)
     
-    total_height = len(lines) * 75
+    total_height = len(lines) * 80
     y = (height - total_height) // 2
     for line in lines:
         try:
@@ -184,7 +176,7 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
         x = (width - qw) // 2
         draw.text((x + 4, y + 4), line, fill=(0, 0, 0), font=font_title)
         draw.text((x, y), line, fill=colors["accent"], font=font_title)
-        y += 75
+        y += 80
         
     f_tag = get_font(40)
     try:
@@ -399,7 +391,7 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer la vidéo Quizz MP4"):
-            with st.spinner("Montage en cours avec voix dynamique..."):
+            with st.spinner("Montage en cours avec typographie géante HD..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -453,7 +445,7 @@ with tab1:
                                 clip_counter += 1
                                 
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
-                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
+                            r_txt = clean_text_for_tts(f"La bonne réponse est {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             
