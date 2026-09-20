@@ -371,17 +371,9 @@ voice_rate = st.sidebar.slider("⚡ Vitesse de la Voix Off", 0, 30, 15, help="15
 tts_rate_str = f"+{voice_rate}%"
 
 def get_working_model():
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini-1.5-flash' in m.name or 'gemini-2.0-flash' in m.name:
-                    return m.name
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                return m.name
-    except Exception:
-        pass
-    return "models/gemini-1.5-flash"
+    # Modèle Gemini stable actuel.
+    # On évite list_models() et les anciens modèles retirés.
+    return "gemini-3.6-flash"
 
 def parse_json_response(text):
     match = re.search(r"\[.*\]|\{.*\}", text, re.DOTALL)
@@ -414,7 +406,7 @@ with tab1:
                     try:
                         prompt = f"Génère {nb_q} questions de quiz sur '{th_q}'. Format JSON strict: [{{'question':'...', 'options':['A','B','C','D'], 'reponse_correcte':'A', 'explication':'...'}}]"
                         model_name = get_working_model()
-                        res = genai.GenerativeModel(model_name).generate_content(prompt)
+                        res = genai.GenerativeModel("gemini-3.6-flash").generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
                         st.success("Questions prêtes !")
                     except Exception as e:
@@ -528,7 +520,7 @@ with tab2:
                     try:
                         prompt = f"Génère {nb_v} mots avec leur traduction en {langue_v}. Format JSON strict: [{{'fr':'Bonjour', 'trad':'Hello'}}]"
                         model_name = get_working_model()
-                        res = genai.GenerativeModel(model_name).generate_content(prompt)
+                        res = genai.GenerativeModel("gemini-3.6-flash").generate_content(prompt)
                         st.session_state['v_data'] = parse_json_response(res.text)
                         st.success("Mots prêts !")
                     except Exception as e:
