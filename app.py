@@ -16,7 +16,6 @@ from PIL import Image, ImageDraw, ImageFont
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- CHARGEMENT DIRECT DE ROBOTO BOLD DEPUIS GITHUB ---
 def get_font(size):
     font_filename = "Roboto-Bold.ttf"
     if os.path.exists(font_filename):
@@ -26,21 +25,22 @@ def get_font(size):
             pass
     return ImageFont.load_default()
 
-# --- BRUITAGES SFX ---
 def ensure_sfx_files(tmpdir):
     tictac_path = os.path.join(tmpdir, "tictac.wav")
     ding_path = os.path.join(tmpdir, "ding.wav")
     
+    # SFX Tic-Tac (1s)
     with wave.open(tictac_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(44100): # Exactement 1 seconde
-            val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500)) if (i % 22050 < 6615) else 0
+        for i in range(44100):
+            val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-(i%22050)/500)) if (i % 22050 < 4000) else 0
             f.writeframes(struct.pack('<h', val))
             
+    # SFX Ding (0.8s)
     with wave.open(ding_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(22050): # 0.5 seconde
-            val = int(16000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/3000))
+        for i in range(35280):
+            val = int(16000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/4000))
             f.writeframes(struct.pack('<h', val))
             
     return tictac_path, ding_path
@@ -173,14 +173,14 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=f_tag)
     return img
 
-def parse_correct_index(reponse_correcte, options):
-    rep_clean = str(reponse_correcte).strip().upper()
-    if 'A' in rep_clean or rep_clean == '1': return 0
-    if 'B' in rep_clean or rep_clean == '2': return 1
-    if 'C' in rep_clean or rep_clean == '3': return 2
-    if 'D' in rep_clean or rep_clean == '4': return 3
+def get_correct_index(reponse_correcte, options):
+    rep_str = str(reponse_correcte).strip().upper()
+    if rep_str.startswith('A') or rep_str == '1': return 0
+    if rep_str.startswith('B') or rep_str == '2': return 1
+    if rep_str.startswith('C') or rep_str == '3': return 2
+    if rep_str.startswith('D') or rep_str == '4': return 3
     for idx, opt in enumerate(options):
-        if opt.strip().lower() in rep_clean.lower():
+        if opt.strip().lower() in rep_str.lower():
             return idx
     return 0
 
@@ -214,7 +214,7 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
         draw.text((qx, y_q), line, fill="white", font=f_q)
         y_q += 75
         
-    correct_idx = parse_correct_index(reponse_correcte, options)
+    correct_idx = get_correct_index(reponse_correcte, options)
 
     y_opt = max(580, y_q + 30)
     for i, opt in enumerate(options):
@@ -395,7 +395,7 @@ with tab1:
                         total_q = len(st.session_state['q_data'])
                         clip_counter = 0
                         
-                        # Hook
+                        # 1. Hook
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
                         run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
@@ -406,8 +406,9 @@ with tab1:
                         clip_files.append(h_clip)
                         clip_counter += 1
                         
+                        # 2. Questions Loop
                         for idx, q in enumerate(st.session_state['q_data']):
-                            # Question audio
+                            # Énoncé Question
                             q_speech_txt = clean_text_for_tts(f"Question {idx+1}. {q['question']}")
                             q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
                             q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
@@ -420,7 +421,7 @@ with tab1:
                             clip_files.append(out_clip)
                             clip_counter += 1
                             
-                            # Options audio
+                            # Lecture Options
                             for opt_idx in range(4):
                                 opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
                                 opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
@@ -434,7 +435,7 @@ with tab1:
                                 clip_files.append(out_clip)
                                 clip_counter += 1
                                 
-                            # Chrono 5 secondes
+                            # Chrono Tic-Tac
                             for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
@@ -443,7 +444,11 @@ with tab1:
                                 clip_files.append(out_clip)
                                 clip_counter += 1
                                 
-                            # Effet sonore "Ding" au moment du passage au vert
+                            # SFX Ding + Révélation
+                            correct_idx = get_correct_index(q['reponse_correcte'], q['options'])
+                            correct_letter = chr(65 + correct_idx)
+                            correct_text = q['options'][correct_idx]
+                            
                             ding_img = os.path.join(tmpdir, f"ding_{idx}.png")
                             draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(ding_img)
                             ding_dur = get_audio_duration(ding_sfx)
@@ -452,9 +457,9 @@ with tab1:
                             clip_files.append(out_clip_ding)
                             clip_counter += 1
 
-                            # Explication orale + Motivation
+                            # Explication
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
-                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
+                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {correct_letter}, {correct_text}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             
                             run_async(edge_tts.Communicate(r_txt, voice_fr_code).save(r_aud))
