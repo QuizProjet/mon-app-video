@@ -10,34 +10,31 @@ import math
 import wave
 import struct
 import subprocess
-import urllib.request
 import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- TELECHARGEMENT GARANTI DE LA POLICE ROBOTO BOLD ---
-@st.cache_resource
-def load_custom_font():
-    font_path = os.path.join(tempfile.gettempdir(), "Roboto-Bold.ttf")
-    if not os.path.exists(font_path):
-        url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Bold.ttf"
-        try:
-            urllib.request.urlretrieve(url, font_path)
-        except Exception:
-            pass
-    return font_path
-
-FONT_FILE_PATH = load_custom_font()
-
+# --- CHARGEMENT ROBUSTE DE POLICE LARGE ---
 def get_font(size):
-    if os.path.exists(FONT_FILE_PATH):
-        try:
-            return ImageFont.truetype(FONT_FILE_PATH, size)
-        except Exception:
-            pass
-    return ImageFont.load_default()
+    # Chemins des polices standards pré-installées sur les serveurs Linux (Streamlit Cloud)
+    system_fonts = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ]
+    for font_path in system_fonts:
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except Exception:
+                pass
+    # Secours si aucune n'est disponible
+    try:
+        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+    except Exception:
+        return ImageFont.load_default()
 
 # --- BRUITAGES SFX ---
 def ensure_sfx_files(tmpdir):
@@ -162,11 +159,11 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(56)
+    font_title = get_font(60)
     clean_hook = remove_unsupported_emojis(hook_text)
     lines = wrap_text(clean_hook, font_title, 850)
     
-    total_height = len(lines) * 80
+    total_height = len(lines) * 90
     y = (height - total_height) // 2
     for line in lines:
         try:
@@ -176,9 +173,9 @@ def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
         x = (width - qw) // 2
         draw.text((x + 4, y + 4), line, fill=(0, 0, 0), font=font_title)
         draw.text((x, y), line, fill=colors["accent"], font=font_title)
-        y += 80
+        y += 90
         
-    f_tag = get_font(40)
+    f_tag = get_font(42)
     try:
         t_w = f_tag.getbbox(channel_tag)[2] - f_tag.getbbox(channel_tag)[0]
     except AttributeError:
@@ -192,76 +189,88 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_head, f_q, f_opt = get_font(48), get_font(46), get_font(40)
+    f_head = get_font(48)
+    f_q = get_font(52)
+    f_opt = get_font(44)
     
+    # Header
     header_text = f"QUIZ CULTURE GENERALE {q_num} sur {total_q}"
     try:
         hw = f_head.getbbox(header_text)[2] - f_head.getbbox(header_text)[0]
     except AttributeError:
         hw = f_head.getsize(header_text)[0]
     hx = (width - hw) // 2
-    draw.text((hx + 4, 134), header_text, fill=(0, 0, 0), font=f_head)
-    draw.text((hx, 130), header_text, fill=colors["accent"], font=f_head)
+    draw.text((hx + 3, 113), header_text, fill=(0, 0, 0), font=f_head)
+    draw.text((hx, 110), header_text, fill=colors["accent"], font=f_head)
     
+    # Question Géante
     clean_q = remove_unsupported_emojis(question)
     q_lines = wrap_text(f"Q: {clean_q}", f_q, 900)
-    y_q = 250
+    y_q = 220
     for line in q_lines:
         try:
             qw = f_q.getbbox(line)[2] - f_q.getbbox(line)[0]
         except AttributeError:
             qw = f_q.getsize(line)[0]
         qx = (width - qw) // 2
-        draw.text((qx + 4, y_q + 4), line, fill=(0, 0, 0), font=f_q)
+        draw.text((qx + 3, y_q + 3), line, fill=(0, 0, 0), font=f_q)
         draw.text((qx, y_q), line, fill="white", font=f_q)
-        y_q += 65
+        y_q += 75
         
+    # CALCUL EXACT DE L'INDEX CORRECT (A=0, B=1, C=2, D=3)
     rep_clean = str(reponse_correcte).strip().upper()
     correct_idx = -1
-    if 'A' in rep_clean: correct_idx = 0
-    elif 'B' in rep_clean: correct_idx = 1
-    elif 'C' in rep_clean: correct_idx = 2
-    elif 'D' in rep_clean: correct_idx = 3
+    if rep_clean.startswith('A') or rep_clean == 'OPTION A': correct_idx = 0
+    elif rep_clean.startswith('B') or rep_clean == 'OPTION B': correct_idx = 1
+    elif rep_clean.startswith('C') or rep_clean == 'OPTION C': correct_idx = 2
+    elif rep_clean.startswith('D') or rep_clean == 'OPTION D': correct_idx = 3
     else:
         for idx_o, opt_val in enumerate(options):
-            if opt_val.lower() in rep_clean.lower():
+            if opt_val.strip().lower() in rep_clean.lower():
                 correct_idx = idx_o
                 break
 
-    y_opt = max(560, y_q + 40)
+    y_opt = max(580, y_q + 30)
     for i, opt in enumerate(options):
         if i <= max_opt_visible or max_opt_visible == -1:
             is_correct = (phase == "reponse" and i == correct_idx)
             fill_col = (34, 197, 94) if is_correct else colors["card"]
             out_col = (250, 204, 21) if is_correct else (255, 255, 255)
             
-            draw.rounded_rectangle([(80, y_opt), (1000, y_opt + 135)], radius=25, fill=fill_col, outline=out_col, width=4)
+            draw.rounded_rectangle([(70, y_opt), (1010, y_opt + 145)], radius=30, fill=fill_col, outline=out_col, width=4)
             clean_opt = remove_unsupported_emojis(opt)
-            opt_lines = wrap_text(f"{chr(65+i)}) {clean_opt}", f_opt, 850)
-            draw.text((120, y_opt + 40), opt_lines[0], fill="white", font=f_opt)
-        y_opt += 165
+            opt_lines = wrap_text(f"{chr(65+i)}) {clean_opt}", f_opt, 860)
+            draw.text((110, y_opt + 45), opt_lines[0], fill="white", font=f_opt)
+        y_opt += 175
         
+    # CHRONO CENTRAL STYLE SHORTS
     if phase == "chrono":
-        # Couleur dynamique du chrono : vert -> orange -> rouge
         if timer_sec >= 4:
-            timer_color = (34, 197, 94)    # Vert
+            timer_color = (34, 197, 94)
         elif timer_sec >= 2:
-            timer_color = (245, 158, 11)   # Orange
+            timer_color = (245, 158, 11)
         else:
-            timer_color = (239, 68, 68)     # Rouge
+            timer_color = (239, 68, 68)
 
-        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=50, fill=(15, 23, 42), outline=timer_color, width=5)
-        draw.text((410, y_opt + 45), f"00:0{timer_sec}", fill=timer_color, font=f_head)
+        draw.rounded_rectangle([(340, y_opt + 15), (740, y_opt + 125)], radius=50, fill=(15, 23, 42), outline=timer_color, width=5)
+        f_timer = get_font(54)
+        t_str = f"00:0{timer_sec}"
+        try:
+            tw = f_timer.getbbox(t_str)[2] - f_timer.getbbox(t_str)[0]
+        except AttributeError:
+            tw = f_timer.getsize(t_str)[0]
+        draw.text(((width - tw)//2, y_opt + 40), t_str, fill=timer_color, font=f_timer)
+
     elif phase == "reponse":
-        draw.rounded_rectangle([(70, y_opt + 20), (1010, y_opt + 220)], radius=20, fill=(15, 23, 42), outline=(34, 197, 94), width=4)
+        draw.rounded_rectangle([(70, y_opt + 15), (1010, y_opt + 215)], radius=25, fill=(15, 23, 42), outline=(34, 197, 94), width=4)
         clean_exp = remove_unsupported_emojis(explication)
-        exp_lines = wrap_text(f"Explication : {clean_exp}", get_font(36), 880)
-        y_exp = y_opt + 45
+        exp_lines = wrap_text(f"Explication : {clean_exp}", get_font(38), 880)
+        y_exp = y_opt + 40
         for line in exp_lines[:3]:
-            draw.text((100, y_exp), line, fill="white", font=get_font(36))
-            y_exp += 48
+            draw.text((100, y_exp), line, fill="white", font=get_font(38))
+            y_exp += 52
             
-    font_tag = get_font(40)
+    font_tag = get_font(42)
     try:
         t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
     except AttributeError:
@@ -275,7 +284,7 @@ def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_title, f_text, f_sub = get_font(48), get_font(40), get_font(34)
+    f_title, f_text, f_sub = get_font(50), get_font(42), get_font(36)
     
     title_text = f"VOCABULAIRE EN {langue.upper()}"
     try:
@@ -291,11 +300,11 @@ def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt
         clean_fr = remove_unsupported_emojis(item['fr'])
         clean_tr = remove_unsupported_emojis(item['trad'])
         if idx < current_idx:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=20, fill=colors["card"], outline=(255, 255, 255), width=2)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=25, fill=colors["card"], outline=(255, 255, 255), width=2)
             draw.text((110, y + 30), f"FR: {clean_fr}", fill="white", font=f_text)
             draw.text((110, y + 90), f"TRAD: {clean_tr}", fill=(34, 197, 94), font=f_text)
         elif idx == current_idx:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=20, fill=colors["card"], outline=colors["accent"], width=4)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=25, fill=colors["card"], outline=colors["accent"], width=4)
             draw.text((110, y + 30), f"FR: {clean_fr}", fill=colors["accent"], font=f_text)
             
             if phase_item in ["traduction", "motivation"]:
@@ -304,13 +313,13 @@ def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt
                 draw.rounded_rectangle([(740, y + 40), (970, y + 120)], radius=25, fill=(15, 23, 42), outline=colors["accent"], width=2)
                 draw.text((770, y + 55), f"00:0{timer_sec}", fill="white", font=f_sub)
         else:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=20, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=25, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
             draw.text((110, y + 60), f"Mot #{idx+1}", fill=(100, 116, 139), font=f_sub)
         y += 190
         
     if phase_item == "motivation" and motiv_txt:
         clean_m = remove_unsupported_emojis(motiv_txt)
-        draw.rounded_rectangle([(140, y + 20), (940, y + 150)], radius=20, fill=(34, 197, 94))
+        draw.rounded_rectangle([(140, y + 20), (940, y + 150)], radius=25, fill=(34, 197, 94))
         try:
             mw = f_title.getbbox(clean_m)[2] - f_title.getbbox(clean_m)[0]
         except AttributeError:
@@ -318,7 +327,7 @@ def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt
         mx = (width - mw) // 2
         draw.text((mx, y + 48), clean_m, fill="white", font=f_title)
         
-    font_tag = get_font(40)
+    font_tag = get_font(42)
     try:
         t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
     except AttributeError:
@@ -399,7 +408,7 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer la vidéo Quizz MP4"):
-            with st.spinner("Montage en cours avec typographie géante HD..."):
+            with st.spinner("Montage de la vidéo style YouTube Shorts..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -487,7 +496,6 @@ with tab1:
                         
                         st.success("✅ Vidéo Quizz générée avec succès !")
                         
-                        # APERÇU DIRECT DANS L'APPLICATION
                         with open(out_mp4, "rb") as f:
                             video_bytes = f.read()
                         st.video(video_bytes)
@@ -547,7 +555,7 @@ with tab2:
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
         if st.button("🎬 Générer le MP4 Vocabulaire"):
-            with st.spinner("Montage de la séquence avec effets sonores..."):
+            with st.spinner("Montage de la séquence..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -631,7 +639,6 @@ with tab2:
                         
                         st.success("✅ Vidéo Vocabulaire générée avec succès !")
                         
-                        # APERÇU DIRECT DANS L'APPLICATION
                         with open(out_mp4, "rb") as f:
                             video_bytes = f.read()
                         st.video(video_bytes)
