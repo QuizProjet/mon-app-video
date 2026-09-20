@@ -445,7 +445,7 @@ with tab1:
                                 clip_counter += 1
                                 
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
-                            r_txt = clean_text_for_tts(f"La bonne réponse est {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
+                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
                             
@@ -477,9 +477,13 @@ with tab1:
                         out_mp4 = os.path.join(tmpdir, "quizz_final.mp4")
                         concatenate_clips_ffmpeg(clip_files, out_mp4, tmpdir)
                         
-                        with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger le MP4 Quizz", data=f.read(), file_name="quizz_viral_pro.mp4", mime="video/mp4")
                         st.success("✅ Vidéo Quizz générée avec succès !")
+                        
+                        # APERÇU DIRECT DANS L'APPLICATION
+                        with open(out_mp4, "rb") as f:
+                            video_bytes = f.read()
+                        st.video(video_bytes)
+                        st.download_button("📥 Télécharger le MP4 Quizz", data=video_bytes, file_name="quizz_viral_pro.mp4", mime="video/mp4")
                 except Exception as e:
                     st.error(f"Erreur de génération : {e}")
 
@@ -617,8 +621,12 @@ with tab2:
                         out_mp4 = os.path.join(tmpdir, "vocabulaire_final.mp4")
                         concatenate_clips_ffmpeg(clip_files, out_mp4, tmpdir)
                         
-                        with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger le MP4 Vocabulaire", data=f.read(), file_name="vocabulaire_viral_pro.mp4", mime="video/mp4")
                         st.success("✅ Vidéo Vocabulaire générée avec succès !")
+                        
+                        # APERÇU DIRECT DANS L'APPLICATION
+                        with open(out_mp4, "rb") as f:
+                            video_bytes = f.read()
+                        st.video(video_bytes)
+                        st.download_button("📥 Télécharger le MP4 Vocabulaire", data=video_bytes, file_name="vocabulaire_viral_pro.mp4", mime="video/mp4")
                 except Exception as e:
                     st.error(f"Erreur de génération : {e}")
