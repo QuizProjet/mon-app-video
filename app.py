@@ -242,8 +242,16 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
         y_opt += 165
         
     if phase == "chrono":
-        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=50, fill=(15, 23, 42), outline=colors["accent"], width=4)
-        draw.text((410, y_opt + 45), f"00:0{timer_sec}", fill="white", font=f_head)
+        # Couleur dynamique du chrono : vert -> orange -> rouge
+        if timer_sec >= 4:
+            timer_color = (34, 197, 94)    # Vert
+        elif timer_sec >= 2:
+            timer_color = (245, 158, 11)   # Orange
+        else:
+            timer_color = (239, 68, 68)     # Rouge
+
+        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=50, fill=(15, 23, 42), outline=timer_color, width=5)
+        draw.text((410, y_opt + 45), f"00:0{timer_sec}", fill=timer_color, font=f_head)
     elif phase == "reponse":
         draw.rounded_rectangle([(70, y_opt + 20), (1010, y_opt + 220)], radius=20, fill=(15, 23, 42), outline=(34, 197, 94), width=4)
         clean_exp = remove_unsupported_emojis(explication)
