@@ -9,70 +9,36 @@ import tempfile
 import math
 import wave
 import struct
-import subprocess
-import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, CompositeAudioClip
 
-st.set_page_config(page_title="Studio TikTok Pro", layout="wide")
+st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- BRUITAGES SFX ---
+# --- BRUITAGES SFX (TIC-TAC & DING) ---
 def ensure_sfx_files(tmpdir):
     tictac_path = os.path.join(tmpdir, "tictac.wav")
     ding_path = os.path.join(tmpdir, "ding.wav")
     
     with wave.open(tictac_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(4410):
-            val = int(10000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/400))
+        for i in range(6615):
+            val = int(14000 * math.sin(2 * math.pi * 1000 * (i/44100)) * math.exp(-i/500))
             f.writeframes(struct.pack('<h', val))
             
     with wave.open(ding_path, "w") as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(44100)
-        for i in range(11025):
-            val = int(12000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/2500))
+        for i in range(17640):
+            val = int(16000 * (math.sin(2 * math.pi * 1318.5 * (i/44100)) + math.sin(2 * math.pi * 1567.98 * (i/44100))) * math.exp(-i/3000))
             f.writeframes(struct.pack('<h', val))
             
     return tictac_path, ding_path
 
-def get_audio_duration(audio_path):
-    try:
-        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-        cmd = [ffmpeg_exe, "-i", audio_path]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
-        if match:
-            hours, minutes, seconds = match.groups()
-            return float(hours) * 3600 + float(minutes) * 60 + float(seconds)
-        return 1.5
-    except Exception:
-        return 1.5
-
-def create_clip_ffmpeg(img_path, audio_path, duration, output_path):
-    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-    cmd = [
-        ffmpeg_exe, "-y", "-loop", "1", "-i", img_path,
-        "-i", audio_path, "-c:v", "libx264", "-preset", "ultrafast",
-        "-c:a", "aac", "-b:a", "96k", "-pix_fmt", "yuv420p",
-        "-t", str(duration), output_path
-    ]
-    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-
-def concatenate_clips_ffmpeg(clip_paths, output_path, tmpdir):
-    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-    list_file = os.path.join(tmpdir, "files.txt")
-    with open(list_file, "w") as f:
-        for p in clip_paths:
-            f.write(f"file '{p}'\n")
-    cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_path]
-    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-
-# --- POLICES HD ET GRANDES TAILLES GARANTIES ---
+# --- GESTION DES POLICES & ADAPTATION SANS EMOJI CASSE ---
 def get_font(size):
     font_paths = [
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "arial.ttf"
     ]
     for path in font_paths:
@@ -81,20 +47,23 @@ def get_font(size):
                 return ImageFont.truetype(path, size)
             except Exception:
                 pass
-    try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
-    except Exception:
-        return ImageFont.load_default()
+    return ImageFont.load_default()
 
 def remove_unsupported_emojis(text):
-    emoji_map = {"🧠": "", "💡": "", "🔥": "", "⏱️": "", "⏳": "", "💬": "", "📌": "", "✨": ""}
-    for em, rep in emoji_map.items():
-        text = text.replace(em, rep)
+    # Remplace les émojis problématiques par du texte lisible pour éviter les carrés
+    emoji_map = {
+        "🧠": "[QUIZ]", "💡": "[INFO]", "🔥": "[HOT]", "⏱️": "[TIME]", 
+        "⏳": "[TIME]", "💬": "", "📌": "", "✨": ""
+    }
+    for em, replacement in emoji_map.items():
+        text = text.replace(em, replacement)
     return text
 
 def wrap_text(text, font, max_width):
     words = text.split()
-    lines, current_line = [], []
+    lines = []
+    current_line = []
+    
     for word in words:
         test_line = ' '.join(current_line + [word])
         try:
@@ -102,6 +71,7 @@ def wrap_text(text, font, max_width):
             w = bbox[2] - bbox[0]
         except AttributeError:
             w = font.getsize(test_line)[0]
+            
         if w <= max_width:
             current_line.append(word)
         else:
@@ -112,6 +82,7 @@ def wrap_text(text, font, max_width):
         lines.append(' '.join(current_line))
     return lines
 
+# --- TTS & NETTOYAGE TEXTE ---
 def run_async(coro):
     try:
         loop = asyncio.get_event_loop()
@@ -119,10 +90,13 @@ def run_async(coro):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     if loop.is_running():
-        return asyncio.new_event_loop().run_until_complete(coro)
-    return loop.run_until_complete(coro)
+        new_loop = asyncio.new_event_loop()
+        return new_loop.run_until_complete(coro)
+    else:
+        return loop.run_until_complete(coro)
 
 def clean_text_for_tts(text):
+    # Remplacement explicite de 5/5 par "5 sur 5"
     text = re.sub(r'(\d+)/(\d+)', r'\1 sur \2', text)
     return re.sub(r'[^\w\s,.?!:\'\-]', '', text).strip()
 
@@ -135,12 +109,14 @@ def parse_json_response(text):
 def get_working_model():
     try:
         for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods and ('gemini-3.6-flash' in m.name or 'gemini-3' in m.name):
-                return m.name
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-3.6-flash' in m.name or 'gemini-3' in m.name:
+                    return m.name
         return 'models/gemini-3.6-flash'
     except Exception:
         return 'models/gemini-3.6-flash'
 
+# --- THEMES & PALETTES DE COULEURS ---
 THEMES = {
     "Bleu Nuit & Or (YouTube Shorts)": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (250, 204, 21)},
     "Chocolat Noir & Or Chaud": {"bg": (28, 18, 12), "card": (54, 38, 28), "accent": (245, 158, 11)},
@@ -148,73 +124,49 @@ THEMES = {
     "Émeraude Deep & Mint": {"bg": (6, 28, 20), "card": (15, 52, 38), "accent": (52, 211, 153)}
 }
 
-# --- RENDU DE L'ACCROCHE (HOOK) ---
+# --- DESSIN DES IMAGES ---
 def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(64)
+    font_title = get_font(52)
     clean_hook = remove_unsupported_emojis(hook_text)
-    lines = wrap_text(clean_hook, font_title, 880)
+    lines = wrap_text(clean_hook, font_title, 850)
     
-    total_height = len(lines) * 85
-    y = (height - total_height) // 2
+    y = 800 - (len(lines) * 35)
     for line in lines:
-        try:
-            bbox = font_title.getbbox(line)
-            w = bbox[2] - bbox[0]
-        except AttributeError:
-            w = font_title.getsize(line)[0]
-        x = (width - w) // 2
-        draw.text((x + 4, y + 4), line, fill=(0, 0, 0), font=font_title)
-        draw.text((x, y), line, fill=colors["accent"], font=font_title)
-        y += 85
+        draw.text((104, y + 4), line, fill=(0, 0, 0), font=font_title)
+        draw.text((100, y), line, fill=colors["accent"], font=font_title)
+        y += 70
         
-    font_tag = get_font(40)
-    try:
-        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
-    except AttributeError:
-        t_w = font_tag.getsize(channel_tag)[0]
-    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
+    # Signature de la chaîne en bas
+    f_tag = get_font(36)
+    draw.text((100, 1800), channel_tag, fill=(200, 200, 200), font=f_tag)
     return img
 
-# --- RENDU DU QUIZZ GRAND ET CENTRÉ ---
-def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=3, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
+def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=5, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_head = get_font(52)
-    f_q = get_font(48)
-    f_opt = get_font(42)
-    f_exp = get_font(36)
+    f_head, f_q, f_opt = get_font(44), get_font(46), get_font(38)
     
-    # Header Centré
-    header_text = f"QUIZ CULTURE GÉNÉRALE {q_num} sur {total_q}"
-    try:
-        h_w = f_head.getbbox(header_text)[2] - f_head.getbbox(header_text)[0]
-    except AttributeError:
-        h_w = f_head.getsize(header_text)[0]
-    h_x = (width - h_w) // 2
-    draw.text((h_x + 3, 133), header_text, fill=(0, 0, 0), font=f_head)
-    draw.text((h_x, 130), header_text, fill=colors["accent"], font=f_head)
+    # En-tête sans bloc jaune
+    header_text = f"QUIZ CULTURE GENERALE {q_num} sur {total_q}"
+    draw.text((94, 134), header_text, fill=(0, 0, 0), font=f_head)
+    draw.text((90, 130), header_text, fill=colors["accent"], font=f_head)
     
-    # Question Centrée
+    # Question
     clean_q = remove_unsupported_emojis(question)
-    q_lines = wrap_text(f"Q: {clean_q}", f_q, 920)
-    y_q = 240
+    q_lines = wrap_text(f"Q: {clean_q}", f_q, 900)
+    y_q = 250
     for line in q_lines:
-        try:
-            qw = f_q.getbbox(line)[2] - f_q.getbbox(line)[0]
-        except AttributeError:
-            qw = f_q.getsize(line)[0]
-        qx = (width - qw) // 2
-        draw.text((qx + 3, y_q + 3), line, fill=(0, 0, 0), font=f_q)
-        draw.text((qx, y_q), line, fill="white", font=f_q)
-        y_q += 65
+        draw.text((94, y_q + 4), line, fill=(0, 0, 0), font=f_q)
+        draw.text((90, y_q), line, fill="white", font=f_q)
+        y_q += 60
         
     rep_clean = str(reponse_correcte).strip().upper()
     correct_idx = -1
@@ -228,107 +180,88 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
                 correct_idx = idx_o
                 break
 
-    y_opt = max(580, y_q + 40)
+    y_opt = max(550, y_q + 40)
     for i, opt in enumerate(options):
         if i <= max_opt_visible or max_opt_visible == -1:
             is_correct = (phase == "reponse" and i == correct_idx)
             fill_col = (34, 197, 94) if is_correct else colors["card"]
             out_col = (250, 204, 21) if is_correct else (255, 255, 255)
             
-            # Boutons imposants et bien dessinés
-            draw.rounded_rectangle([(70, y_opt), (1010, y_opt + 140)], radius=25, fill=fill_col, outline=out_col, width=4)
+            draw.rounded_rectangle([(90, y_opt), (990, y_opt + 130)], radius=25, fill=fill_col, outline=out_col, width=4)
             clean_opt = remove_unsupported_emojis(opt)
-            opt_text = f"{chr(65+i)}) {clean_opt}"
-            draw.text((110, y_opt + 42), opt_text, fill="white", font=f_opt)
-        y_opt += 175
+            opt_lines = wrap_text(f"{chr(65+i)}) {clean_opt}", f_opt, 850)
+            draw.text((130, y_opt + 40), opt_lines[0], fill="white", font=f_opt)
+        y_opt += 160
         
     if phase == "chrono":
-        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=40, fill=(15, 23, 42), outline=colors["accent"], width=4)
-        draw.text((430, y_opt + 42), f"00:0{timer_sec}", fill="white", font=f_head)
+        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=50, fill=(15, 23, 42), outline=colors["accent"], width=4)
+        draw.text((410, y_opt + 50), f"00:0{timer_sec}", fill="white", font=f_head)
     elif phase == "reponse":
-        draw.rounded_rectangle([(60, y_opt + 20), (1020, y_opt + 230)], radius=22, fill=(15, 23, 42), outline=(34, 197, 94), width=4)
+        draw.rounded_rectangle([(80, y_opt + 20), (1000, y_opt + 220)], radius=20, fill=(15, 23, 42), outline=(34, 197, 94), width=3)
         clean_exp = remove_unsupported_emojis(explication)
-        exp_lines = wrap_text(f"Explication : {clean_exp}", f_exp, 900)
-        y_exp = y_opt + 45
+        exp_lines = wrap_text(f"Explication : {clean_exp}", get_font(34), 880)
+        y_exp = y_opt + 50
         for line in exp_lines[:3]:
-            draw.text((90, y_exp), line, fill="white", font=f_exp)
-            y_exp += 48
+            draw.text((110, y_exp), line, fill="white", font=get_font(34))
+            y_exp += 45
             
     # Signature
-    font_tag = get_font(40)
-    try:
-        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
-    except AttributeError:
-        t_w = font_tag.getsize(channel_tag)[0]
-    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
+    draw.text((100, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
     return img
 
-# --- RENDU DU VOCABULAIRE GRAND ET CENTRÉ ---
 def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt, langue, channel_tag, theme_name, bg_file=None):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_title = get_font(50)
-    f_text = get_font(42)
-    f_sub = get_font(36)
+    f_title, f_text, f_sub = get_font(44), get_font(38), get_font(32)
     
-    title_text = f"VOCABULAIRE EN {langue.upper()}"
-    try:
-        tw = f_title.getbbox(title_text)[2] - f_title.getbbox(title_text)[0]
-    except AttributeError:
-        tw = f_title.getsize(title_text)[0]
-    tx = (width - tw) // 2
-    draw.text((tx + 3, 123), title_text, fill=(0, 0, 0), font=f_title)
-    draw.text((tx, 120), title_text, fill=colors["accent"], font=f_title)
+    draw.text((94, 124), f"VOCABULAIRE EN {langue.upper()}", fill=(0, 0, 0), font=f_title)
+    draw.text((90, 120), f"VOCABULAIRE EN {langue.upper()}", fill=colors["accent"], font=f_title)
     
     y = 250
     for idx, item in enumerate(mots):
         clean_fr = remove_unsupported_emojis(item['fr'])
         clean_tr = remove_unsupported_emojis(item['trad'])
         if idx < current_idx:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=colors["card"], outline=(255, 255, 255), width=2)
-            draw.text((110, y + 25), f"FR: {clean_fr}", fill="white", font=f_text)
+            draw.rounded_rectangle([(80, y), (1000, y + 160)], radius=20, fill=colors["card"], outline=(255, 255, 255), width=2)
+            draw.text((110, y + 30), f"FR: {clean_fr}", fill="white", font=f_text)
             draw.text((110, y + 90), f"TRAD: {clean_tr}", fill=(34, 197, 94), font=f_text)
         elif idx == current_idx:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=colors["card"], outline=colors["accent"], width=4)
-            draw.text((110, y + 25), f"FR: {clean_fr}", fill=colors["accent"], font=f_text)
+            draw.rounded_rectangle([(80, y), (1000, y + 160)], radius=20, fill=colors["card"], outline=colors["accent"], width=4)
+            draw.text((110, y + 30), f"FR: {clean_fr}", fill=colors["accent"], font=f_text)
+            
             if phase_item in ["traduction", "motivation"]:
                 draw.text((110, y + 90), f"TRAD: {clean_tr}", fill="white", font=f_text)
             elif phase_item == "chrono":
-                draw.rounded_rectangle([(740, y + 35), (970, y + 125)], radius=20, fill=(15, 23, 42), outline=colors["accent"], width=3)
-                draw.text((770, y + 52), f"00:0{timer_sec}", fill="white", font=f_sub)
+                draw.rounded_rectangle([(750, y + 40), (960, y + 120)], radius=25, fill=(15, 23, 42), outline=colors["accent"], width=2)
+                draw.text((780, y + 55), f"00:0{timer_sec}", fill="white", font=f_sub)
         else:
-            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
-            draw.text((110, y + 55), f"Mot #{idx+1}", fill=(100, 116, 139), font=f_sub)
-        y += 195
+            draw.rounded_rectangle([(80, y), (1000, y + 160)], radius=20, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
+            draw.text((110, y + 60), f"Mot #{idx+1}", fill=(100, 116, 139), font=f_sub)
+        y += 190
         
     if phase_item == "motivation" and motiv_txt:
         clean_m = remove_unsupported_emojis(motiv_txt)
-        draw.rounded_rectangle([(120, y + 20), (960, y + 150)], radius=22, fill=(34, 197, 94))
-        try:
-            mw = f_title.getbbox(clean_m)[2] - f_title.getbbox(clean_m)[0]
-        except AttributeError:
-            mw = f_title.getsize(clean_m)[0]
-        mx = (width - mw) // 2
-        draw.text((mx, y + 48), clean_m, fill="white", font=f_title)
+        draw.rounded_rectangle([(150, y + 20), (930, y + 150)], radius=20, fill=(34, 197, 94))
+        draw.text((200, y + 50), f"{clean_m}", fill="white", font=f_title)
         
-    font_tag = get_font(40)
-    try:
-        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
-    except AttributeError:
-        t_w = font_tag.getsize(channel_tag)[0]
-    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
+    draw.text((100, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
     return img
 
 # --- INTERFACE STREAMLIT ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
-if api_key: genai.configure(api_key=api_key)
+if api_key:
+    genai.configure(api_key=api_key)
 
 tab1, tab2 = st.tabs(["🧠 Quizz TikTok Pro", "🗣️ Vocabulaire Pro"])
 
-VOICES_FR = {"Henri (Dynamique)": "fr-FR-HenriNeural", "Vivienne (Énergique)": "fr-FR-VivienneNeural", "Remy (Standard)": "fr-FR-RemyNeural"}
+VOICES_FR = {
+    "Henri (Dynamique & Motivant)": "fr-FR-HenriNeural", 
+    "Vivienne (Énergique)": "fr-FR-VivienneNeural",
+    "Remy (Standard)": "fr-FR-RemyNeural"
+}
 VOICES_MAP = {
     "Anglais": {"Emma": "en-US-EmmaNeural", "Christopher": "en-US-ChristopherNeural"},
     "Espagnol": {"Alvaro": "es-ES-AlvaroNeural", "Elvira": "es-ES-ElviraNeural"},
@@ -340,176 +273,196 @@ VOICES_MAP = {
 # ==================== MODULE 1 : QUIZZ ====================
 with tab1:
     st.header("1. Générateur Quizz Pro")
-    hook_input = st.text_input("Accroche (Hook 3s)", "IMPOSSIBLE d'avoir 5/5 sur ce test !")
-    channel_q_tag = st.text_input("Signature (Nom Chaîne)", "@QuizMaster_Pro", key="tag_q")
+    hook_input = st.text_input("Accroche (Hook 3s)", "IMPOSSIBLE d'avoir 5 sur 5 sur ce test !")
+    channel_q_tag = st.text_input("Signature / Nom de Chaîne Quizz", "@QuizMaster_Pro", key="tag_q")
     
     col1, col2 = st.columns(2)
-    with col1: voice_fr_code = VOICES_FR[st.selectbox("Voix Off (Forte)", list(VOICES_FR.keys()))]
-    with col2: theme_visual_q = st.selectbox("Palette de Couleurs", list(THEMES.keys()), key="th_q")
+    with col1:
+        voice_fr_code = VOICES_FR[st.selectbox("Voix Off Motivante", list(VOICES_FR.keys()))]
+    with col2:
+        theme_visual_q = st.selectbox("Palette de Couleurs", list(THEMES.keys()), key="th_q")
         
-    motiv_q_custom = st.text_input("Phrases motivation (séparées par virgule)", "Bravo !, Excellent !, Tu gères !", key="mq")
+    motiv_q_custom = st.text_input("Phrases de motivation (séparées par une virgule)", "Bravo !, Excellent !, Tu gères !", key="mq")
     motiv_q_list = [m.strip() for m in motiv_q_custom.split(",") if m.strip()]
-    outro_q_custom = st.text_input("Outro / CTA Final", "Quel est ton score ? Écris-le en commentaire !", key="oq")
+    outro_q_custom = st.text_input("Phrase d'Outro / CTA Final", "Quel est ton score ? Écris-le en commentaire !", key="oq")
     
     mode_q = st.radio("Mode", ["IA Gemini", "Saisie Manuelle"], key="mode_q")
     bg_file_q = st.file_uploader("Fond 9:16 (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_q")
     
     if mode_q == "IA Gemini":
         theme_q = st.text_input("Thème", "Culture Générale", key="t_q")
-        nb_q = st.slider("Questions", 1, 5, 3)
+        nb_q = st.slider("Questions", 1, 10, 5)
         if st.button("✨ Générer les questions"):
-            if not api_key: st.error("Clé API requise !")
+            if not api_key:
+                st.error("Clé API requise !")
             else:
-                with st.spinner("Génération..."):
+                with st.spinner("Génération IA..."):
                     try:
-                        prompt = f"Génère {nb_q} questions quizz '{theme_q}'. JSON strict: [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
+                        prompt = f"Génère {nb_q} questions de quizz sur '{theme_q}'. JSON strict: [{{'question': '...', 'options': ['A','B','C','D'], 'reponse_correcte': 'A', 'explication': '...'}}]"
                         res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
                         st.session_state['q_data'] = parse_json_response(res.text)
-                        st.success("Généré !")
-                    except Exception as e: st.error(f"Erreur : {e}")
+                        st.success(f"{len(st.session_state['q_data'])} questions générées !")
+                    except Exception as e:
+                        st.error(f"Erreur IA : {e}")
     else:
-        num_c = st.number_input("Nombre de questions", 1, 5, 3)
+        num_c = st.number_input("Nombre de questions", 1, 10, 5)
         c_list = []
         for i in range(int(num_c)):
             st.markdown(f"**Question {i+1}**")
-            c_list.append({
-                "question": st.text_input(f"Question {i+1}", key=f"q_{i}"),
-                "options": [st.text_input("A", key=f"oa_{i}"), st.text_input("B", key=f"ob_{i}"), st.text_input("C", key=f"oc_{i}"), st.text_input("D", key=f"od_{i}")],
-                "reponse_correcte": st.selectbox("Bonne réponse", ["A", "B", "C", "D"], key=f"r_{i}"),
-                "explication": st.text_input("Explication", key=f"e_{i}")
-            })
-        if st.button("💾 Valider"): st.session_state['q_data'] = c_list
+            q_t = st.text_input(f"Question {i+1}", key=f"q_{i}")
+            o_a = st.text_input(f"Option A", key=f"oa_{i}")
+            o_b = st.text_input(f"Option B", key=f"ob_{i}")
+            o_c = st.text_input(f"Option C", key=f"oc_{i}")
+            o_d = st.text_input(f"Option D", key=f"od_{i}")
+            rep = st.selectbox("Bonne réponse", ["A", "B", "C", "D"], key=f"r_{i}")
+            exp = st.text_input("Explication", key=f"e_{i}")
+            c_list.append({"question": q_t, "options": [o_a, o_b, o_c, o_d], "reponse_correcte": rep, "explication": exp})
+        if st.button("💾 Valider les questions"):
+            st.session_state['q_data'] = c_list
+            st.success("Questions enregistrées !")
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
-        if st.button("🎬 Générer Vidéo Quizz"):
-            with st.spinner("Montage sécurisé avec grande typographie..."):
+        if st.button("🎬 Générer la vidéo Quizz MP4"):
+            with st.spinner("Montage en cours avec voix dynamique..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
-                        clip_files = []
+                        clips = []
                         total_q = len(st.session_state['q_data'])
-                        clip_counter = 0
                         
+                        # Hook
                         h_aud = os.path.join(tmpdir, "h.mp3")
                         h_img = os.path.join(tmpdir, "h.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code, volume="+30%").save(h_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_input), voice_fr_code).save(h_aud))
                         draw_hook_frame(hook_input, theme_visual_q, channel_q_tag, bg_file_q).save(h_img)
-                        h_dur = get_audio_duration(h_aud)
-                        h_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                        create_clip_ffmpeg(h_img, h_aud, h_dur, h_clip)
-                        clip_files.append(h_clip)
-                        clip_counter += 1
+                        a_h = AudioFileClip(h_aud).volumex(1.3)
+                        clips.append(ImageClip(h_img).set_duration(a_h.duration).set_audio(a_h))
                         
                         for idx, q in enumerate(st.session_state['q_data']):
                             q_speech_txt = clean_text_for_tts(f"Question {idx+1}. {q['question']}")
                             q_speech_aud = os.path.join(tmpdir, f"q_{idx}_speech.mp3")
                             q_speech_img = os.path.join(tmpdir, f"q_{idx}_speech.png")
-                            run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code, volume="+30%").save(q_speech_aud))
-                            draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 3, bg_file_q, theme_visual_q).save(q_speech_img)
-                            dur = get_audio_duration(q_speech_aud)
-                            out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(q_speech_img, q_speech_aud, dur, out_clip)
-                            clip_files.append(out_clip)
-                            clip_counter += 1
                             
-                            for sec in range(3, 0, -1):
+                            run_async(edge_tts.Communicate(q_speech_txt, voice_fr_code).save(q_speech_aud))
+                            draw_quizz_progressive_frame(q['question'], q['options'], -1, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(q_speech_img)
+                            a_q_speech = AudioFileClip(q_speech_aud).volumex(1.3)
+                            clips.append(ImageClip(q_speech_img).set_duration(a_q_speech.duration).set_audio(a_q_speech))
+                            
+                            for opt_idx in range(4):
+                                opt_txt = clean_text_for_tts(f"Option {chr(65+opt_idx)}. {q['options'][opt_idx]}")
+                                opt_aud = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.mp3")
+                                opt_img = os.path.join(tmpdir, f"q_{idx}_opt_{opt_idx}.png")
+                                
+                                run_async(edge_tts.Communicate(opt_txt, voice_fr_code).save(opt_aud))
+                                draw_quizz_progressive_frame(q['question'], q['options'], opt_idx, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "question", 5, bg_file_q, theme_visual_q).save(opt_img)
+                                a_opt = AudioFileClip(opt_aud).volumex(1.3)
+                                clips.append(ImageClip(opt_img).set_duration(a_opt.duration).set_audio(a_opt))
+                                
+                            sfx_tictac_clip = AudioFileClip(tictac_sfx)
+                            for sec in range(5, 0, -1):
                                 t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
                                 draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "chrono", sec, bg_file_q, theme_visual_q).save(t_img)
-                                out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                                create_clip_ffmpeg(t_img, tictac_sfx, 1.0, out_clip)
-                                clip_files.append(out_clip)
-                                clip_counter += 1
+                                clips.append(ImageClip(t_img).set_duration(1).set_audio(sfx_tictac_clip))
                                 
                             m_q_txt = motiv_q_list[idx % len(motiv_q_list)] if motiv_q_list else "Bravo !"
-                            r_txt = clean_text_for_tts(f"La bonne réponse est {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
+                            r_txt = clean_text_for_tts(f"La bonne réponse est l'option {q['reponse_correcte']}. {q['explication']}. {m_q_txt}")
                             r_aud = os.path.join(tmpdir, f"r_{idx}.mp3")
                             r_img = os.path.join(tmpdir, f"r_{idx}.png")
-                            run_async(edge_tts.Communicate(r_txt, voice_fr_code, volume="+30%").save(r_aud))
+                            
+                            run_async(edge_tts.Communicate(r_txt, voice_fr_code).save(r_aud))
                             draw_quizz_progressive_frame(q['question'], q['options'], 3, q['reponse_correcte'], q['explication'], idx+1, total_q, channel_q_tag, "reponse", 0, bg_file_q, theme_visual_q).save(r_img)
                             
-                            r_dur = get_audio_duration(r_aud)
-                            out_clip_r = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(r_img, r_aud, r_dur, out_clip_r)
-                            clip_files.append(out_clip_r)
-                            clip_counter += 1
+                            a_r = AudioFileClip(r_aud).volumex(1.3)
+                            sfx_ding_clip = AudioFileClip(ding_sfx)
+                            combined_audio = CompositeAudioClip([a_r, sfx_ding_clip])
+                            clips.append(ImageClip(r_img).set_duration(a_r.duration).set_audio(combined_audio))
                             
+                        # Outro
                         c_aud = os.path.join(tmpdir, "c.mp3")
                         c_img = os.path.join(tmpdir, "c.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_q_custom), voice_fr_code, volume="+30%").save(c_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_q_custom), voice_fr_code).save(c_aud))
                         draw_hook_frame(outro_q_custom, theme_visual_q, channel_q_tag, bg_file_q).save(c_img)
-                        c_dur = get_audio_duration(c_aud)
-                        out_clip_c = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                        create_clip_ffmpeg(c_img, c_aud, c_dur, out_clip_c)
-                        clip_files.append(out_clip_c)
+                        a_c = AudioFileClip(c_aud).volumex(1.3)
+                        clips.append(ImageClip(c_img).set_duration(a_c.duration).set_audio(a_c))
                         
+                        final_v = concatenate_videoclips(clips, method="compose")
                         out_mp4 = os.path.join(tmpdir, "quizz_final.mp4")
-                        concatenate_clips_ffmpeg(clip_files, out_mp4, tmpdir)
+                        final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger MP4 Quizz", data=f.read(), file_name="quizz_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo générée avec succès !")
+                            st.download_button("📥 Télécharger le MP4 Quizz", data=f.read(), file_name="quizz_viral_pro.mp4", mime="video/mp4")
+                        st.success("✅ Vidéo Quizz générée avec succès !")
                 except Exception as e:
-                    st.error(f"Erreur : {e}")
+                    st.error(f"Erreur de génération : {e}")
 
 # ==================== MODULE 2 : LANGUES ====================
 with tab2:
     st.header("2. Générateur Vocabulaire Pro")
-    hook_l_input = st.text_input("Accroche (Hook)", "Tu prononces mal ces 5 mots !", key="hl")
-    channel_l_tag = st.text_input("Signature (Nom Chaîne)", "@LingoPulse_Daily", key="tag_l")
+    hook_l_input = st.text_input("Accroche (Hook)", "Tu prononces mal ces 5 mots ! Vérifions ensemble.", key="hl")
+    channel_l_tag = st.text_input("Signature / Nom de Chaîne Vocabulaire", "@LingoPulse_Daily", key="tag_l")
     
     col1, col2 = st.columns(2)
-    with col1: langue_c = st.selectbox("Langue cible", ["Anglais", "Espagnol", "Arabe", "Allemand", "Italien"], key="lc")
-    with col2: voice_t_code = VOICES_MAP[langue_c][st.selectbox("Voix Traduction", list(VOICES_MAP[langue_c].keys()), key="vt")]
+    with col1:
+        langue_c = st.selectbox("Langue cible", ["Anglais", "Espagnol", "Arabe", "Allemand", "Italien"], key="lc")
+    with col2:
+        voice_t_code = VOICES_MAP[langue_c][st.selectbox("Voix Traduction", list(VOICES_MAP[langue_c].keys()), key="vt")]
         
     theme_visual_l = st.selectbox("Palette de Couleurs", list(THEMES.keys()), key="th_l")
     bg_file_l = st.file_uploader("Fond 9:16 (Optionnel)", type=["png", "jpg", "jpeg"], key="bg_l")
     
-    motiv_custom = st.text_input("Mots motivation (séparés par virgule)", "Bravo !, Super !", key="ml")
+    motiv_custom = st.text_input("Mots de motivation (séparés par une virgule)", "Bravo !, Excellent !, Continue comme ça !, Super !", key="ml")
     motiv_list = [m.strip() for m in motiv_custom.split(",") if m.strip()]
-    outro_custom = st.text_input("Outro / CTA Final", "Abonne-toi !", key="ol")
+    outro_custom = st.text_input("Phrase d'Outro / CTA Final", "Enregistre cette vidéo et abonne-toi pour progresser !", key="ol")
     
     mode_l = st.radio("Mode Vocabulaire", ["IA Gemini", "Saisie Manuelle"], key="mode_l")
     
     if mode_l == "IA Gemini":
         theme_l = st.text_input("Thème", "Voyage", key="t_l")
-        nb_m = st.slider("Mots", 3, 5, 3)
-        if st.button("✨ Générer les mots"):
-            if not api_key: st.error("Clé API !")
+        nb_m = st.slider("Nombre de mots", 3, 6, 5)
+        if st.button("✨ Générer les mots par IA"):
+            if not api_key:
+                st.error("Clé API requise !")
             else:
-                with st.spinner("Génération..."):
+                with st.spinner("Génération des mots..."):
                     try:
                         prompt = f"Génère {nb_m} mots avec traduction en {langue_c}. JSON strict: [{{'fr': 'Bonjour', 'trad': 'Hello'}}, ...]"
                         res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
                         st.session_state['l_data'] = parse_json_response(res.text)
-                        st.success("Généré !")
-                    except Exception as e: st.error(f"Erreur : {e}")
+                        st.success(f"{len(st.session_state['l_data'])} mots générés !")
+                    except Exception as e:
+                        st.error(f"Erreur IA : {e}")
     else:
-        num_m = st.number_input("Mots à saisir", 1, 5, 3)
+        num_m = st.number_input("Nombre de mots à saisir", 1, 6, 5)
         c_m = []
         for i in range(int(num_m)):
             ca, cb = st.columns(2)
-            with ca: c_m.append({"fr": st.text_input(f"FR #{i+1}", key=f"fr_{i}"), "trad": st.text_input(f"Trad #{i+1}", key=f"tr_{i}")})
-        if st.button("💾 Valider"): st.session_state['l_data'] = c_m
+            with ca:
+                fr_t = st.text_input(f"Français #{i+1}", key=f"fr_{i}")
+            with cb:
+                tr_t = st.text_input(f"Traduction #{i+1}", key=f"tr_{i}")
+            c_m.append({"fr": fr_t, "trad": tr_t})
+        if st.button("💾 Valider les mots"):
+            st.session_state['l_data'] = c_m
+            st.success("Mots enregistrés !")
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
-        if st.button("🎬 Générer Vidéo Vocabulaire"):
-            with st.spinner("Montage sécurisé avec grande typographie..."):
+        if st.button("🎬 Générer le MP4 Vocabulaire"):
+            with st.spinner("Montage de la séquence avec effets sonores..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
-                        clip_files = []
+                        w_clips = []
                         mots_l = st.session_state['l_data']
-                        clip_counter = 0
                         
                         in_aud = os.path.join(tmpdir, "in.mp3")
                         in_img = os.path.join(tmpdir, "in.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural", volume="+30%").save(in_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(hook_l_input), "fr-FR-HenriNeural").save(in_aud))
                         draw_hook_frame(hook_l_input, theme_visual_l, channel_l_tag, bg_file_l).save(in_img)
-                        dur = get_audio_duration(in_aud)
-                        out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                        create_clip_ffmpeg(in_img, in_aud, dur, out_clip)
-                        clip_files.append(out_clip)
-                        clip_counter += 1
+                        a_in = AudioFileClip(in_aud).volumex(1.3)
+                        w_clips.append(ImageClip(in_img).set_duration(a_in.duration).set_audio(a_in))
+                        
+                        sfx_tictac_clip = AudioFileClip(tictac_sfx)
+                        sfx_ding_clip = AudioFileClip(ding_sfx)
                         
                         for idx, item in enumerate(mots_l):
                             t_fr = clean_text_for_tts(item['fr'])
@@ -520,56 +473,43 @@ with tab2:
                             p_tr = os.path.join(tmpdir, f"tr_{idx}.mp3")
                             p_mo = os.path.join(tmpdir, f"mo_{idx}.mp3")
                             
-                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural", volume="+30%").save(p_fr))
-                            run_async(edge_tts.Communicate(t_tr, voice_t_code, volume="+30%").save(p_tr))
-                            run_async(edge_tts.Communicate(m_txt, "fr-FR-HenriNeural", volume="+30%").save(p_mo))
+                            run_async(edge_tts.Communicate(t_fr, "fr-FR-HenriNeural").save(p_fr))
+                            run_async(edge_tts.Communicate(t_tr, voice_t_code).save(p_tr))
+                            run_async(edge_tts.Communicate(m_txt, "fr-FR-HenriNeural").save(p_mo))
+                            
+                            a_fr, a_tr, a_mo = AudioFileClip(p_fr).volumex(1.3), AudioFileClip(p_tr).volumex(1.3), AudioFileClip(p_mo).volumex(1.3)
                             
                             img_s1 = os.path.join(tmpdir, f"s1_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "mot", 0, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s1)
-                            dur = get_audio_duration(p_fr)
-                            out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(img_s1, p_fr, dur, out_clip)
-                            clip_files.append(out_clip)
-                            clip_counter += 1
+                            w_clips.append(ImageClip(img_s1).set_duration(a_fr.duration).set_audio(a_fr))
                             
-                            for sec in range(2, 0, -1):
+                            for sec in range(3, 0, -1):
                                 img_sc = os.path.join(tmpdir, f"sc_{idx}_{sec}.png")
                                 draw_language_page_frame(mots_l, idx, "chrono", sec, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_sc)
-                                out_clip = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                                create_clip_ffmpeg(img_sc, tictac_sfx, 1.0, out_clip)
-                                clip_files.append(out_clip)
-                                clip_counter += 1
+                                w_clips.append(ImageClip(img_sc).set_duration(1).set_audio(sfx_tictac_clip))
                                 
                             img_s3 = os.path.join(tmpdir, f"s3_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "traduction", 0, "", langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s3)
-                            tr_dur = get_audio_duration(p_tr)
-                            out_clip_tr = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(img_s3, p_tr, tr_dur, out_clip_tr)
-                            clip_files.append(out_clip_tr)
-                            clip_counter += 1
+                            combined_tr_audio = CompositeAudioClip([a_tr, sfx_ding_clip])
+                            w_clips.append(ImageClip(img_s3).set_duration(a_tr.duration).set_audio(combined_tr_audio))
                             
                             img_s4 = os.path.join(tmpdir, f"s4_{idx}.png")
                             draw_language_page_frame(mots_l, idx, "motivation", 0, m_txt, langue_c, channel_l_tag, theme_visual_l, bg_file_l).save(img_s4)
-                            mo_dur = get_audio_duration(p_mo)
-                            out_clip_mo = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                            create_clip_ffmpeg(img_s4, p_mo, mo_dur, out_clip_mo)
-                            clip_files.append(out_clip_mo)
-                            clip_counter += 1
+                            w_clips.append(ImageClip(img_s4).set_duration(a_mo.duration).set_audio(a_mo))
                             
                         out_aud = os.path.join(tmpdir, "out.mp3")
                         out_img = os.path.join(tmpdir, "out.png")
-                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_custom), "fr-FR-HenriNeural", volume="+30%").save(out_aud))
+                        run_async(edge_tts.Communicate(clean_text_for_tts(outro_custom), "fr-FR-HenriNeural").save(out_aud))
                         draw_hook_frame(outro_custom, theme_visual_l, channel_l_tag, bg_file_l).save(out_img)
-                        out_dur = get_audio_duration(out_aud)
-                        out_clip_o = os.path.join(tmpdir, f"clip_{clip_counter}.mp4")
-                        create_clip_ffmpeg(out_img, out_aud, out_dur, out_clip_o)
-                        clip_files.append(out_clip_o)
+                        a_out = AudioFileClip(out_aud).volumex(1.3)
+                        w_clips.append(ImageClip(out_img).set_duration(a_out.duration).set_audio(a_out))
                         
+                        final_v = concatenate_videoclips(w_clips, method="compose")
                         out_mp4 = os.path.join(tmpdir, "vocabulaire_final.mp4")
-                        concatenate_clips_ffmpeg(clip_files, out_mp4, tmpdir)
+                        final_v.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
                         
                         with open(out_mp4, "rb") as f:
-                            st.download_button("📥 Télécharger MP4 Vocabulaire", data=f.read(), file_name="vocabulaire_viral.mp4", mime="video/mp4")
-                        st.success("✅ Vidéo générée avec succès !")
+                            st.download_button("📥 Télécharger le MP4 Vocabulaire", data=f.read(), file_name="vocabulaire_viral_pro.mp4", mime="video/mp4")
+                        st.success("✅ Vidéo Vocabulaire générée avec succès !")
                 except Exception as e:
-                    st.error(f"Erreur : {e}")
+                    st.error(f"Erreur de génération : {e}")
