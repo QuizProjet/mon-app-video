@@ -298,7 +298,7 @@ def draw_hook_frame(text, theme_name, channel_tag, bg_file=None):
     return img
 
 # ============================================================
-# APPLICATION STREAMLIT
+# APPLICATION STREAMLIT ET MODEL GEMINI CORRIGE
 # ============================================================
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
@@ -308,7 +308,17 @@ voice_rate = st.sidebar.slider("⚡ Vitesse de la Voix Off", 0, 30, 15, help="15
 tts_rate_str = f"+{voice_rate}%"
 
 def get_working_model():
-    return "gemini-1.5-flash"
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-1.5-flash' in m.name or 'gemini-2.0-flash' in m.name:
+                    return m.name
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                return m.name
+    except Exception:
+        pass
+    return "models/gemini-1.5-flash"
 
 def parse_json_response(text):
     match = re.search(r"\[.*\]|\{.*\}", text, re.DOTALL)
@@ -338,10 +348,14 @@ with tab1:
                 st.error("Clé API Gemini requise !")
             else:
                 with st.spinner("Génération..."):
-                    prompt = f"Génère {nb_q} questions de quiz sur '{th_q}'. Format JSON strict: [{{'question':'...', 'options':['A','B','C','D'], 'reponse_correcte':'A', 'explication':'...'}}]"
-                    res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
-                    st.session_state['q_data'] = parse_json_response(res.text)
-                    st.success("Questions prêtes !")
+                    try:
+                        prompt = f"Génère {nb_q} questions de quiz sur '{th_q}'. Format JSON strict: [{{'question':'...', 'options':['A','B','C','D'], 'reponse_correcte':'A', 'explication':'...'}}]"
+                        model_name = get_working_model()
+                        res = genai.GenerativeModel(model_name).generate_content(prompt)
+                        st.session_state['q_data'] = parse_json_response(res.text)
+                        st.success("Questions prêtes !")
+                    except Exception as e:
+                        st.error(f"Erreur Gemini : {e}")
     else:
         q_list = []
         for i in range(3):
@@ -440,10 +454,14 @@ with tab2:
                 st.error("Clé API Gemini requise !")
             else:
                 with st.spinner("Génération..."):
-                    prompt = f"Génère {nb_v} mots avec leur traduction en {langue_v}. Format JSON strict: [{{'fr':'Bonjour', 'trad':'Hello'}}]"
-                    res = genai.GenerativeModel(get_working_model()).generate_content(prompt)
-                    st.session_state['v_data'] = parse_json_response(res.text)
-                    st.success("Mots prêts !")
+                    try:
+                        prompt = f"Génère {nb_v} mots avec leur traduction en {langue_v}. Format JSON strict: [{{'fr':'Bonjour', 'trad':'Hello'}}]"
+                        model_name = get_working_model()
+                        res = genai.GenerativeModel(model_name).generate_content(prompt)
+                        st.session_state['v_data'] = parse_json_response(res.text)
+                        st.success("Mots prêts !")
+                    except Exception as e:
+                        st.error(f"Erreur Gemini : {e}")
     else:
         v_list = []
         for i in range(3):
