@@ -16,25 +16,16 @@ from PIL import Image, ImageDraw, ImageFont
 st.set_page_config(page_title="Studio TikTok & Shorts Pro", layout="wide")
 st.title("🚀 Studio TikTok & Shorts Pro (.MP4)")
 
-# --- CHARGEMENT ROBUSTE DE POLICE LARGE ---
+# --- CHARGEMENT DIRECT DE ROBOTO BOLD DEPUIS GITHUB ---
 def get_font(size):
-    # Chemins des polices standards pré-installées sur les serveurs Linux (Streamlit Cloud)
-    system_fonts = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    ]
-    for font_path in system_fonts:
-        if os.path.exists(font_path):
-            try:
-                return ImageFont.truetype(font_path, size)
-            except Exception:
-                pass
-    # Secours si aucune n'est disponible
-    try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
-    except Exception:
-        return ImageFont.load_default()
+    font_filename = "Roboto-Bold.ttf"
+    if os.path.exists(font_filename):
+        try:
+            return ImageFont.truetype(font_filename, size)
+        except Exception:
+            pass
+    # Secours si le fichier n'est pas encore téléversé
+    return ImageFont.load_default()
 
 # --- BRUITAGES SFX ---
 def ensure_sfx_files(tmpdir):
@@ -217,7 +208,6 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
         draw.text((qx, y_q), line, fill="white", font=f_q)
         y_q += 75
         
-    # CALCUL EXACT DE L'INDEX CORRECT (A=0, B=1, C=2, D=3)
     rep_clean = str(reponse_correcte).strip().upper()
     correct_idx = -1
     if rep_clean.startswith('A') or rep_clean == 'OPTION A': correct_idx = 0
