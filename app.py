@@ -67,18 +67,24 @@ def concatenate_clips_ffmpeg(clip_paths, output_path, tmpdir):
     cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_path]
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
-# --- POLICES & TEXTE ---
+# --- POLICES HD ET GRANDES TAILLES GARANTIES ---
 def get_font(size):
     font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
         "arial.ttf"
     ]
     for path in font_paths:
         if os.path.exists(path):
-            try: return ImageFont.truetype(path, size)
-            except Exception: pass
-    return ImageFont.load_default()
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+    try:
+        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+    except Exception:
+        return ImageFont.load_default()
 
 def remove_unsupported_emojis(text):
     emoji_map = {"🧠": "", "💡": "", "🔥": "", "⏱️": "", "⏳": "", "💬": "", "📌": "", "✨": ""}
@@ -91,21 +97,29 @@ def wrap_text(text, font, max_width):
     lines, current_line = [], []
     for word in words:
         test_line = ' '.join(current_line + [word])
-        try: w = font.getbbox(test_line)[2] - font.getbbox(test_line)[0]
-        except AttributeError: w = font.getsize(test_line)[0]
-        if w <= max_width: current_line.append(word)
+        try:
+            bbox = font.getbbox(test_line)
+            w = bbox[2] - bbox[0]
+        except AttributeError:
+            w = font.getsize(test_line)[0]
+        if w <= max_width:
+            current_line.append(word)
         else:
-            if current_line: lines.append(' '.join(current_line))
+            if current_line:
+                lines.append(' '.join(current_line))
             current_line = [word]
-    if current_line: lines.append(' '.join(current_line))
+    if current_line:
+        lines.append(' '.join(current_line))
     return lines
 
 def run_async(coro):
-    try: loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    if loop.is_running(): return asyncio.new_event_loop().run_until_complete(coro)
+    if loop.is_running():
+        return asyncio.new_event_loop().run_until_complete(coro)
     return loop.run_until_complete(coro)
 
 def clean_text_for_tts(text):
@@ -114,7 +128,8 @@ def clean_text_for_tts(text):
 
 def parse_json_response(text):
     match = re.search(r'\[.*\]|\{.*\}', text, re.DOTALL)
-    if match: return json.loads(match.group(0))
+    if match:
+        return json.loads(match.group(0))
     return json.loads(text)
 
 def get_working_model():
@@ -123,7 +138,8 @@ def get_working_model():
             if 'generateContent' in m.supported_generation_methods and ('gemini-3.6-flash' in m.name or 'gemini-3' in m.name):
                 return m.name
         return 'models/gemini-3.6-flash'
-    except Exception: return 'models/gemini-3.6-flash'
+    except Exception:
+        return 'models/gemini-3.6-flash'
 
 THEMES = {
     "Bleu Nuit & Or (YouTube Shorts)": {"bg": (15, 23, 42), "card": (30, 41, 59), "accent": (250, 204, 21)},
@@ -132,48 +148,73 @@ THEMES = {
     "Émeraude Deep & Mint": {"bg": (6, 28, 20), "card": (15, 52, 38), "accent": (52, 211, 153)}
 }
 
+# --- RENDU DE L'ACCROCHE (HOOK) ---
 def draw_hook_frame(hook_text, theme_name, channel_tag, bg_file=None):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(56)
+    font_title = get_font(64)
     clean_hook = remove_unsupported_emojis(hook_text)
-    lines = wrap_text(clean_hook, font_title, 850)
+    lines = wrap_text(clean_hook, font_title, 880)
     
-    total_height = len(lines) * 75
+    total_height = len(lines) * 85
     y = (height - total_height) // 2
     for line in lines:
-        try: w = font_title.getbbox(line)[2] - font_title.getbbox(line)[0]
-        except AttributeError: w = font_title.getsize(line)[0]
+        try:
+            bbox = font_title.getbbox(line)
+            w = bbox[2] - bbox[0]
+        except AttributeError:
+            w = font_title.getsize(line)[0]
         x = (width - w) // 2
-        draw.text((x + 3, y + 3), line, fill=(0, 0, 0), font=font_title)
+        draw.text((x + 4, y + 4), line, fill=(0, 0, 0), font=font_title)
         draw.text((x, y), line, fill=colors["accent"], font=font_title)
-        y += 75
+        y += 85
         
-    draw.text((width//2 - 140, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
+    font_tag = get_font(40)
+    try:
+        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
+    except AttributeError:
+        t_w = font_tag.getsize(channel_tag)[0]
+    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
     return img
 
+# --- RENDU DU QUIZZ GRAND ET CENTRÉ ---
 def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_correcte, explication, q_num, total_q, channel_tag, phase="question", timer_sec=3, bg_file=None, theme_name="Bleu Nuit & Or (YouTube Shorts)"):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
     
-    f_head, f_q, f_opt = get_font(42), get_font(44), get_font(36)
+    f_head = get_font(52)
+    f_q = get_font(48)
+    f_opt = get_font(42)
+    f_exp = get_font(36)
     
-    header_text = f"QUIZ CULTURE GENERALE {q_num} sur {total_q}"
-    draw.text((93, 133), header_text, fill=(0, 0, 0), font=f_head)
-    draw.text((90, 130), header_text, fill=colors["accent"], font=f_head)
+    # Header Centré
+    header_text = f"QUIZ CULTURE GÉNÉRALE {q_num} sur {total_q}"
+    try:
+        h_w = f_head.getbbox(header_text)[2] - f_head.getbbox(header_text)[0]
+    except AttributeError:
+        h_w = f_head.getsize(header_text)[0]
+    h_x = (width - h_w) // 2
+    draw.text((h_x + 3, 133), header_text, fill=(0, 0, 0), font=f_head)
+    draw.text((h_x, 130), header_text, fill=colors["accent"], font=f_head)
     
+    # Question Centrée
     clean_q = remove_unsupported_emojis(question)
-    q_lines = wrap_text(f"Q: {clean_q}", f_q, 900)
-    y_q = 250
+    q_lines = wrap_text(f"Q: {clean_q}", f_q, 920)
+    y_q = 240
     for line in q_lines:
-        draw.text((93, y_q + 3), line, fill=(0, 0, 0), font=f_q)
-        draw.text((90, y_q), line, fill="white", font=f_q)
-        y_q += 55
+        try:
+            qw = f_q.getbbox(line)[2] - f_q.getbbox(line)[0]
+        except AttributeError:
+            qw = f_q.getsize(line)[0]
+        qx = (width - qw) // 2
+        draw.text((qx + 3, y_q + 3), line, fill=(0, 0, 0), font=f_q)
+        draw.text((qx, y_q), line, fill="white", font=f_q)
+        y_q += 65
         
     rep_clean = str(reponse_correcte).strip().upper()
     correct_idx = -1
@@ -187,73 +228,101 @@ def draw_quizz_progressive_frame(question, options, max_opt_visible, reponse_cor
                 correct_idx = idx_o
                 break
 
-    y_opt = max(550, y_q + 30)
+    y_opt = max(580, y_q + 40)
     for i, opt in enumerate(options):
         if i <= max_opt_visible or max_opt_visible == -1:
             is_correct = (phase == "reponse" and i == correct_idx)
             fill_col = (34, 197, 94) if is_correct else colors["card"]
             out_col = (250, 204, 21) if is_correct else (255, 255, 255)
-            draw.rounded_rectangle([(90, y_opt), (990, y_opt + 125)], radius=20, fill=fill_col, outline=out_col, width=3)
+            
+            # Boutons imposants et bien dessinés
+            draw.rounded_rectangle([(70, y_opt), (1010, y_opt + 140)], radius=25, fill=fill_col, outline=out_col, width=4)
             clean_opt = remove_unsupported_emojis(opt)
-            opt_lines = wrap_text(f"{chr(65+i)}) {clean_opt}", f_opt, 850)
-            draw.text((120, y_opt + 38), opt_lines[0], fill="white", font=f_opt)
-        y_opt += 155
+            opt_text = f"{chr(65+i)}) {clean_opt}"
+            draw.text((110, y_opt + 42), opt_text, fill="white", font=f_opt)
+        y_opt += 175
         
     if phase == "chrono":
-        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 110)], radius=40, fill=(15, 23, 42), outline=colors["accent"], width=3)
-        draw.text((410, y_opt + 45), f"00:0{timer_sec}", fill="white", font=f_head)
+        draw.rounded_rectangle([(360, y_opt + 20), (720, y_opt + 120)], radius=40, fill=(15, 23, 42), outline=colors["accent"], width=4)
+        draw.text((430, y_opt + 42), f"00:0{timer_sec}", fill="white", font=f_head)
     elif phase == "reponse":
-        draw.rounded_rectangle([(80, y_opt + 20), (1000, y_opt + 210)], radius=18, fill=(15, 23, 42), outline=(34, 197, 94), width=3)
+        draw.rounded_rectangle([(60, y_opt + 20), (1020, y_opt + 230)], radius=22, fill=(15, 23, 42), outline=(34, 197, 94), width=4)
         clean_exp = remove_unsupported_emojis(explication)
-        exp_lines = wrap_text(f"Explication : {clean_exp}", get_font(32), 880)
+        exp_lines = wrap_text(f"Explication : {clean_exp}", f_exp, 900)
         y_exp = y_opt + 45
         for line in exp_lines[:3]:
-            draw.text((105, y_exp), line, fill="white", font=get_font(32))
-            y_exp += 42
+            draw.text((90, y_exp), line, fill="white", font=f_exp)
+            y_exp += 48
             
-    draw.text((width//2 - 140, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
+    # Signature
+    font_tag = get_font(40)
+    try:
+        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
+    except AttributeError:
+        t_w = font_tag.getsize(channel_tag)[0]
+    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
     return img
 
+# --- RENDU DU VOCABULAIRE GRAND ET CENTRÉ ---
 def draw_language_page_frame(mots, current_idx, phase_item, timer_sec, motiv_txt, langue, channel_tag, theme_name, bg_file=None):
     width, height = 1080, 1920
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or (YouTube Shorts)"])
     img = Image.open(bg_file).convert('RGB').resize((width, height)) if bg_file else Image.new('RGB', (width, height), color=colors["bg"])
     draw = ImageDraw.Draw(img)
-    f_title, f_text, f_sub = get_font(42), get_font(36), get_font(30)
     
-    draw.text((93, 123), f"VOCABULAIRE EN {langue.upper()}", fill=(0, 0, 0), font=f_title)
-    draw.text((90, 120), f"VOCABULAIRE EN {langue.upper()}", fill=colors["accent"], font=f_title)
+    f_title = get_font(50)
+    f_text = get_font(42)
+    f_sub = get_font(36)
+    
+    title_text = f"VOCABULAIRE EN {langue.upper()}"
+    try:
+        tw = f_title.getbbox(title_text)[2] - f_title.getbbox(title_text)[0]
+    except AttributeError:
+        tw = f_title.getsize(title_text)[0]
+    tx = (width - tw) // 2
+    draw.text((tx + 3, 123), title_text, fill=(0, 0, 0), font=f_title)
+    draw.text((tx, 120), title_text, fill=colors["accent"], font=f_title)
     
     y = 250
     for idx, item in enumerate(mots):
         clean_fr = remove_unsupported_emojis(item['fr'])
         clean_tr = remove_unsupported_emojis(item['trad'])
         if idx < current_idx:
-            draw.rounded_rectangle([(80, y), (1000, y + 150)], radius=18, fill=colors["card"], outline=(255, 255, 255), width=2)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=colors["card"], outline=(255, 255, 255), width=2)
             draw.text((110, y + 25), f"FR: {clean_fr}", fill="white", font=f_text)
-            draw.text((110, y + 85), f"TRAD: {clean_tr}", fill=(34, 197, 94), font=f_text)
+            draw.text((110, y + 90), f"TRAD: {clean_tr}", fill=(34, 197, 94), font=f_text)
         elif idx == current_idx:
-            draw.rounded_rectangle([(80, y), (1000, y + 150)], radius=18, fill=colors["card"], outline=colors["accent"], width=3)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=colors["card"], outline=colors["accent"], width=4)
             draw.text((110, y + 25), f"FR: {clean_fr}", fill=colors["accent"], font=f_text)
             if phase_item in ["traduction", "motivation"]:
-                draw.text((110, y + 85), f"TRAD: {clean_tr}", fill="white", font=f_text)
+                draw.text((110, y + 90), f"TRAD: {clean_tr}", fill="white", font=f_text)
             elif phase_item == "chrono":
-                draw.rounded_rectangle([(750, y + 35), (960, y + 115)], radius=20, fill=(15, 23, 42), outline=colors["accent"], width=2)
-                draw.text((780, y + 50), f"00:0{timer_sec}", fill="white", font=f_sub)
+                draw.rounded_rectangle([(740, y + 35), (970, y + 125)], radius=20, fill=(15, 23, 42), outline=colors["accent"], width=3)
+                draw.text((770, y + 52), f"00:0{timer_sec}", fill="white", font=f_sub)
         else:
-            draw.rounded_rectangle([(80, y), (1000, y + 150)], radius=18, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
+            draw.rounded_rectangle([(70, y), (1010, y + 160)], radius=22, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
             draw.text((110, y + 55), f"Mot #{idx+1}", fill=(100, 116, 139), font=f_sub)
-        y += 180
+        y += 195
         
     if phase_item == "motivation" and motiv_txt:
         clean_m = remove_unsupported_emojis(motiv_txt)
-        draw.rounded_rectangle([(150, y + 20), (930, y + 140)], radius=18, fill=(34, 197, 94))
-        draw.text((190, y + 45), f"{clean_m}", fill="white", font=f_title)
+        draw.rounded_rectangle([(120, y + 20), (960, y + 150)], radius=22, fill=(34, 197, 94))
+        try:
+            mw = f_title.getbbox(clean_m)[2] - f_title.getbbox(clean_m)[0]
+        except AttributeError:
+            mw = f_title.getsize(clean_m)[0]
+        mx = (width - mw) // 2
+        draw.text((mx, y + 48), clean_m, fill="white", font=f_title)
         
-    draw.text((width//2 - 140, 1800), channel_tag, fill=(200, 200, 200), font=get_font(36))
+    font_tag = get_font(40)
+    try:
+        t_w = font_tag.getbbox(channel_tag)[2] - font_tag.getbbox(channel_tag)[0]
+    except AttributeError:
+        t_w = font_tag.getsize(channel_tag)[0]
+    draw.text(((width - t_w)//2, 1800), channel_tag, fill=(200, 200, 200), font=font_tag)
     return img
 
-# --- INTERFACE ---
+# --- INTERFACE STREAMLIT ---
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key: genai.configure(api_key=api_key)
 
@@ -313,7 +382,7 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer Vidéo Quizz"):
-            with st.spinner("Montage sécurisé..."):
+            with st.spinner("Montage sécurisé avec grande typographie..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
@@ -424,7 +493,7 @@ with tab2:
 
     if 'l_data' in st.session_state and st.session_state['l_data']:
         if st.button("🎬 Générer Vidéo Vocabulaire"):
-            with st.spinner("Montage sécurisé..."):
+            with st.spinner("Montage sécurisé avec grande typographie..."):
                 try:
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tictac_sfx, ding_sfx = ensure_sfx_files(tmpdir)
