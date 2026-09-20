@@ -298,7 +298,7 @@ def draw_hook_frame(text, theme_name, channel_tag, bg_file=None):
     return img
 
 # ============================================================
-# APPLICATION STREAMLIT ET MODEL GEMINI CORRIGE
+# APPLICATION STREAMLIT ET MODEL GEMINI DYNAMIQUE
 # ============================================================
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
@@ -309,16 +309,18 @@ tts_rate_str = f"+{voice_rate}%"
 
 def get_working_model():
     try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini-1.5-flash' in m.name or 'gemini-2.0-flash' in m.name:
-                    return m.name
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                return m.name
+        available_models = [
+            m.name for m in genai.list_models()
+            if 'generateContent' in m.supported_generation_methods
+        ]
+        for name in available_models:
+            if 'gemini-3' in name.lower() or 'flash' in name.lower():
+                return name
+        if available_models:
+            return available_models[0]
     except Exception:
         pass
-    return "models/gemini-1.5-flash"
+    return "models/gemini-3.6-flash"
 
 def parse_json_response(text):
     match = re.search(r"\[.*\]|\{.*\}", text, re.DOTALL)
