@@ -19,7 +19,7 @@ import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
-# QUIZVIDEO PRO — V4.2 DYNAMIC SHORTS ENGINE
+# QUIZVIDEO PRO — V4 DYNAMIC SHORTS ENGINE
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 st.title("🎬 QuizVideo Pro")
@@ -144,6 +144,7 @@ def fit_background(uploaded_file):
         return None
 
 def make_base(theme_name, bg_file=None):
+    """Fond vidéo moderne mis en cache pour garder le rendu rapide."""
     theme = THEMES[theme_name]
     if isinstance(bg_file, Image.Image):
         bg = bg_file
@@ -215,6 +216,7 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     color = theme["accent"] if timer == 3 else ((249,115,22) if timer == 2 else theme["danger"])
     cx, cy, r = 935, 825, 70
     draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=theme["bg"], outline=(65,70,85), width=7)
+    # ring remaining
     box=(cx-r+5,cy-r+5,cx+r-5,cy+r-5)
     draw.arc(box, -90, -90 + int(360*clamp(fraction)), fill=color, width=10)
     if pulse > 0:
@@ -250,6 +252,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
         correct=(correct_idx is not None and i==correct_idx)
         dim=(correct_idx is not None and not correct)
         if correct:
+            # animated green reveal
             rp=ease_back(reveal_progress)
             fill=theme["success"]
             outline=(255,255,255)
@@ -297,6 +300,7 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     p=ease_back(progress)
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.2*p)
     draw=ImageDraw.Draw(img)
+    # subtle focus circle
     r=int(210*p)
     draw.ellipse((540-r,430-r,540+r,430+r),outline=(*theme["accent"],),width=4)
     badge_w=500; bx=(WIDTH-badge_w)//2; by=250-int(30*(1-p))
@@ -317,7 +321,9 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.3*pulse)
     draw=ImageDraw.Draw(img)
     draw_header(draw,theme,q_num,total)
+    # Answer ribbon
     rounded_text(draw,(55,175,1025,245),f"✓ {answer}",get_font(34),theme["success"],None,0,25)
+    # short question reminder
     qf=get_font(43)
     qlines=wrap_text(question,qf,900)[:2]
     y=300
@@ -325,7 +331,7 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
         tw=text_width(draw,line,qf); draw.text(((WIDTH-tw)/2,y),line,font=qf,fill=(220,225,235)); y+=58
 
     words=clean_text(explanation or "Bravo !").split()
-    f=get_font(54)
+    f=get_font(58)
     max_w=900
     lines=[]; cur=[]
     for w in words:
@@ -348,11 +354,12 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
             active=(idx==active_word)
             col=theme["accent"] if active else "white"
             if active:
-                pad=8+int(4*pulse)
-                draw.rounded_rectangle((x-pad,yy-5,x+ww+pad,yy+62),radius=14,fill=theme["card"],outline=theme["accent"],width=3)
+                pad=10+int(5*pulse)
+                draw.rounded_rectangle((x-pad,yy-7,x+ww+pad,yy+68),radius=16,fill=theme["card"],outline=theme["accent"],width=3)
             draw.text((x,yy),w,font=f,fill=col)
             x+=ww+space; idx+=1
         yy+=78
+    # small CTA hint
     draw.text((55,1450),"À retenir",font=get_font(32),fill=theme["accent"])
     draw_brand(draw,theme,channel,progress)
     return img
@@ -466,9 +473,22 @@ def save_frames(frames,tmpdir,prefix):
         p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p); out.append((p,dur))
     return out
 
+def frames_for_audio(audio_path,words,frame_fn,duration=None):
+    dur=duration or audio_duration(audio_path)
+    if not words: return [(frame_fn(-1,0.0),dur)]
+    out=[]
+    boundaries=[max(0.0,w["start"]) for w in words]
+    if boundaries[0]>0.03: out.append((frame_fn(-1,0.0),min(boundaries[0],dur)))
+    for i,start in enumerate(boundaries):
+        end=boundaries[i+1] if i+1<len(boundaries) else dur
+        if end>start: out.append((frame_fn(i,0.15),end-start))
+    return out
+
 # ------------------------ Gemini ----------------------------
 def parse_json(text):
     text = (text or "").strip().replace("```json", "").replace("```", "").strip()
+    # Gemini peut parfois ajouter une courte phrase avant/après le JSON.
+    # On récupère le premier tableau JSON complet.
     start = text.find("[")
     end = text.rfind("]")
     if start == -1 or end <= start:
@@ -476,6 +496,7 @@ def parse_json(text):
     return json.loads(text[start:end + 1])
 
 def _gemini_wait_seconds(error_text, default=5.0):
+    """Extrait 'retry in XXs' du message Gemini quand il est présent."""
     text = str(error_text or "")
     patterns = [
         r"retry in\s*([0-9]+(?:\.[0-9]+)?)s",
@@ -497,43 +518,47 @@ def _is_gemini_quota_error(error_text):
         "429", "RESOURCE_EXHAUSTED", "QUOTA EXCEEDED", "RATE LIMIT", "TOO MANY REQUESTS"
     ])
 
-def gemini_generate_text(prompt, max_retries=2):
-    now = time.time()
-    prompt_key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
-    last = st.session_state.get("_gemini_last_request")
-    if last and last.get("key") == prompt_key and now - last.get("time", 0) < 4:
-        raise RuntimeError("Une génération identique vient d'être lancée. Attends quelques secondes puis relance.")
-    last_error = None
-    for attempt in range(max_retries + 1):
-        try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            response = model.generate_content(prompt)
-            text = getattr(response, "text", None)
-            if not text: raise ValueError("Gemini a renvoyé une réponse vide.")
-            st.session_state._gemini_last_request = {"key": prompt_key, "time": time.time()}
-            return text, False
-        except Exception as e:
-            last_error = e
-            if not _is_gemini_quota_error(e) or attempt >= max_retries: break
-            wait = _gemini_wait_seconds(e, default=min(10 * (2 ** attempt), 30))
-            wait = min(60.0, wait + random.uniform(0.0, 0.8))
-            st.warning(f"⏳ Limite Gemini atteinte. Nouvelle tentative dans environ {int(round(wait))} s…")
-            time.sleep(wait)
-    if _is_gemini_quota_error(last_error):
-        raise RuntimeError("Gemini a atteint la limite de requêtes. Attends un peu avant de réessayer.") from last_error
-    raise last_error
+def gemini_generate_text(prompt):
+    """Un seul appel Gemini par clic, sans retry automatique.
 
-def get_correct_index(rep_str, options):
-    clean_rep = clean_text(rep_str).upper()
-    for i, letter in enumerate(["A", "B", "C", "D"]):
-        if clean_rep.startswith(letter):
-            return i
-    for i, opt in enumerate(options):
-        if clean_text(opt).upper() in clean_rep or clean_rep in clean_text(opt).upper():
-            return i
-    return 0
+    Les erreurs 429 sont volontairement remontées immédiatement : refaire
+    plusieurs appels automatiquement consomme le quota et peut aggraver
+    le problème. Un cooldown global de 13 s aide aussi à rester sous une
+    limite de 5 requêtes/minute.
+    """
+    now = time.time()
+    cooldown = 13.0
+    last_attempt = float(st.session_state.get("_gemini_last_attempt", 0) or 0)
+    remaining = cooldown - (now - last_attempt)
+    if remaining > 0:
+        raise RuntimeError(
+            f"Patiente encore environ {int(math.ceil(remaining))} s avant une nouvelle génération. "
+            "Une seule requête Gemini est envoyée par clic."
+        )
+
+    # Marqué AVANT l'appel : même si Gemini renvoie 429, un double-clic
+    # ou plusieurs reruns ne déclencheront pas immédiatement d'autres appels.
+    st.session_state._gemini_last_attempt = now
+
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        text = getattr(response, "text", None)
+        if not text:
+            raise ValueError("Gemini a renvoyé une réponse vide.")
+        return text, False
+    except Exception as e:
+        if _is_gemini_quota_error(e):
+            wait = _gemini_wait_seconds(e, default=13.0)
+            raise RuntimeError(
+                f"⏳ Limite Gemini atteinte. Attends environ {int(math.ceil(wait))} s puis clique une seule fois sur « Générer ». "
+                "Cette version ne fait plus de tentative automatique afin de ne pas consommer davantage ton quota."
+                + f" Détail : {e}"
+            ) from e
+        raise
 
 def parse_quiz_csv(uploaded_file):
+    """Lit un CSV manuel avec colonnes question,A,B,C,D,reponse_correcte,explication."""
     raw = uploaded_file.getvalue().decode("utf-8-sig", errors="replace")
     try: dialect = csv.Sniffer().sniff(raw[:4096], delimiters=",;\t")
     except csv.Error: dialect = csv.excel
@@ -546,9 +571,9 @@ def parse_quiz_csv(uploaded_file):
     data=[]
     for row in reader:
         q=clean_text(row.get(fields["question"],"")); opts=[clean_text(row.get(fields[k],"")) for k in ["a","b","c","d"]]
-        ans=clean_text(row.get(fields["reponse_correcte"],"A"))
+        ans=clean_text(row.get(fields["reponse_correcte"],"A")).upper()[:1]
         exp=clean_text(row.get(fields["explication"],"")) if "explication" in fields else ""
-        if q and all(opts): data.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
+        if q and all(opts) and ans in "ABCD": data.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
     if not data: raise ValueError("Aucune question valide trouvée dans le CSV.")
     return data[:10]
 
@@ -560,7 +585,9 @@ def normalize_questions(data):
     for q in data:
         opts=q.get("options",[])
         if not isinstance(opts,list) or len(opts)!=4: continue
-        out.append({"question":clean_text(q.get("question","")),"options":[clean_text(x) for x in opts],"reponse_correcte":clean_text(q.get("reponse_correcte","A")),"explication":clean_text(q.get("explication",""))})
+        ans=str(q.get("reponse_correcte","A")).strip().upper()
+        ans=ans[0] if ans and ans[0] in "ABCD" else "A"
+        out.append({"question":clean_text(q.get("question","")),"options":[clean_text(x) for x in opts],"reponse_correcte":ans,"explication":clean_text(q.get("explication",""))})
     return out
 
 api_key=st.sidebar.text_input("Clé API Gemini",type="password")
@@ -591,15 +618,16 @@ with tab1:
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
-        st.caption("Le style visuel ne change pas le contenu. Pour changer les questions, modifie le « Sujet du quiz ». Chaque clic produit un nouveau lot.")
+        st.caption("Le style visuel ne change pas le contenu. Pour changer les questions, modifie le « Sujet du quiz ». Chaque clic produit un nouveau lot. Une seule requête Gemini est envoyée par clic. Une seule requête Gemini est envoyée par clic.")
         if st.button("✨ Générer de nouvelles questions",key="genq",use_container_width=True):
             if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
             else:
                 try:
                     nonce=random.randint(100000,999999999)
                     prompt=f"""Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
-Varie les connaissances testées et évite toute répétition entre les questions.
+Varie les connaissances testées et évite toute répétition entre les questions. Ne recycle pas une liste fixe.
 Chaque objet doit contenir : question, options (exactement 4 réponses A/B/C/D), reponse_correcte (A/B/C/D), explication courte.
+Les 4 options doivent être plausibles et une seule doit être correcte.
 ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de tableau."""
                     res_text, _ = gemini_generate_text(prompt)
                     data=normalize_questions(parse_json(res_text))
@@ -621,31 +649,31 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
     if st.session_state.get("q_data"):
         st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-        if st.button("🎬 Générer le Short Quiz V4.2",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz V4",key="makeq"):
             try:
-                with st.spinner("Création du Short dynamique V4.2..."):
+                with st.spinner("Création du Short dynamique V4..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
 
-                        # Hook
+                        # Hook: animation courte au lieu d'une carte statique.
                         ha=os.path.join(tmp,"hook.mp3"); synthesize_audio(hook_q,voice_q,ha,tts_rate); hd=audio_duration(ha)
                         hf=save_frames([(draw_hook(hook_q,theme_q,channel_q,bg_q,p),max(0.04,hd/8)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"hook")
                         hout=os.path.join(tmp,"hook.mp4"); make_segment(hf,ha,hout,tmp); clips.append(hout)
 
                         for idx,q in enumerate(st.session_state.q_data):
-                            corr = get_correct_index(q["reponse_correcte"], q["options"])
-                            
-                            # 1) Question
+                            corr="ABCD".index(q["reponse_correcte"])
+                            # 1) Question: voix + arrivée animée des cartes.
                             qa=os.path.join(tmp,f"q_{idx}.mp3")
                             synthesize_audio(f"Question {idx+1}. {q['question']}",voice_q,qa,tts_rate); qdur=audio_duration(qa)
                             qframes=[]
                             for p in [0.0,0.12,0.25,0.40,0.58,0.76,1.0]:
                                 qframes.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=p),min(0.12,max(0.04,qdur/10))))
+                            # Le dernier frame porte le reste de la voix.
                             used=sum(d for _,d in qframes); qframes[-1]=(qframes[-1][0],max(0.05,qdur-used+qframes[-1][1]))
                             qo=os.path.join(tmp,f"question_{idx}.mp4"); make_segment(save_frames(qframes,tmp,f"qf_{idx}"),qa,qo,tmp); clips.append(qo)
 
-                            # 2) Réflexion
+                            # 2) Réflexion: vrai timer animé 3 -> 2 -> 1, ring qui se vide.
                             countdown_frames=[]
                             for sec in (3,2,1):
                                 for step in range(0,10):
@@ -654,21 +682,20 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                                     countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse),0.1))
                             co=os.path.join(tmp,f"countdown_{idx}.mp4"); make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
 
-                            # 3) Révélation
+                            # 3) Révélation avec petit zoom vert + ding.
                             reveal_frames=[]
                             for p in [0.0,0.15,0.35,0.60,0.82,1.0]:
                                 reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=p,pulse=0.25*(1-p)),0.12))
-                            
-                            exp_text=f"La bonne réponse est {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
+                            reveal_raw=os.path.join(tmp,f"reveal_voice_{idx}.mp3")
+                            exp_text=f"La bonne réponse est {q['reponse_correcte']}. {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
                             ea=os.path.join(tmp,f"exp_{idx}.mp3"); ewords=synthesize_audio(exp_text,voice_q,ea,tts_rate); edur=audio_duration(ea)
-                            
-                            mixed=os.path.join(tmp,f"exp_mix_{idx}.wav")
-                            mix_voice_sfx(ea,ding,mixed,0,0.8)
+                            # Ding superposé au début de l'explication.
+                            mixed=os.path.join(tmp,f"exp_mix_{idx}.m4a"); mix_voice_sfx(ea,ding,mixed,0,0.8)
                             reveal_dur=min(0.65,max(0.45,edur*0.12))
                             reveal_frames[-1]=(reveal_frames[-1][0],reveal_dur-sum(d for _,d in reveal_frames[:-1]))
                             ro=os.path.join(tmp,f"reveal_{idx}.mp4"); make_segment(save_frames(reveal_frames,tmp,f"reveal_{idx}"),mixed,ro,tmp); clips.append(ro)
 
-                            # 4) Explication
+                            # 4) Explication: carte verte conservée + mots surlignés au rythme de la voix.
                             tf=[]
                             if ewords:
                                 for wi,w in enumerate(ewords):
@@ -678,14 +705,14 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                             if not tf: tf=[(draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=-1,progress=(idx+1)/total,q_num=idx+1,total=total),edur)]
                             eo=os.path.join(tmp,f"explanation_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"expframe_{idx}"),mixed,eo,tmp,0.92); clips.append(eo)
 
-                        # Outro
+                        # CTA final animé.
                         oa=os.path.join(tmp,"outro.mp3"); synthesize_audio(outro_q,voice_q,oa,tts_rate); od=audio_duration(oa)
                         of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),max(0.04,od/9)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"outro")
                         oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
                         final=os.path.join(tmp,"quizvideo_pro.mp4"); concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V4.2 terminé.")
+                        st.success("✅ Short Quiz V4 terminé.")
                         st.video(data)
                         st.download_button("⬇️ Télécharger quizvideo_pro.mp4",data=data,file_name="quizvideo_pro.mp4",mime="video/mp4",key="dq4")
             except Exception as e:
@@ -693,8 +720,7 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
 with tab2:
     st.header("🗣️ Vocabulaire Pro")
-    st.markdown('<div class="qvp-card"><b>🗣️ Studio Vocabulaire</b><div class="qvp-small">Mot Français → Chrono → Traduction bilingue</div></div>', unsafe_allow_html=True)
-    hook_v=st.text_input("Hook","Tu prononces mal ces 10 mots !",key="hv")
+    hook_v=st.text_input("Hook","Tu prononces mal ces 5 mots !",key="hv")
     channel_v=st.text_input("Nom de la chaîne","@LingoPulse_Daily",key="cv")
     langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
@@ -704,20 +730,20 @@ with tab2:
     outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
     nb_v=st.slider("Nombre de mots",3,10,10,key="nbv")
     th_v=st.text_input("Sujet du vocabulaire","Voyage",key="thv")
-    if st.button("✨ Générer le vocabulaire par IA",key="genv",use_container_width=True):
+    if st.button("✨ Générer le vocabulaire par IA",key="genv"):
         if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
         else:
             try:
                 nonce=random.randint(100000,999999999)
-                prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
+                prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
                 res_text, _ = gemini_generate_text(prompt)
                 st.session_state.v_data=parse_json(res_text)[:nb_v]
-                st.success(f"✅ {len(st.session_state.v_data)} mots de vocabulaire prêts.")
+                st.success("Vocabulaire prêt.")
             except Exception as e: st.error(f"Erreur Gemini : {e}")
     if st.session_state.get("v_data"):
-        if st.button("🎬 Générer la vidéo Vocabulaire V4.2",key="makev"):
+        if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
             try:
-                with st.spinner("Création du Short vocabulaire V4.2..."):
+                with st.spinner("Création du Short vocabulaire V4..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
                         ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
@@ -745,7 +771,7 @@ with tab2:
                         oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                         final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Vocabulaire V4.2 terminé.")
+                        st.success("✅ Short Vocabulaire V4 terminé.")
                         st.video(data)
                         st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
             except Exception as e: st.error(f"Erreur pendant le montage : {e}")
