@@ -16,8 +16,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # ============================================================
 # QUIZVIDEO PRO — V4 DYNAMIC SHORTS ENGINE
 # ============================================================
-st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
-st.title("🎬 QuizVideo Pro")
+st.set_page_config(page_title="QuizVideo Pro V4", page_icon="🎬", layout="wide")
+st.title("🎬 QuizVideo Pro V4")
 st.caption("Créateur de Shorts 9:16 • Quiz dynamique + Vocabulaire")
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
@@ -156,7 +156,6 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     color = theme["accent"] if timer == 3 else ((249,115,22) if timer == 2 else theme["danger"])
     cx, cy, r = 935, 825, 70
     draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=theme["bg"], outline=(65,70,85), width=7)
-    # ring remaining
     box=(cx-r+5,cy-r+5,cx+r-5,cy+r-5)
     draw.arc(box, -90, -90 + int(360*clamp(fraction)), fill=color, width=10)
     if pulse > 0:
@@ -192,7 +191,6 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
         correct=(correct_idx is not None and i==correct_idx)
         dim=(correct_idx is not None and not correct)
         if correct:
-            # animated green reveal
             rp=ease_back(reveal_progress)
             fill=theme["success"]
             outline=(255,255,255)
@@ -240,7 +238,6 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     p=ease_back(progress)
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.2*p)
     draw=ImageDraw.Draw(img)
-    # subtle focus circle
     r=int(210*p)
     draw.ellipse((540-r,430-r,540+r,430+r),outline=(*theme["accent"],),width=4)
     badge_w=500; bx=(WIDTH-badge_w)//2; by=250-int(30*(1-p))
@@ -261,9 +258,7 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.3*pulse)
     draw=ImageDraw.Draw(img)
     draw_header(draw,theme,q_num,total)
-    # Answer ribbon
     rounded_text(draw,(55,175,1025,245),f"✓ {answer}",get_font(34),theme["success"],None,0,25)
-    # short question reminder
     qf=get_font(43)
     qlines=wrap_text(question,qf,900)[:2]
     y=300
@@ -299,7 +294,6 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
             draw.text((x,yy),w,font=f,fill=col)
             x+=ww+space; idx+=1
         yy+=78
-    # small CTA hint
     draw.text((55,1450),"À retenir",font=get_font(32),fill=theme["accent"])
     draw_brand(draw,theme,channel,progress)
     return img
@@ -413,17 +407,6 @@ def save_frames(frames,tmpdir,prefix):
         p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p); out.append((p,dur))
     return out
 
-def frames_for_audio(audio_path,words,frame_fn,duration=None):
-    dur=duration or audio_duration(audio_path)
-    if not words: return [(frame_fn(-1,0.0),dur)]
-    out=[]
-    boundaries=[max(0.0,w["start"]) for w in words]
-    if boundaries[0]>0.03: out.append((frame_fn(-1,0.0),min(boundaries[0],dur)))
-    for i,start in enumerate(boundaries):
-        end=boundaries[i+1] if i+1<len(boundaries) else dur
-        if end>start: out.append((frame_fn(i,0.15),end-start))
-    return out
-
 # ------------------------ Gemini ----------------------------
 def parse_json(text):
     text=text.strip().replace("```json","").replace("```","").strip()
@@ -448,12 +431,12 @@ tts_rate=f"+{voice_rate}%"
 MODEL_NAME="gemini-3.6-flash"
 
 # ============================================================
-# INTERFACE
+# INTERFACE STREAMLIT
 # ============================================================
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
 with tab1:
-    st.header("🧠 Quizz TikTok Pro")
+    st.header("🧠 Quizz TikTok Pro V4")
     hook_q=st.text_input("Hook","IMPOSSIBLE d'avoir 5 sur 5 !",key="hq")
     channel_q=st.text_input("Nom de la chaîne","@QuizMaster_Pro",key="cq")
     c1,c2=st.columns(2)
@@ -497,24 +480,24 @@ with tab1:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
 
-                        # Hook: animation courte au lieu d'une carte statique.
+                        # Hook
                         ha=os.path.join(tmp,"hook.mp3"); synthesize_audio(hook_q,voice_q,ha,tts_rate); hd=audio_duration(ha)
                         hf=save_frames([(draw_hook(hook_q,theme_q,channel_q,bg_q,p),max(0.04,hd/8)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"hook")
                         hout=os.path.join(tmp,"hook.mp4"); make_segment(hf,ha,hout,tmp); clips.append(hout)
 
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
-                            # 1) Question: voix + arrivée animée des cartes.
+                            
+                            # 1) Question
                             qa=os.path.join(tmp,f"q_{idx}.mp3")
                             synthesize_audio(f"Question {idx+1}. {q['question']}",voice_q,qa,tts_rate); qdur=audio_duration(qa)
                             qframes=[]
                             for p in [0.0,0.12,0.25,0.40,0.58,0.76,1.0]:
                                 qframes.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=p),min(0.12,max(0.04,qdur/10))))
-                            # Le dernier frame porte le reste de la voix.
                             used=sum(d for _,d in qframes); qframes[-1]=(qframes[-1][0],max(0.05,qdur-used+qframes[-1][1]))
                             qo=os.path.join(tmp,f"question_{idx}.mp4"); make_segment(save_frames(qframes,tmp,f"qf_{idx}"),qa,qo,tmp); clips.append(qo)
 
-                            # 2) Réflexion: vrai timer animé 3 -> 2 -> 1, ring qui se vide.
+                            # 2) Réflexion (Timer 3 -> 2 -> 1)
                             countdown_frames=[]
                             for sec in (3,2,1):
                                 for step in range(0,10):
@@ -523,20 +506,21 @@ with tab1:
                                     countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse),0.1))
                             co=os.path.join(tmp,f"countdown_{idx}.mp4"); make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
 
-                            # 3) Révélation avec petit zoom vert + ding.
+                            # 3) Révélation (Bonne carte en vert + Ding)
                             reveal_frames=[]
                             for p in [0.0,0.15,0.35,0.60,0.82,1.0]:
                                 reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=p,pulse=0.25*(1-p)),0.12))
-                            reveal_raw=os.path.join(tmp,f"reveal_voice_{idx}.mp3")
+                            
                             exp_text=f"La bonne réponse est {q['reponse_correcte']}. {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
                             ea=os.path.join(tmp,f"exp_{idx}.mp3"); ewords=synthesize_audio(exp_text,voice_q,ea,tts_rate); edur=audio_duration(ea)
-                            # Ding superposé au début de l'explication.
-                            mixed=os.path.join(tmp,f"exp_mix_{idx}.m4a"); mix_voice_sfx(ea,ding,mixed,0,0.8)
+                            
+                            mixed=os.path.join(tmp,f"exp_mix_{idx}.mp3")
+                            mix_voice_sfx(ea,ding,mixed,0,0.8)
                             reveal_dur=min(0.65,max(0.45,edur*0.12))
                             reveal_frames[-1]=(reveal_frames[-1][0],reveal_dur-sum(d for _,d in reveal_frames[:-1]))
                             ro=os.path.join(tmp,f"reveal_{idx}.mp4"); make_segment(save_frames(reveal_frames,tmp,f"reveal_{idx}"),mixed,ro,tmp); clips.append(ro)
 
-                            # 4) Explication: carte verte conservée + mots surlignés au rythme de la voix.
+                            # 4) Explication avec surlignage dynamique
                             tf=[]
                             if ewords:
                                 for wi,w in enumerate(ewords):
@@ -546,7 +530,7 @@ with tab1:
                             if not tf: tf=[(draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=-1,progress=(idx+1)/total,q_num=idx+1,total=total),edur)]
                             eo=os.path.join(tmp,f"explanation_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"expframe_{idx}"),mixed,eo,tmp,0.92); clips.append(eo)
 
-                        # CTA final animé.
+                        # CTA final
                         oa=os.path.join(tmp,"outro.mp3"); synthesize_audio(outro_q,voice_q,oa,tts_rate); od=audio_duration(oa)
                         of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),max(0.04,od/9)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"outro")
                         oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
@@ -560,7 +544,7 @@ with tab1:
                 st.error(f"Erreur pendant le montage : {e}")
 
 with tab2:
-    st.header("🗣️ Vocabulaire Pro")
+    st.header("🗣️ Vocabulaire Pro V4")
     hook_v=st.text_input("Hook","Tu prononces mal ces 5 mots !",key="hv")
     channel_v=st.text_input("Nom de la chaîne","@LingoPulse_Daily",key="cv")
     langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
