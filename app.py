@@ -17,12 +17,12 @@ from PIL import Image, ImageDraw, ImageFont
 # CONFIGURATION ET PAGE STREAMLIT
 # ============================================================
 st.set_page_config(
-    page_title="Studio TikTok & Shorts Pro V2",
+    page_title="Studio TikTok & Shorts Pro V3",
     page_icon="🎬",
     layout="wide"
 )
-st.title("🎬 Studio TikTok & Shorts Pro V2")
-st.caption("Quiz + Vocabulaire • Format Shorts 9:16 Dynamique")
+st.title("🎬 Studio TikTok & Shorts Pro V3")
+st.caption("Quiz + Vocabulaire • Synchronisation Parfaite 9:16")
 
 WIDTH = 1080
 HEIGHT = 1920
@@ -134,24 +134,16 @@ def make_base_image(theme_name, bg_file=None):
     return Image.new("RGB", (WIDTH, HEIGHT), colors["bg"])
 
 # ============================================================
-# SYNTHESE AUDIO & OUTILS FFMPEG
+# SYNTHESE AUDIO & FFMPEG
 # ============================================================
 async def _tts_with_boundaries(text, voice, output_path, rate="+15%"):
-    communicate = edge_tts.Communicate(clean_text(text), voice, rate=rate, boundary="WordBoundary")
+    communicate = edge_tts.Communicate(clean_text(text), voice, rate=rate)
     audio_data = bytearray()
-    words = []
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             audio_data.extend(chunk["data"])
-        elif chunk["type"] == "WordBoundary":
-            word = chunk.get("text", "").strip()
-            if word:
-                start = chunk["offset"] / 10_000_000
-                duration = chunk["duration"] / 10_000_000
-                words.append({"text": word, "start": start, "end": start + duration})
     with open(output_path, "wb") as f:
         f.write(audio_data)
-    return words
 
 def run_async(coro):
     try:
@@ -211,9 +203,9 @@ def concatenate_clips(clips, output_path, tmpdir):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
 # ============================================================
-# RENDU DES FRAMES VISUELLES
+# DESSIN DES FRAMES VISUELLES
 # ============================================================
-def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total_q, channel_tag, bg_file=None, correct_idx=None, timer=None):
+def draw_quiz_frame(question, options, theme_name, q_num, total_q, channel_tag, bg_file=None, correct_idx=None, timer=None):
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
     img = make_base_image(theme_name, bg_file)
     draw = ImageDraw.Draw(img)
@@ -221,33 +213,24 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
     f_head, f_q, f_opt = get_font(42), get_font(52), get_font(36)
 
     header = f"QUIZ • {q_num}/{total_q}"
-    draw.text(
-        ((WIDTH - text_width(draw, header, f_head)) // 2, 90),
-        header, fill=colors["accent"], font=f_head
-    )
+    draw.text(((WIDTH - text_width(draw, header, f_head)) // 2, 90), header, fill=colors["accent"], font=f_head)
 
     q_lines = wrap_text(question, f_q, 880)
     y_q = 210
     for line in q_lines[:3]:
-        draw.text(
-            ((WIDTH - text_width(draw, line, f_q)) // 2, y_q),
-            line, fill="white", font=f_q
-        )
+        draw.text(((WIDTH - text_width(draw, line, f_q)) // 2, y_q), line, fill="white", font=f_q)
         y_q += 75
 
     y_opt = max(540, y_q + 25)
     card_left, card_right = 55, 850
     card_h, gap = 130, 22
 
-    for i, opt in enumerate(options[:visible_options]):
+    for i, opt in enumerate(options[:4]):
         is_correct = (correct_idx is not None and i == correct_idx)
         fill_col = colors["success"] if is_correct else colors["card"]
         out_col = (255, 255, 255) if is_correct else colors["accent"]
 
-        draw.rounded_rectangle(
-            [(card_left, y_opt), (card_right, y_opt + card_h)],
-            radius=24, fill=fill_col, outline=out_col, width=4
-        )
+        draw.rounded_rectangle([(card_left, y_opt), (card_right, y_opt + card_h)], radius=24, fill=fill_col, outline=out_col, width=4)
 
         label = f"{chr(65+i)}) {clean_text(opt)}"
         lines = wrap_text(label, f_opt, card_right - card_left - 60)
@@ -266,44 +249,26 @@ def draw_quiz_frame(question, options, visible_options, theme_name, q_num, total
             timer_color = colors["danger"]
 
         cx, cy, radius = 940, 820, 72
-        draw.ellipse(
-            [(cx-radius, cy-radius), (cx+radius, cy+radius)],
-            fill=colors["bg"], outline=timer_color, width=7
-        )
+        draw.ellipse([(cx-radius, cy-radius), (cx+radius, cy+radius)], fill=colors["bg"], outline=timer_color, width=7)
 
         tf = get_font(58)
         timer_text = str(timer)
-        draw.text(
-            (cx - text_width(draw, timer_text, tf)//2, cy - 38),
-            timer_text, fill=timer_color, font=tf
-        )
+        draw.text((cx - text_width(draw, timer_text, tf)//2, cy - 38), timer_text, fill=timer_color, font=tf)
 
         small = get_font(26)
         label = "TEMPS"
-        draw.text(
-            (cx - text_width(draw, label, small)//2, cy + 40),
-            label, fill=timer_color, font=small
-        )
+        draw.text((cx - text_width(draw, label, small)//2, cy + 40), label, fill=timer_color, font=small)
 
     if correct_idx is not None:
         reveal = "✓ BONNE RÉPONSE"
         rf = get_font(34)
-        draw.rounded_rectangle(
-            [(250, 1460), (830, 1550)], radius=28,
-            fill=colors["success"], outline=(255, 255, 255), width=2
-        )
-        draw.text(
-            ((WIDTH - text_width(draw, reveal, rf)) // 2, 1482),
-            reveal, fill="white", font=rf
-        )
+        draw.rounded_rectangle([(250, 1460), (830, 1550)], radius=28, fill=colors["success"], outline=(255, 255, 255), width=2)
+        draw.text(((WIDTH - text_width(draw, reveal, rf)) // 2, 1482), reveal, fill="white", font=rf)
 
-    draw.text(
-        ((WIDTH - text_width(draw, channel_tag, get_font(36))) // 2, 1800),
-        channel_tag, fill=(180, 180, 180), font=get_font(36)
-    )
+    draw.text(((WIDTH - text_width(draw, channel_tag, get_font(36))) // 2, 1800), channel_tag, fill=(180, 180, 180), font=get_font(36))
     return img
 
-def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, bg_file=None, timer=None, motiv_txt=""):
+def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, bg_file=None, timer=None):
     colors = THEMES.get(theme_name, THEMES["Bleu Nuit & Or"])
     img = make_base_image(theme_name, bg_file)
     draw = ImageDraw.Draw(img)
@@ -322,7 +287,7 @@ def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, 
         elif idx == current_idx:
             draw.rounded_rectangle([(70, y), (1010, y + 150)], radius=20, fill=colors["card"], outline=colors["accent"], width=4)
             draw.text((110, y + 25), f"FR: {fr}", fill=colors["accent"], font=f_text)
-            if phase in ["traduction", "motivation"]:
+            if phase == "traduction":
                 draw.text((110, y + 80), f"TRAD: {tr}", fill="white", font=f_text)
             elif phase == "chrono":
                 draw.text((800, y + 45), f"00:0{timer}", fill=colors["accent"], font=f_text)
@@ -330,10 +295,6 @@ def draw_vocab_frame(mots, current_idx, phase, langue, theme_name, channel_tag, 
             draw.rounded_rectangle([(70, y), (1010, y + 150)], radius=20, fill=(20, 24, 33), outline=(50, 55, 70), width=2)
             draw.text((110, y + 50), f"Mot #{idx+1}", fill=(100, 116, 139), font=get_font(36))
         y += 180
-        
-    if phase == "motivation" and motiv_txt:
-        draw.rounded_rectangle([(140, y + 20), (940, y + 140)], radius=25, fill=colors["success"])
-        draw.text(((WIDTH - text_width(draw, motiv_txt, f_head)) // 2, y + 50), motiv_txt, fill="white", font=f_head)
 
     draw.text(((WIDTH - text_width(draw, channel_tag, get_font(36))) // 2, 1800), channel_tag, fill=(180, 180, 180), font=get_font(36))
     return img
@@ -352,13 +313,13 @@ def draw_hook_frame(text, theme_name, channel_tag, bg_file=None):
     return img
 
 # ============================================================
-# APPLICATION STREAMLIT & GEMINI
+# APPLICATION STREAMLIT
 # ============================================================
 api_key = st.sidebar.text_input("Clé API Gemini", type="password")
 if api_key:
     genai.configure(api_key=api_key)
 
-voice_rate = st.sidebar.slider("⚡ Vitesse de la Voix Off", 0, 30, 15, help="15% = vitesse recommandée Shorts/TikTok")
+voice_rate = st.sidebar.slider("⚡ Vitesse de la Voix Off", 0, 30, 15)
 tts_rate_str = f"+{voice_rate}%"
 
 def parse_json_response(text):
@@ -411,12 +372,12 @@ with tab1:
 
     if 'q_data' in st.session_state and st.session_state['q_data']:
         if st.button("🎬 Générer le MP4 Quizz"):
-            with st.spinner("Montage accéléré en cours..."):
+            with st.spinner("Montage en cours..."):
                 with tempfile.TemporaryDirectory() as tmpdir:
                     tic, ding = ensure_sfx(tmpdir)
                     clips = []
                     
-                    # Hook
+                    # 1. Hook
                     h_aud = os.path.join(tmpdir, "h.mp3"); h_img = os.path.join(tmpdir, "h.png")
                     synthesize_audio(hook_q, voice_q, h_aud, tts_rate_str)
                     draw_hook_frame(hook_q, theme_q, channel_q, bg_q).save(h_img)
@@ -424,39 +385,42 @@ with tab1:
                     create_clip_ffmpeg(h_img, h_aud, get_audio_duration(h_aud), c_out)
                     clips.append(c_out)
                     
-                    # Loop Questions
+                    # 2. Questions
                     for idx, q in enumerate(st.session_state['q_data']):
-                        # Énoncé
+                        # A. Énoncé
                         q_aud = os.path.join(tmpdir, f"q_{idx}.mp3"); q_img = os.path.join(tmpdir, f"q_{idx}.png")
                         synthesize_audio(f"Question {idx+1}. {q['question']}", voice_q, q_aud, tts_rate_str)
-                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q).save(q_img)
+                        draw_quiz_frame(q['question'], q['options'], theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q).save(q_img)
                         c_q = os.path.join(tmpdir, f"clip_q_{idx}.mp4")
                         create_clip_ffmpeg(q_img, q_aud, get_audio_duration(q_aud), c_q)
                         clips.append(c_q)
                         
-                        # Chrono
+                        # B. Chrono (3, 2, 1)
                         for sec in range(3, 0, -1):
                             t_img = os.path.join(tmpdir, f"t_{idx}_{sec}.png")
-                            draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, timer=sec).save(t_img)
+                            draw_quiz_frame(q['question'], q['options'], theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, timer=sec).save(t_img)
                             c_t = os.path.join(tmpdir, f"clip_t_{idx}_{sec}.mp4")
                             create_clip_ffmpeg(t_img, tic, 1.0, c_t, volume=1.0)
                             clips.append(c_t)
                             
-                        # Réponse & Explication
-                        corr_idx = "ABCD".index(q['reponse_correcte'][0].upper()) if q['reponse_correcte'][0].upper() in "ABCD" else 0
+                        # C. Révélation Visuelle + Ding
+                        rep_lettre = q['reponse_correcte'][0].upper()
+                        corr_idx = "ABCD".index(rep_lettre) if rep_lettre in "ABCD" else 0
                         r_img = os.path.join(tmpdir, f"r_{idx}.png")
-                        draw_quiz_frame(q['question'], q['options'], 4, theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, correct_idx=corr_idx).save(r_img)
+                        draw_quiz_frame(q['question'], q['options'], theme_q, idx+1, len(st.session_state['q_data']), channel_q, bg_file=bg_q, correct_idx=corr_idx).save(r_img)
+                        
                         c_ding = os.path.join(tmpdir, f"clip_d_{idx}.mp4")
                         create_clip_ffmpeg(r_img, ding, get_audio_duration(ding), c_ding, volume=1.0)
                         clips.append(c_ding)
                         
+                        # D. Audio Explication
                         exp_aud = os.path.join(tmpdir, f"e_{idx}.mp3")
                         synthesize_audio(f"Réponse {q['reponse_correcte']}. {q['explication']}", voice_q, exp_aud, tts_rate_str)
                         c_exp = os.path.join(tmpdir, f"clip_e_{idx}.mp4")
                         create_clip_ffmpeg(r_img, exp_aud, get_audio_duration(exp_aud), c_exp)
                         clips.append(c_exp)
                         
-                    # Outro
+                    # 3. Outro
                     o_aud = os.path.join(tmpdir, "o.mp3"); o_img = os.path.join(tmpdir, "o.png")
                     synthesize_audio(outro_q, voice_q, o_aud, tts_rate_str)
                     draw_hook_frame(outro_q, theme_q, channel_q, bg_q).save(o_img)
@@ -466,11 +430,11 @@ with tab1:
                     
                     final = os.path.join(tmpdir, "final_quiz.mp4")
                     concatenate_clips(clips, final, tmpdir)
-                    st.success("✅ Vidéo Quiz V2 prête !")
+                    st.success("✅ Vidéo V3.1 ultra synchro prête !")
                     with open(final, "rb") as f:
                         video_bytes = f.read()
                         st.video(video_bytes)
-                        st.download_button("⬇️ Télécharger la vidéo Quiz", data=video_bytes, file_name="quizvideo_pro.mp4", mime="video/mp4")
+                        st.download_button("⬇️ Télécharger la vidéo Quiz V3.1", data=video_bytes, file_name="quizvideo_pro_v3.mp4", mime="video/mp4")
 
 # --- MODULE 2 : VOCABULAIRE ---
 with tab2:
@@ -528,7 +492,7 @@ with tab2:
                     create_clip_ffmpeg(h_img, h_aud, get_audio_duration(h_aud), c_h)
                     clips.append(c_h)
                     
-                    # Loop Words
+                    # Words
                     for idx, item in enumerate(st.session_state['v_data']):
                         # FR
                         fr_aud = os.path.join(tmpdir, f"vfr_{idx}.mp3"); fr_img = os.path.join(tmpdir, f"vfr_{idx}.png")
@@ -564,8 +528,8 @@ with tab2:
                     
                     final = os.path.join(tmpdir, "final_vocab.mp4")
                     concatenate_clips(clips, final, tmpdir)
-                    st.success("✅ Vidéo Vocabulaire V2 prête !")
+                    st.success("✅ Vidéo Vocabulaire V3.1 prête !")
                     with open(final, "rb") as f:
                         video_bytes = f.read()
                         st.video(video_bytes)
-                        st.download_button("⬇️ Télécharger la vidéo Vocabulaire", data=video_bytes, file_name="vocabulaire_pro.mp4", mime="video/mp4")
+                        st.download_button("⬇️ Télécharger la vidéo Vocabulaire", data=video_bytes, file_name="vocabulaire_pro_v3.mp4", mime="video/mp4")
