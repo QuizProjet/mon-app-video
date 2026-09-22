@@ -27,14 +27,18 @@ st.caption("Créateur de Shorts 9:16 • Quiz dynamique + Vocabulaire")
 
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background: linear-gradient(180deg,#f7f9fc 0%,#eef2f7 100%); color:#172033; }
+[data-testid="stAppViewContainer"] { background: linear-gradient(135deg,#f8fbff 0%,#eef3fa 55%,#f7f4ff 100%); color:#172033; }
 [data-testid="stMain"] { background: transparent; }
-[data-testid="stSidebar"] { background: #ffffff; border-right: 1px solid #dbe2ec; }
+[data-testid="stSidebar"] { background: linear-gradient(180deg,#0b1630 0%,#101d3d 58%,#111a33 100%); border-right: 1px solid #1f3159; }
+[data-testid="stSidebar"] * { color:#eef4ff !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] { color:#dbe7ff !important; }
+[data-testid="stSidebar"] .stRadio label { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:8px 10px; margin:4px 0; }
 label, [data-testid="stMarkdownContainer"] { color:#253047; }
-[data-testid="stHeader"] { background: rgba(255,255,255,.82); }
-.block-container { max-width: 1180px; padding-top: 2.2rem; padding-bottom: 4rem; }
+[data-testid="stHeader"] { background: rgba(255,255,255,.78); }
+.block-container { max-width: 1180px; padding-top: 2rem; padding-bottom: 4rem; }
 h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
-[data-testid="stTabs"] button { font-weight: 700; font-size: 1.02rem; color:#334155; }
+[data-testid="stTabs"] button { font-weight: 800; font-size: 1.02rem; color:#334155; padding:10px 18px; }
+[data-testid="stTabs"] [aria-selected="true"] { color:#6d4aff !important; border-bottom-color:#6d4aff !important; }
 [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea { border-radius: 14px !important; background:#ffffff !important; color:#172033 !important; border-color:#cbd5e1 !important; }
 [data-baseweb="select"] > div { background:#ffffff !important; border-color:#cbd5e1 !important; color:#172033 !important; border-radius:14px !important; }
 [data-testid="stButton"] button { border-radius: 14px; min-height: 2.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: linear-gradient(135deg,#ffffff,#f3f6fa); color:#172033; box-shadow:0 4px 12px rgba(15,23,42,.06); }
@@ -42,6 +46,22 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 [data-testid="stFileUploaderDropzone"] { border: 1px dashed #b9c5d6; border-radius: 16px; background: #ffffff; }
 .qvp-card { padding: 18px 20px; border: 1px solid #dbe2ec; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 28px rgba(15,23,42,.07); margin: 8px 0 18px; }
 .qvp-small { color:#64748b; font-size:.9rem; }
+.qvp-side-brand { display:flex; gap:12px; align-items:center; padding:8px 2px 18px; }
+.qvp-logo { width:42px; height:42px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:25px; font-weight:900; background:linear-gradient(135deg,#7b4dff,#36b8e8); color:white !important; box-shadow:0 8px 24px rgba(83,67,180,.35); }
+.qvp-side-title { font-size:1.18rem; font-weight:800; color:#fff !important; }
+.qvp-side-sub { font-size:.72rem; color:#b9c8e8 !important; margin-top:2px; }
+.qvp-side-note { margin-top:18px; padding:14px; border:1px solid rgba(255,255,255,.13); border-radius:16px; background:linear-gradient(135deg,rgba(124,77,255,.18),rgba(42,180,216,.10)); font-size:.78rem; line-height:1.45; }
+.qvp-hero { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:26px 30px; border:1px solid #dbe4f0; border-radius:24px; background:rgba(255,255,255,.84); box-shadow:0 14px 36px rgba(31,48,82,.08); margin-bottom:18px; }
+.qvp-hero h1 { margin:4px 0 6px; font-size:2.25rem; }
+.qvp-hero p { margin:0; color:#66748c; }
+.qvp-kicker { color:#6751e8; font-size:.78rem; font-weight:800; letter-spacing:.12em; }
+.qvp-hero-pill { padding:11px 16px; border-radius:999px; background:#f0edff; color:#5c45d5; font-weight:800; white-space:nowrap; }
+.qvp-flow { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding:13px 18px; border:1px solid #e1e7f0; border-radius:18px; background:#fff; color:#334155; margin:0 0 20px; box-shadow:0 7px 20px rgba(15,23,42,.04); }
+.qvp-flow b { color:#8b78ee; }
+.qvp-mini-card { min-height:94px; padding:18px; border:1px solid #ddd7ff; border-radius:17px; background:linear-gradient(135deg,#faf9ff,#f2f8ff); color:#334155; }
+.qvp-mini-card span { color:#64748b; font-size:.88rem; }
+.qvp-preview-placeholder { height:250px; border:1px dashed #cbd5e1; border-radius:18px; display:flex; align-items:center; justify-content:center; text-align:center; color:#64748b; background:#f8fafc; }
+.qvp-economy { padding:13px 16px; border-radius:15px; border:1px solid #d6e7f7; background:#eef8ff; color:#28506d; margin:10px 0 16px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -202,6 +222,25 @@ def rounded_text(draw, xy, text, font, fill, outline=None, width=2, radius=20):
     tw = text_width(draw, text, font)
     th = text_height(font, text)
     draw.text(((x1+x2-tw)/2, (y1+y2-th)/2-4), text, font=font, fill="white")
+
+def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=1250):
+    """Dessine une petite icône de réflexion animée sans dépendre d'un emoji/font externe."""
+    phase = float(phase or 0.0)
+    pulse = 0.5 + 0.5 * math.sin(phase * math.pi * 2)
+    r = int(34 + 4 * pulse)
+    accent = theme.get("accent", (255, 205, 64))
+    # Bulle de réflexion
+    draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(10, 15, 25), outline=accent, width=4)
+    # Trois points qui pulsent légèrement
+    dot_r = 5
+    spacing = 15
+    for i in range(3):
+        local = 0.5 + 0.5 * math.sin(phase * math.pi * 2 + i * 0.9)
+        rr = max(3, int(dot_r + 2 * local))
+        dx = cx + (i - 1) * spacing
+        draw.ellipse((dx-rr, cy-rr, dx+rr, cy+rr), fill=accent)
+    # Petite queue de bulle
+    draw.polygon([(cx-18, cy+r-1), (cx-30, cy+r+15), (cx-3, cy+r-7)], fill=accent)
 
 def draw_brand(draw, theme, channel, progress=None):
     if channel:
@@ -788,13 +827,115 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
+
 # ============================================================
-# INTERFACE
+# FONDS THÉMATIQUES AUTOMATIQUES — 0 QUOTA GEMINI
 # ============================================================
+def _theme_keywords(topic):
+    t=clean_text(topic).lower()
+    groups={
+        "espace":["espace","astronomie","planète","planetes","galaxie","univers","nasa","étoile","etoile"],
+        "histoire":["histoire","antiquité","antiquite","moyen âge","moyen age","guerre","empire","roi","reine"],
+        "geographie":["géographie","geographie","pays","capitale","monde","continent","ville","voyage"],
+        "science":["science","physique","chimie","biologie","atome","scientifique","corps humain","anatomie"],
+        "animaux":["animal","animaux","faune","océan","ocean","insecte","mammifère","mammifere"],
+        "sport":["sport","football","soccer","tennis","basket","olympique","olympiques"],
+        "art":["art","peinture","musique","cinéma","cinema","littérature","litterature"],
+        "food":["cuisine","gastronomie","aliment","aliments","nourriture","recette"],
+    }
+    for key,words in groups.items():
+        if any(w in t for w in words): return key
+    return "general"
+
+def generate_theme_background(theme_name,topic):
+    'Crée un fond 9:16 stylisé localement selon le sujet. Aucun appel API.'
+    key=("auto_bg_v3",theme_name,clean_text(topic).lower())
+    if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
+    theme=THEMES[theme_name]
+    img=make_base(theme_name).convert("RGBA")
+    ov=Image.new("RGBA",img.size,(0,0,0,0)); d=ImageDraw.Draw(ov)
+    accent=theme["accent"]; muted=theme["muted"]; kind=_theme_keywords(topic)
+    seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16)
+    rng=random.Random(seed)
+    for _ in range(100):
+        x=rng.randint(-80,WIDTH+80); y=rng.randint(0,HEIGHT); r=rng.randint(2,12)
+        d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,rng.randint(18,60)))
+    if kind=="espace":
+        for _ in range(6):
+            x=rng.randint(0,WIDTH); y=rng.randint(250,1650); r=rng.randint(90,260)
+            d.ellipse((x-r,y-r,x+r,y+r),outline=(*accent,42),width=4)
+    elif kind=="geographie":
+        cx,cy=540,820
+        for rx,ry in [(300,300),(300,135),(135,300)]:
+            d.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),outline=(*accent,45),width=5)
+        d.line((cx-300,cy,cx+300,cy),fill=(*muted,35),width=4)
+    elif kind=="histoire":
+        for x in range(110,1000,175):
+            d.polygon([(x,1080),(x+70,650),(x+140,1080)],fill=(*accent,18),outline=(*accent,40))
+            d.rectangle((x+25,820,x+115,1080),fill=(*muted,12))
+    elif kind=="science":
+        cx,cy=540,850
+        for r in (120,220,320): d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,40),width=4)
+        d.ellipse((cx-42,cy-42,cx+42,cy+42),fill=(*accent,90))
+    elif kind=="animaux":
+        for j in range(7):
+            pts=[(x,500+j*145+int(30*math.sin(x/90+j))) for x in range(-40,1120,40)]
+            d.line(pts,fill=(*accent,42),width=6)
+    elif kind=="sport":
+        for r in (120,250,380): d.arc((540-r,850-r,540+r,850+r),210,330,fill=(*accent,50),width=7)
+    elif kind=="art":
+        for _ in range(8):
+            x=rng.randint(100,850); y=rng.randint(450,1400); w=rng.randint(130,360); h=rng.randint(80,220)
+            d.rounded_rectangle((x,y,x+w,y+h),radius=35,outline=(*accent,42),width=5)
+    elif kind=="food":
+        for _ in range(8):
+            x=rng.randint(150,850); y=rng.randint(450,1450); r=rng.randint(35,90)
+            d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,18),outline=(*accent,42),width=4)
+    else:
+        for _ in range(7):
+            x=rng.randint(100,850); y=rng.randint(350,1500)
+            d.rounded_rectangle((x,y,x+rng.randint(140,320),y+rng.randint(70,180)),radius=35,outline=(*accent,34),width=4)
+    vign=Image.new("L",(WIDTH,HEIGHT),0); vd=ImageDraw.Draw(vign)
+    vd.rectangle((80,150,1000,1780),fill=105); vign=vign.filter(ImageFilter.GaussianBlur(100))
+    result=Image.alpha_composite(img,ov)
+    dark=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dark.putalpha(vign)
+    result=Image.alpha_composite(result,dark).convert("RGB")
+    _BASE_CACHE[key]=result.copy()
+    return result
+
+def selected_video_background(theme_name,topic,mode,uploaded=None):
+    if mode=="Image personnalisée" and uploaded is not None: return fit_background(uploaded)
+    if mode=="Généré automatiquement": return generate_theme_background(theme_name,topic)
+    return None
+
+# ============================================================
+# INTERFACE — DESIGN PREMIUM
+# ============================================================
+st.sidebar.markdown("""
+<div class="qvp-side-brand">
+  <div class="qvp-logo">▶</div>
+  <div>
+    <div class="qvp-side-title">QuizVideo Pro</div>
+    <div class="qvp-side-sub">Créez des quiz vidéo captivants</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+st.sidebar.markdown("### 🧭 Modules")
+st.sidebar.caption("🧠 Quiz TikTok Pro  •  🗣️ Vocabulaire Pro")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📁 Mes projets")
+st.sidebar.caption("Vos quiz et réglages restent dans votre session.")
+st.sidebar.markdown("### ⚙️ Paramètres")
+st.sidebar.caption("Les changements visuels ne consomment pas de quota.")
+st.sidebar.markdown("""
+<div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
+Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
+""", unsafe_allow_html=True)
+
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
 with tab1:
-    st.header("🧠 Quizz TikTok Pro")
+    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 CRÉATEUR DE SHORTS 9:16</div><h1>Quiz TikTok Pro</h1><p>Créez des quiz rapides, élégants et captivants.</p></div><div class="qvp-hero-pill">✨ Créez • Apprenez • Partagez</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-card"><b>🎬 Studio Quiz</b><div class="qvp-small">Question → 4 réponses → 3·2·1 → révélation → explication → CTA</div></div>', unsafe_allow_html=True)
     hook_q=st.text_input("Hook","IMPOSSIBLE d'avoir 10 sur 10 !",key="hq")
     channel_q=st.text_input("Nom de la chaîne","@QuizMaster_Pro",key="cq")
@@ -807,7 +948,23 @@ with tab1:
         th_q=st.text_input("Sujet du quiz","Culture Générale",key="thq")
     outro_q=st.text_input("CTA final","Quel est ton score ? Écris-le en commentaire !",key="oq")
     st.caption("💡 Le CSV accepte aussi la colonne « explication » : elle sera lue après la révélation et affichée dans la vidéo.")
-    bg_q=st.file_uploader("🖼️ Fond 9:16 personnalisé (optionnel)",type=["png","jpg","jpeg"],key="bgq")
+    st.markdown("### 🖼️ Fond de la vidéo")
+    bg_mode_q=st.radio(
+        "Choisir le fond",
+        ["✨ Généré automatiquement selon le thème","🖼️ Image personnalisée","◯ Aucun"],
+        horizontal=True,key="bg_mode_q"
+    )
+    uploaded_bg_q=None
+    if bg_mode_q=="🖼️ Image personnalisée":
+        uploaded_bg_q=st.file_uploader("Télécharger une image 9:16",type=["png","jpg","jpeg"],key="bgq")
+    bg_mode_clean_q=("Généré automatiquement" if bg_mode_q.startswith("✨")
+                     else "Image personnalisée" if bg_mode_q.startswith("🖼️")
+                     else "Aucun")
+    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
+    if bg_mode_clean_q=="Généré automatiquement":
+        st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
+    elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
+        st.success("✅ Fond personnalisé prêt.")
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
@@ -993,14 +1150,30 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                 st.error(f"Erreur pendant le montage : {e}")
 
 with tab2:
-    st.header("🗣️ Vocabulaire Pro")
+    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ SHORTS 9:16</div><h1>Vocabulaire Pro</h1><p>Apprenez et faites mémoriser un mot à la fois.</p></div><div class="qvp-hero-pill">✨ Apprenez • Répétez • Partagez</div></div>',unsafe_allow_html=True)
     hook_v=st.text_input("Hook","Tu prononces mal ces 5 mots !",key="hv")
     channel_v=st.text_input("Nom de la chaîne","@LingoPulse_Daily",key="cv")
     langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
     voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-    theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
-    bg_v=st.file_uploader("🖼️ Fond 9:16 (optionnel)",type=["png","jpg","jpeg"],key="bgv")
+    theme_v=st.selectbox("🎨 Style visuel",list(THEMES),key="tv")
+    st.markdown("### 🖼️ Fond de la vidéo")
+    bg_mode_v=st.radio(
+        "Choisir le fond",
+        ["✨ Généré automatiquement selon le thème","🖼️ Image personnalisée","◯ Aucun"],
+        horizontal=True,key="bg_mode_v"
+    )
+    uploaded_bg_v=None
+    if bg_mode_v=="🖼️ Image personnalisée":
+        uploaded_bg_v=st.file_uploader("Télécharger une image 9:16",type=["png","jpg","jpeg"],key="bgv")
+    bg_mode_clean_v=("Généré automatiquement" if bg_mode_v.startswith("✨")
+                     else "Image personnalisée" if bg_mode_v.startswith("🖼️")
+                     else "Aucun")
+    bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
+    if bg_mode_clean_v=="Généré automatiquement":
+        st.caption("✨ Fond visuel créé localement selon le thème — 0 quota Gemini.")
+    elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
+        st.success("✅ Fond personnalisé prêt.")
     outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
     nb_v=st.slider("Nombre de mots",3,10,10,key="nbv")
     th_v=st.text_input("Sujet du vocabulaire","Voyage",key="thv")
