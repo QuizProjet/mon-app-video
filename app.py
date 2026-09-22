@@ -27,19 +27,21 @@ st.caption("Créateur de Shorts 9:16 • Quiz dynamique + Vocabulaire")
 
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background: radial-gradient(circle at 10% 0%, #18243d 0%, #0a0e18 38%, #06080d 100%); color:#f4f7fb; }
-[data-testid="stSidebar"] { background: linear-gradient(180deg,#0c111c,#080b12); }
-label, [data-testid="stMarkdownContainer"] { color:#edf2f8; }
-[data-testid="stHeader"] { background: rgba(0,0,0,0); }
+[data-testid="stAppViewContainer"] { background: linear-gradient(180deg,#f7f9fc 0%,#eef2f7 100%); color:#172033; }
+[data-testid="stMain"] { background: transparent; }
+[data-testid="stSidebar"] { background: #ffffff; border-right: 1px solid #dbe2ec; }
+label, [data-testid="stMarkdownContainer"] { color:#253047; }
+[data-testid="stHeader"] { background: rgba(255,255,255,.82); }
 .block-container { max-width: 1180px; padding-top: 2.2rem; padding-bottom: 4rem; }
-h1, h2, h3 { letter-spacing: -0.02em; }
-[data-testid="stTabs"] button { font-weight: 700; font-size: 1.02rem; }
-[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea { border-radius: 14px !important; }
-[data-testid="stButton"] button { border-radius: 14px; min-height: 2.7rem; font-weight: 700; border: 1px solid #2d3a55; background: linear-gradient(135deg,#18233a,#101724); }
-[data-testid="stButton"] button:hover { border-color:#72beff; transform: translateY(-1px); }
-[data-testid="stFileUploaderDropzone"] { border: 1px dashed #3a4967; border-radius: 16px; background: rgba(17,24,39,.72); }
-.qvp-card { padding: 18px 20px; border: 1px solid rgba(120,150,190,.22); border-radius: 18px; background: linear-gradient(135deg, rgba(25,35,55,.82), rgba(11,16,27,.82)); box-shadow: 0 14px 35px rgba(0,0,0,.20); margin: 8px 0 18px; }
-.qvp-small { color:#a9b6ca; font-size:.9rem; }
+h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
+[data-testid="stTabs"] button { font-weight: 700; font-size: 1.02rem; color:#334155; }
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea { border-radius: 14px !important; background:#ffffff !important; color:#172033 !important; border-color:#cbd5e1 !important; }
+[data-baseweb="select"] > div { background:#ffffff !important; border-color:#cbd5e1 !important; color:#172033 !important; border-radius:14px !important; }
+[data-testid="stButton"] button { border-radius: 14px; min-height: 2.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: linear-gradient(135deg,#ffffff,#f3f6fa); color:#172033; box-shadow:0 4px 12px rgba(15,23,42,.06); }
+[data-testid="stButton"] button:hover { border-color:#7c8cff; transform: translateY(-1px); box-shadow:0 8px 18px rgba(15,23,42,.10); }
+[data-testid="stFileUploaderDropzone"] { border: 1px dashed #b9c5d6; border-radius: 16px; background: #ffffff; }
+.qvp-card { padding: 18px 20px; border: 1px solid #dbe2ec; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 28px rgba(15,23,42,.07); margin: 8px 0 18px; }
+.qvp-small { color:#64748b; font-size:.9rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -209,117 +211,131 @@ def draw_brand(draw, theme, channel, progress=None):
         draw.rounded_rectangle((x,y,x+w,y+h), radius=6, fill=(65,70,85))
         draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=6, fill=theme["accent"])
 
-def draw_header(draw, theme, q_num, total):
-    rounded_text(draw, (55, 70, 360, 136), f"QUESTION {q_num} / {total}", get_font(32), theme["card"], theme["accent"], 2, 26)
-
-def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=205):
-    """Icône de réflexion animée, dessinée avec PIL pour éviter les problèmes de police emoji."""
-    bounce=int(5*math.sin(phase*math.pi*2))
-    cy+=bounce
-    r=48
-    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(245,190,74),outline="white",width=4)
-    # yeux
-    draw.ellipse((cx-18,cy-12,cx-8,cy-2),fill=(25,30,40))
-    draw.ellipse((cx+8,cy-12,cx+18,cy-2),fill=(25,30,40))
-    # bouche réfléchie
-    draw.arc((cx-16,cy+2,cx+17,cy+24),190,345,fill=(25,30,40),width=4)
-    # petite bulle de pensée
-    draw.ellipse((cx+39,cy-55,cx+53,cy-41),fill="white")
-    draw.ellipse((cx+55,cy-70,cx+66,cy-59),fill="white")
+def draw_header(draw, theme, q_num, total, title="Quiz Culture Générale"):
+    title=clean_text(title) or "Quiz"
+    if len(title)>28: title=title[:28].rstrip()+"…"
+    title_text=f"Quiz {title}" if not title.lower().startswith("quiz") else title
+    tf=get_font(62)
+    lines=wrap_text(title_text,tf,850)[:2]
+    y=70
+    for line in lines:
+        tw=text_width(draw,line,tf)
+        # shadow + white title for the strong Shorts look
+        draw.text(((WIDTH-tw)/2+5,y+7),line,font=tf,fill=(0,0,0))
+        draw.text(((WIDTH-tw)/2,y),line,font=tf,fill="white")
+        y+=66
+    score=f"{q_num}/{total}"
+    sf=get_font(54)
+    sw=text_width(draw,score,sf)
+    draw.text(((WIDTH-sw)/2,205),score,font=sf,fill=theme["accent"])
+    # small thinking icon, without relying on an emoji font
+    draw_thinking_icon(draw,theme,phase=(q_num*0.17)%1.0,cx=960,cy=115)
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    color = theme["accent"] if timer == 3 else ((249,115,22) if timer == 2 else theme["danger"])
-    cx, cy, r = 935, 825, 70
-    draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=theme["bg"], outline=(65,70,85), width=7)
-    # ring remaining
-    box=(cx-r+5,cy-r+5,cx+r-5,cy+r-5)
-    draw.arc(box, -90, -90 + int(360*clamp(fraction)), fill=color, width=10)
+    # Countdown inspired by the reference: large, readable and visually urgent.
+    if timer <= 0:
+        color=theme["danger"]
+    elif timer == 1:
+        color=theme["danger"]
+    elif timer == 2:
+        color=(249,115,22)
+    else:
+        color=theme["accent"]
+    cx, cy, r = 540, 1370, 78
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=(10,15,25), outline=(245,248,252), width=6)
+    box=(cx-r+6,cy-r+6,cx+r-6,cy+r-6)
+    draw.arc(box, -90, -90 + int(360*clamp(fraction)), fill=color, width=11)
     if pulse > 0:
-        pr = int(4 + 14*pulse)
-        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr), outline=(*color,), width=3)
-    tf=get_font(58 + int(8*pulse))
+        pr=int(5+18*pulse)
+        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr), outline=color, width=3)
+    tf=get_font(66+int(8*pulse))
     ts=str(timer)
-    draw.text((cx-text_width(draw,ts,tf)/2,cy-38),ts,font=tf,fill=color)
-    sf=get_font(22)
-    draw.text((cx-text_width(draw,"SEC",sf)/2,cy+37),"SEC",font=sf,fill=color)
+    draw.text((cx-text_width(draw,ts,tf)/2,cy-42),ts,font=tf,fill=color)
 
-def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0):
+
+def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale"):
     theme=THEMES[theme_name]
-    img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.35*pulse)
+    base=make_base(theme_name,bg_file)
+    # Subtle camera drift/zoom: the frame never feels frozen during the reflection.
+    phase=clamp(motion)
+    scale=1.0+0.018*math.sin(phase*math.pi*2)
+    bw,bh=base.size
+    nw,nh=int(bw*scale),int(bh*scale)
+    if nw>bw or nh>bh:
+        zoom=base.resize((nw,nh),Image.Resampling.LANCZOS)
+        sx=int((nw-bw)*0.5 + 14*math.sin(phase*math.pi*2))
+        sy=int((nh-bh)*0.5 + 10*math.cos(phase*math.pi*2))
+        img=zoom.crop((sx,sy,sx+bw,sy+bh))
+    else:
+        img=base.copy()
+    img=add_top_glow(img,theme,1.0+0.40*pulse)
     draw=ImageDraw.Draw(img)
-    draw_header(draw,theme,q_num,total)
+    draw_header(draw,theme,q_num,total,video_title)
+
     f_q=get_font(58)
     q_lines=wrap_text(question,f_q,900)[:3]
-    q_y=205
+    q_y=315
     q_e=ease_out(entrance)
-    q_offset=int((1-q_e)*45)
-    # Pendant la réflexion, le texte reste vivant : léger déplacement horizontal
-    # + respiration verticale, sans nuire à la lisibilité.
-    drift_x=int(9*math.sin(motion*math.pi*2.0))
-    drift_y=int(5*math.sin(motion*math.pi*4.0))
-    for line in q_lines:
+    q_offset=int((1-q_e)*65)
+    # Question movement accelerates slightly as the reflection advances.
+    drift_x=int(18*math.sin((phase*1.15)*math.pi*2))
+    drift_y=int(7*math.sin((phase*2.0)*math.pi*2))
+    for li,line in enumerate(q_lines):
         tw=text_width(draw,line,f_q)
-        draw.text(((WIDTH-tw)/2+drift_x,q_y+q_offset+drift_y),line,font=f_q,fill="white")
+        local_x=(WIDTH-tw)/2+drift_x+int(4*math.sin((phase+li*.12)*math.pi*4))
+        draw.text((local_x+4,q_y+q_offset+drift_y+5),line,font=f_q,fill=(0,0,0))
+        draw.text((local_x,q_y+q_offset+drift_y),line,font=f_q,fill="white")
         q_y+=78
 
-    if timer is not None:
-        draw_thinking_icon(draw,theme,motion,cx=935,cy=470)
-
-    left,right=55,850
-    card_h,gap=128,18
-    start_y=max(525,q_y+25)
+    # Four answers are visible together from the first frame.
+    left,right=60,1020
+    card_h,gap=118,18
+    start_y=650
     for i,opt in enumerate(options[:4]):
-        local=ease_out(clamp((entrance-i*0.12)/0.58))
-        card_drift=int(7*math.sin((motion+i*0.10)*math.pi*2.0)) if timer is not None else 0
-        y=start_y+int((1-local)*95)
-        y+=card_drift
+        local=ease_out(clamp((entrance-i*0.035)/0.50))
+        y=start_y+i*(card_h+gap)+int((1-local)*70)
+        card_motion=int(8*math.sin((phase+i*0.08)*math.pi*2)) if (timer is not None or correct_idx is None) else 0
+        y+=card_motion
         correct=(correct_idx is not None and i==correct_idx)
         dim=(correct_idx is not None and not correct)
         if correct:
-            # animated green reveal
             rp=ease_back(reveal_progress)
-            fill=theme["success"]
-            outline=(255,255,255)
-            width=5
-            extra=int(10*rp)
+            fill=theme["success"]; outline=(255,255,255); width=5; extra=int(9*rp)
         else:
-            fill=theme["card"] if i % 2 == 0 else theme["card2"]
-            outline=theme["accent"]
-            width=3
-            extra=0
+            fill=theme["card"] if i%2==0 else theme["card2"]; outline=theme["accent"]; width=3; extra=0
         if dim:
-            fill=tuple(max(0,int(c*0.55)) for c in fill)
-            outline=tuple(max(0,int(c*0.55)) for c in outline)
-        draw.rounded_rectangle((left-extra,y-extra,right+extra,y+card_h+extra),radius=28,fill=fill,outline=outline,width=width)
-        label=f"{chr(65+i)}  {clean_text(opt)}"
+            fill=tuple(max(0,int(c*0.45)) for c in fill); outline=tuple(max(0,int(c*0.45)) for c in outline)
+        draw.rounded_rectangle((left-extra,y-extra,right+extra,y+card_h+extra),radius=25,fill=fill,outline=outline,width=width)
+        label=f"{chr(65+i)}  -  {clean_text(opt)}"
         f_opt=get_font(39)
         lines=wrap_text(label,f_opt,right-left-58)[:2]
         th=sum(text_height(f_opt,x) for x in lines)+max(0,len(lines)-1)*8
         ty=y+(card_h-th)/2-3
         for line in lines:
-            draw.text((92,ty),line,font=f_opt,fill="white")
+            draw.text((96,ty),line,font=f_opt,fill="white")
             ty+=text_height(f_opt,line)+8
         if correct:
-            r=29
-            cx=right-55; cy=y+card_h/2
+            r=27; cx=right-48; cy=y+card_h/2
             draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill="white")
-            draw.text((cx-text_width(draw,"✓",get_font(34))/2,cy-21),"✓",font=get_font(34),fill=theme["success"])
+            tick=get_font(32); ts="✓"
+            draw.text((cx-text_width(draw,ts,tick)/2,cy-20),ts,font=tick,fill=theme["success"])
 
     if timer is not None:
+        draw_thinking_icon(draw,theme,phase,cx=935,cy=1250)
         draw_timer(draw,theme,timer,timer_fraction,pulse)
 
     if correct_idx is not None:
         p=ease_back(reveal_progress)
-        by=1410-int(15*p)
-        draw.rounded_rectangle((235,by,845,by+92),radius=35,fill=theme["success"])
-        txt="✓ BONNE RÉPONSE"
-        f=get_font(38+int(4*p))
-        draw.text(((WIDTH-text_width(draw,txt,f))/2,by+25),txt,font=f,fill="white")
+        by=1235-int(12*p)
+        draw.rounded_rectangle((255,by,825,1320),radius=30,fill=theme["success"])
+        txt="✓ BONNE RÉPONSE"; f=get_font(38+int(4*p))
+        draw.text(((WIDTH-text_width(draw,txt,f))/2,by+22),txt,font=f,fill="white")
 
     draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
     sf=get_font(23)
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
+
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     theme=THEMES[theme_name]
@@ -344,22 +360,15 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
-def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1):
+def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1,video_title="Culture Générale"):
     theme=THEMES[theme_name]
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.3*pulse)
     draw=ImageDraw.Draw(img)
-    draw_header(draw,theme,q_num,total)
-    # Answer ribbon
-    rounded_text(draw,(55,175,1025,245),f"✓ {answer}",get_font(34),theme["success"],None,0,25)
-    # short question reminder
-    qf=get_font(43)
-    qlines=wrap_text(question,qf,900)[:2]
-    y=300
-    for line in qlines:
-        tw=text_width(draw,line,qf); draw.text(((WIDTH-tw)/2,y),line,font=qf,fill=(220,225,235)); y+=58
-
+    draw_header(draw,theme,q_num,total,video_title)
+    # Keep the quiz visible during the explanation, with the correct answer highlighted.
+    rounded_text(draw,(60,620,1020,738),f"✓ {answer}",get_font(42),theme["success"],None,0,30)
     words=clean_text(explanation or "Bravo !").split()
-    f=get_font(58)
+    f=get_font(45)
     max_w=900
     lines=[]; cur=[]
     for w in words:
@@ -369,30 +378,31 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
             if cur: lines.append(cur)
             cur=[w]
     if cur: lines.append(cur)
-    lines=lines[:6]
-    total_h=len(lines)*78
-    yy=610-total_h/2
+    lines=lines[:5]
+    # Explanation deliberately sits low in the frame, like a compact knowledge card.
+    box_y1,box_y2=790,1175
+    draw.rounded_rectangle((60,box_y1,1020,box_y2),radius=30,fill=theme["card"],outline=theme["accent"],width=3)
+    draw.text((95,820),"💡 EXPLICATION",font=get_font(32),fill=theme["accent"])
+    yy=885
     idx=0
     for line in lines:
         widths=[text_width(draw,w,f) for w in line]
-        space=text_width(draw," ",f)
-        totalw=sum(widths)+space*max(0,len(line)-1)
+        space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(line)-1)
         x=(WIDTH-totalw)/2
         for w,ww in zip(line,widths):
             active=(idx==active_word)
             col=theme["accent"] if active else "white"
             if active:
-                pad=10+int(5*pulse)
-                draw.rounded_rectangle((x-pad,yy-7,x+ww+pad,yy+68),radius=16,fill=theme["card"],outline=theme["accent"],width=3)
+                pad=7+int(4*pulse)
+                draw.rounded_rectangle((x-pad,yy-5,x+ww+pad,yy+55),radius=12,fill=theme["card2"],outline=theme["accent"],width=2)
             draw.text((x,yy),w,font=f,fill=col)
             x+=ww+space; idx+=1
-        yy+=78
-    # small CTA hint
-    draw.text((55,1450),"À retenir",font=get_font(32),fill=theme["accent"])
+        yy+=58
     draw_brand(draw,theme,channel,progress)
     sf=get_font(23)
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
+
 
 def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
     theme=THEMES[theme_name]
@@ -462,10 +472,10 @@ def make_sfx(tmpdir):
     return tic,ding
 
 def make_sfx_countdown(tic,tmpdir):
-    # Un tic à chaque seconde pendant 3 s. Le tic final est ajouté séparément
+    # Un tic à chaque seconde pendant 3 s. Le son final est ajouté séparément
     # pour marquer clairement la fin du temps de réflexion.
     out=os.path.join(tmpdir,"countdown.wav")
-    cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.0",out]
+    cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.12",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def make_end_tick(tic,ding,tmpdir):
@@ -754,9 +764,9 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
     if st.session_state.get("q_data"):
         st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-        if st.button("🎬 Générer le Short Quiz V4",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz V5",key="makeq"):
             try:
-                with st.spinner("Création du Short dynamique V4..."):
+                with st.spinner("Création du Short dynamique V5..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
@@ -775,7 +785,7 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                             qa=os.path.join(tmp,f"q_{idx}_mix.m4a"); mix_background_music(qa_raw,qmusic,qa,music_volume=0.10)
                             qframes=[]
                             for p in [0.0,0.12,0.25,0.40,0.58,0.76,1.0]:
-                                qframes.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=p),min(0.12,max(0.04,qdur/10))))
+                                qframes.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=p,video_title=th_q),min(0.08,max(0.033,qdur/12))))
                             # Le dernier frame porte le reste de la voix.
                             used=sum(d for _,d in qframes); qframes[-1]=(qframes[-1][0],max(0.05,qdur-used+qframes[-1][1]))
                             qo=os.path.join(tmp,f"question_{idx}.mp4"); make_segment(save_frames(qframes,tmp,f"qf_{idx}"),qa,qo,tmp); clips.append(qo)
@@ -788,14 +798,16 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                                     frac=1-step/10
                                     pulse=1-step/10
                                     motion=frame_no/30.0
-                                    countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse,motion=motion),0.1))
+                                    countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse,motion=motion,video_title=th_q),0.1))
                                     frame_no+=1
-                            countdown_music=make_suspense_music(3.0,tmp,f"countmusic_{idx}",0.09)
+                            # 0 is shown at the exact end of reflection before the final sound.
+                            countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=0,timer_fraction=0.0,pulse=1.0,motion=frame_no/30.0,video_title=th_q),0.12))
+                            countdown_music=make_suspense_music(3.12,tmp,f"countmusic_{idx}",0.09)
                             countdown_audio=os.path.join(tmp,f"countdown_mix_{idx}.m4a")
                             mix_background_music(countdown_sfx,countdown_music,countdown_audio,voice_volume=1.0,music_volume=0.10)
                             co=os.path.join(tmp,f"countdown_{idx}.mp4"); make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),countdown_audio,co,tmp,.78); clips.append(co)
                             end_sfx=make_end_tick(tic,ding,tmp)
-                            end_frame=draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=1,timer_fraction=0.0,pulse=1.0,motion=1.0)
+                            end_frame=draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=0,timer_fraction=0.0,pulse=1.0,motion=1.0,video_title=th_q)
                             end_path=save_frames([(end_frame,0.45)],tmp,f"end_{idx}")
                             end_clip=os.path.join(tmp,f"end_{idx}.mp4"); make_segment(end_path,end_sfx,end_clip,tmp,.9); clips.append(end_clip)
 
@@ -803,7 +815,7 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                             reveal_frames=[]
                             reveal_points=[0.0,0.15,0.35,0.60,0.82,1.0]
                             for rp in reveal_points:
-                                reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=rp,pulse=0.25*(1-rp)),0.12))
+                                reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=rp,pulse=0.25*(1-rp),motion=rp,video_title=th_q),0.12))
                             reveal_raw=os.path.join(tmp,f"reveal_voice_{idx}.mp3")
                             exp_text=f"La bonne réponse est {q['reponse_correcte']}. {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
                             ea=os.path.join(tmp,f"exp_{idx}.mp3"); ewords=synthesize_audio(exp_text,voice_q,ea,tts_rate); edur=audio_duration(ea)
@@ -811,7 +823,8 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                             mixed=os.path.join(tmp,f"exp_mix_{idx}.m4a"); mix_voice_sfx(ea,ding,mixed,0,0.8)
                             # 6 images x 0.12 s = 0.72 s minimum pour éviter une durée négative.
                             reveal_dur=max(0.72,min(0.95,edur*0.14))
-                            reveal_frames[-1]=(reveal_frames[-1][0],max(0.033,reveal_dur-sum(d for _,d in reveal_frames[:-1])))
+                            each=reveal_dur/len(reveal_frames)
+                            reveal_frames=[(img,each) for img,_ in reveal_frames]
                             ro=os.path.join(tmp,f"reveal_{idx}.mp4"); make_segment(save_frames(reveal_frames,tmp,f"reveal_{idx}"),mixed,ro,tmp); clips.append(ro)
 
                             # 4) Explication: carte verte conservée + mots surlignés au rythme de la voix.
@@ -820,8 +833,8 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                                 for wi,w in enumerate(ewords):
                                     start=max(0,w["start"]); end=ewords[wi+1]["start"] if wi+1<len(ewords) else edur
                                     if end>start:
-                                        tf.append((draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=wi,pulse=0.12,progress=(idx+1)/total,q_num=idx+1,total=total),end-start))
-                            if not tf: tf=[(draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=-1,progress=(idx+1)/total,q_num=idx+1,total=total),edur)]
+                                        tf.append((draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=wi,pulse=0.12,progress=(idx+1)/total,q_num=idx+1,total=total,video_title=th_q),end-start))
+                            if not tf: tf=[(draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=-1,progress=(idx+1)/total,q_num=idx+1,total=total,video_title=th_q),edur)]
                             eo=os.path.join(tmp,f"explanation_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"expframe_{idx}"),mixed,eo,tmp,0.92); clips.append(eo)
 
                             # Interlude motivation/abonnement de temps en temps, sans appel Gemini.
@@ -840,7 +853,7 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
                         final=os.path.join(tmp,"quizvideo_pro.mp4"); concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V4 terminé.")
+                        st.success("✅ Short Quiz V5 terminé.")
                         st.video(data)
                         st.download_button("⬇️ Télécharger quizvideo_pro.mp4",data=data,file_name="quizvideo_pro.mp4",mime="video/mp4",key="dq4")
             except Exception as e:
