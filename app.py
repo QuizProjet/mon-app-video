@@ -212,6 +212,21 @@ def draw_brand(draw, theme, channel, progress=None):
 def draw_header(draw, theme, q_num, total):
     rounded_text(draw, (55, 70, 360, 136), f"QUESTION {q_num} / {total}", get_font(32), theme["card"], theme["accent"], 2, 26)
 
+def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=205):
+    """Icône de réflexion animée, dessinée avec PIL pour éviter les problèmes de police emoji."""
+    bounce=int(5*math.sin(phase*math.pi*2))
+    cy+=bounce
+    r=48
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(245,190,74),outline="white",width=4)
+    # yeux
+    draw.ellipse((cx-18,cy-12,cx-8,cy-2),fill=(25,30,40))
+    draw.ellipse((cx+8,cy-12,cx+18,cy-2),fill=(25,30,40))
+    # bouche réfléchie
+    draw.arc((cx-16,cy+2,cx+17,cy+24),190,345,fill=(25,30,40),width=4)
+    # petite bulle de pensée
+    draw.ellipse((cx+39,cy-55,cx+53,cy-41),fill="white")
+    draw.ellipse((cx+55,cy-70,cx+66,cy-59),fill="white")
+
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     color = theme["accent"] if timer == 3 else ((249,115,22) if timer == 2 else theme["danger"])
     cx, cy, r = 935, 825, 70
@@ -228,7 +243,7 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     sf=get_font(22)
     draw.text((cx-text_width(draw,"SEC",sf)/2,cy+37),"SEC",font=sf,fill=color)
 
-def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0):
+def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0):
     theme=THEMES[theme_name]
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.35*pulse)
     draw=ImageDraw.Draw(img)
@@ -238,17 +253,26 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     q_y=205
     q_e=ease_out(entrance)
     q_offset=int((1-q_e)*45)
+    # Pendant la réflexion, le texte reste vivant : léger déplacement horizontal
+    # + respiration verticale, sans nuire à la lisibilité.
+    drift_x=int(9*math.sin(motion*math.pi*2.0))
+    drift_y=int(5*math.sin(motion*math.pi*4.0))
     for line in q_lines:
         tw=text_width(draw,line,f_q)
-        draw.text(((WIDTH-tw)/2,q_y+q_offset),line,font=f_q,fill="white")
+        draw.text(((WIDTH-tw)/2+drift_x,q_y+q_offset+drift_y),line,font=f_q,fill="white")
         q_y+=78
+
+    if timer is not None:
+        draw_thinking_icon(draw,theme,motion,cx=935,cy=470)
 
     left,right=55,850
     card_h,gap=128,18
     start_y=max(525,q_y+25)
     for i,opt in enumerate(options[:4]):
         local=ease_out(clamp((entrance-i*0.12)/0.58))
+        card_drift=int(7*math.sin((motion+i*0.10)*math.pi*2.0)) if timer is not None else 0
         y=start_y+int((1-local)*95)
+        y+=card_drift
         correct=(correct_idx is not None and i==correct_idx)
         dim=(correct_idx is not None and not correct)
         if correct:
@@ -293,6 +317,8 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
         draw.text(((WIDTH-text_width(draw,txt,f))/2,by+25),txt,font=f,fill="white")
 
     draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
+    sf=get_font(23)
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
@@ -314,6 +340,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
         draw.text(((WIDTH-tw)/2,y),line,font=f,fill="white")
         y+=108
     draw_brand(draw,theme,channel)
+    sf=get_font(23)
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
 def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1):
@@ -362,6 +390,8 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     # small CTA hint
     draw.text((55,1450),"À retenir",font=get_font(32),fill=theme["accent"])
     draw_brand(draw,theme,channel,progress)
+    sf=get_font(23)
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
 def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
@@ -432,9 +462,46 @@ def make_sfx(tmpdir):
     return tic,ding
 
 def make_sfx_countdown(tic,tmpdir):
+    # Un tic à chaque seconde pendant 3 s. Le tic final est ajouté séparément
+    # pour marquer clairement la fin du temps de réflexion.
     out=os.path.join(tmpdir,"countdown.wav")
     cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.0",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
+
+def make_end_tick(tic,ding,tmpdir):
+    out=os.path.join(tmpdir,"reflection_end.wav")
+    cmd=[get_ffmpeg(),"-y","-i",ding,"-filter_complex","[0:a]volume=0.75[a]","-map","[a]","-t","0.45",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return out
+
+def make_suspense_music(duration,tmpdir,name,volume=0.08):
+    """Petite nappe de suspense générée localement : aucun fichier musical externe."""
+    duration=max(0.2,float(duration))
+    out=os.path.join(tmpdir,f"{name}.wav")
+    vol=max(0.0,min(0.25,float(volume)))
+    fade_out=max(0.05,min(0.35,duration*0.18))
+    fade_start=max(0.0,duration-fade_out)
+    filt=(
+        f"[0:a]volume={vol:.3f},lowpass=f=900,afade=t=in:st=0:d=0.12,afade=t=out:st={fade_start:.3f}:d={fade_out:.3f}[a];"
+        f"[1:a]volume={vol*0.42:.3f},lowpass=f=1200,afade=t=in:st=0:d=0.12,afade=t=out:st={fade_start:.3f}:d={fade_out:.3f}[b];"
+        "[a][b]amix=inputs=2:duration=longest:dropout_transition=0"
+    )
+    cmd=[get_ffmpeg(),"-y",
+         "-f","lavfi","-i",f"sine=frequency=92:sample_rate=44100:duration={duration:.3f}",
+         "-f","lavfi","-i",f"sine=frequency=138:sample_rate=44100:duration={duration:.3f}",
+         "-filter_complex",filt,"-c:a","pcm_s16le",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return out
+
+def mix_background_music(voice_path,music_path,output,voice_volume=1.0,music_volume=0.10):
+    """Mixe la voix et une musique de fond discrète sans écraser la voix."""
+    filt=(f"[0:a]volume={voice_volume:.3f}[v];"
+          f"[1:a]volume={music_volume:.3f}[m];"
+          "[v][m]amix=inputs=2:duration=first:dropout_transition=0")
+    cmd=[get_ffmpeg(),"-y","-i",voice_path,"-i",music_path,"-filter_complex",filt,
+         "-c:a","aac","-b:a","160k","-shortest",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return output
 
 def mix_voice_sfx(voice_path,sfx_path,output,delay_ms=0,sfx_volume=0.65):
     filt=f"[1:a]volume={sfx_volume},adelay={delay_ms}|{delay_ms}[s];[0:a][s]amix=inputs=2:duration=longest:dropout_transition=0"
@@ -549,12 +616,22 @@ def gemini_generate_text(prompt):
         return text, False
     except Exception as e:
         if _is_gemini_quota_error(e):
-            wait = _gemini_wait_seconds(e, default=13.0)
-            raise RuntimeError(
-                f"⏳ Limite Gemini atteinte. Attends environ {int(math.ceil(wait))} s puis clique une seule fois sur « Générer ». "
-                "Cette version ne fait plus de tentative automatique afin de ne pas consommer davantage ton quota."
-                + f" Détail : {e}"
-            ) from e
+            raw=str(e)
+            lower=raw.lower()
+            # Une limite quotidienne ne se résout pas avec un simple cooldown.
+            if any(token in lower for token in ["per day", "per_day", "daily", "requestsperday", "generate_requests_per_day"]):
+                msg=(
+                    "⏳ Limite quotidienne Gemini atteinte. Il ne faut pas relancer plusieurs fois : "
+                    "attends le prochain renouvellement du quota, puis fais un seul clic. "
+                    "Cette version ne fait aucun retry automatique."
+                )
+            else:
+                wait=_gemini_wait_seconds(e, default=13.0)
+                msg=(
+                    f"⏳ Limite Gemini de fréquence atteinte. Attends environ {int(math.ceil(wait))} s avant un seul nouveau clic. "
+                    "Cette version ne fait aucun retry automatique."
+                )
+            raise RuntimeError(msg + f" Détail : {e}") from e
         raise
 
 def parse_quiz_csv(uploaded_file):
@@ -596,6 +673,33 @@ voice_rate=st.sidebar.slider("⚡ Vitesse voix",0,30,15)
 tts_rate=f"+{voice_rate}%"
 MODEL_NAME="gemini-3.6-flash"
 
+MOTIVATION_LINES=[
+    "🔥 Encore une ! Ne lâche rien.",
+    "⚡ Plus vite ! La prochaine est difficile.",
+    "🧠 Concentre-toi… tu peux faire mieux !",
+    "🎯 Ton score monte… continue !",
+    "💬 Abonne-toi pour le prochain quiz !",
+]
+
+def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phase=0.0):
+    theme=THEMES[theme_name]
+    img=add_top_glow(make_base(theme_name,bg_file),theme,1.15)
+    draw=ImageDraw.Draw(img)
+    drift=int(22*math.sin(phase*math.pi*2))
+    rounded_text(draw,(90+drift,310,990+drift,420),"⚡ PAUSE QUIZ",get_font(42),theme["accent"],None,0,30)
+    f=get_font(64)
+    lines=wrap_text(text,f,850)[:3]
+    y=650-int(40*(1-ease_out(phase)))
+    for i,line in enumerate(lines):
+        x=(WIDTH-text_width(draw,line,f))/2+int(28*math.sin((phase+i*0.15)*math.pi*2))
+        draw.text((x,y),line,font=f,fill="white")
+        y+=92
+    draw_brand(draw,theme,channel,progress)
+    # Signature discrète des deux modules de QuizVideo Pro.
+    sf=get_font(23)
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
+    return img
+
 # ============================================================
 # INTERFACE
 # ============================================================
@@ -614,11 +718,12 @@ with tab1:
         nb_q=st.slider("Nombre de questions",1,10,10,key="nbq")
         th_q=st.text_input("Sujet du quiz","Culture Générale",key="thq")
     outro_q=st.text_input("CTA final","Quel est ton score ? Écris-le en commentaire !",key="oq")
+    st.caption("💡 Le CSV accepte aussi la colonne « explication » : elle sera lue après la révélation et affichée dans la vidéo.")
     bg_q=st.file_uploader("🖼️ Fond 9:16 personnalisé (optionnel)",type=["png","jpg","jpeg"],key="bgq")
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
-        st.caption("Le style visuel ne change pas le contenu. Pour changer les questions, modifie le « Sujet du quiz ». Chaque clic produit un nouveau lot. Une seule requête Gemini est envoyée par clic. Une seule requête Gemini est envoyée par clic.")
+        st.caption("Le style visuel ne change pas le contenu. Pour changer les questions, modifie le « Sujet du quiz ». Chaque clic produit un nouveau lot. Une seule requête Gemini est envoyée par clic.")
         if st.button("✨ Générer de nouvelles questions",key="genq",use_container_width=True):
             if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
             else:
@@ -664,8 +769,10 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
                             # 1) Question: voix + arrivée animée des cartes.
-                            qa=os.path.join(tmp,f"q_{idx}.mp3")
-                            synthesize_audio(f"Question {idx+1}. {q['question']}",voice_q,qa,tts_rate); qdur=audio_duration(qa)
+                            qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
+                            synthesize_audio(q['question'],voice_q,qa_raw,tts_rate); qdur=audio_duration(qa_raw)
+                            qmusic=make_suspense_music(qdur,tmp,f"qmusic_{idx}",0.10)
+                            qa=os.path.join(tmp,f"q_{idx}_mix.m4a"); mix_background_music(qa_raw,qmusic,qa,music_volume=0.10)
                             qframes=[]
                             for p in [0.0,0.12,0.25,0.40,0.58,0.76,1.0]:
                                 qframes.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=p),min(0.12,max(0.04,qdur/10))))
@@ -675,24 +782,36 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
                             # 2) Réflexion: vrai timer animé 3 -> 2 -> 1, ring qui se vide.
                             countdown_frames=[]
+                            frame_no=0
                             for sec in (3,2,1):
                                 for step in range(0,10):
                                     frac=1-step/10
                                     pulse=1-step/10
-                                    countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse),0.1))
-                            co=os.path.join(tmp,f"countdown_{idx}.mp4"); make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                                    motion=frame_no/30.0
+                                    countdown_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=sec,timer_fraction=frac,pulse=pulse,motion=motion),0.1))
+                                    frame_no+=1
+                            countdown_music=make_suspense_music(3.0,tmp,f"countmusic_{idx}",0.09)
+                            countdown_audio=os.path.join(tmp,f"countdown_mix_{idx}.m4a")
+                            mix_background_music(countdown_sfx,countdown_music,countdown_audio,voice_volume=1.0,music_volume=0.10)
+                            co=os.path.join(tmp,f"countdown_{idx}.mp4"); make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),countdown_audio,co,tmp,.78); clips.append(co)
+                            end_sfx=make_end_tick(tic,ding,tmp)
+                            end_frame=draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,timer=1,timer_fraction=0.0,pulse=1.0,motion=1.0)
+                            end_path=save_frames([(end_frame,0.45)],tmp,f"end_{idx}")
+                            end_clip=os.path.join(tmp,f"end_{idx}.mp4"); make_segment(end_path,end_sfx,end_clip,tmp,.9); clips.append(end_clip)
 
                             # 3) Révélation avec petit zoom vert + ding.
                             reveal_frames=[]
-                            for p in [0.0,0.15,0.35,0.60,0.82,1.0]:
-                                reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=p,pulse=0.25*(1-p)),0.12))
+                            reveal_points=[0.0,0.15,0.35,0.60,0.82,1.0]
+                            for rp in reveal_points:
+                                reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=rp,pulse=0.25*(1-rp)),0.12))
                             reveal_raw=os.path.join(tmp,f"reveal_voice_{idx}.mp3")
                             exp_text=f"La bonne réponse est {q['reponse_correcte']}. {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
                             ea=os.path.join(tmp,f"exp_{idx}.mp3"); ewords=synthesize_audio(exp_text,voice_q,ea,tts_rate); edur=audio_duration(ea)
                             # Ding superposé au début de l'explication.
                             mixed=os.path.join(tmp,f"exp_mix_{idx}.m4a"); mix_voice_sfx(ea,ding,mixed,0,0.8)
-                            reveal_dur=min(0.65,max(0.45,edur*0.12))
-                            reveal_frames[-1]=(reveal_frames[-1][0],reveal_dur-sum(d for _,d in reveal_frames[:-1]))
+                            # 6 images x 0.12 s = 0.72 s minimum pour éviter une durée négative.
+                            reveal_dur=max(0.72,min(0.95,edur*0.14))
+                            reveal_frames[-1]=(reveal_frames[-1][0],max(0.033,reveal_dur-sum(d for _,d in reveal_frames[:-1])))
                             ro=os.path.join(tmp,f"reveal_{idx}.mp4"); make_segment(save_frames(reveal_frames,tmp,f"reveal_{idx}"),mixed,ro,tmp); clips.append(ro)
 
                             # 4) Explication: carte verte conservée + mots surlignés au rythme de la voix.
@@ -704,6 +823,15 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
                                         tf.append((draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=wi,pulse=0.12,progress=(idx+1)/total,q_num=idx+1,total=total),end-start))
                             if not tf: tf=[(draw_explanation_scene(q['question'],q['options'][corr],exp_text,theme_q,channel_q,bg_q,active_word=-1,progress=(idx+1)/total,q_num=idx+1,total=total),edur)]
                             eo=os.path.join(tmp,f"explanation_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"expframe_{idx}"),mixed,eo,tmp,0.92); clips.append(eo)
+
+                            # Interlude motivation/abonnement de temps en temps, sans appel Gemini.
+                            if idx < total-1 and ((idx+1) % 2 == 0):
+                                mot=MOTIVATION_LINES[((idx+1)//2-1) % len(MOTIVATION_LINES)]
+                                ma=os.path.join(tmp,f"mot_{idx}.mp3"); synthesize_audio(mot,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                mmusic=make_suspense_music(md,tmp,f"mmusic_{idx}",0.055)
+                                mmix=os.path.join(tmp,f"mot_mix_{idx}.m4a"); mix_background_music(ma,mmusic,mmix,music_volume=0.055)
+                                mf=save_frames([(draw_motivation_scene(mot,theme_q,channel_q,bg_q,(idx+1)/total,p),max(0.04,md/7)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,f"motframe_{idx}")
+                                mo=os.path.join(tmp,f"motivation_{idx}.mp4"); make_segment(mf,mmix,mo,tmp,.95); clips.append(mo)
 
                         # CTA final animé.
                         oa=os.path.join(tmp,"outro.mp3"); synthesize_audio(outro_q,voice_q,oa,tts_rate); od=audio_duration(oa)
