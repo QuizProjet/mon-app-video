@@ -1169,14 +1169,14 @@ with tab2:
     bg_mode_clean_v=("Généré automatiquement" if bg_mode_v.startswith("✨")
                      else "Image personnalisée" if bg_mode_v.startswith("🖼️")
                      else "Aucun")
+    outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
+    nb_v=st.slider("Nombre de mots",3,10,10,key="nbv")
+    th_v=st.text_input("Sujet du vocabulaire","Voyage",key="thv")
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     if bg_mode_clean_v=="Généré automatiquement":
         st.caption("✨ Fond visuel créé localement selon le thème — 0 quota Gemini.")
     elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
         st.success("✅ Fond personnalisé prêt.")
-    outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
-    nb_v=st.slider("Nombre de mots",3,10,10,key="nbv")
-    th_v=st.text_input("Sujet du vocabulaire","Voyage",key="thv")
     st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
     vb1,vb2=st.columns(2)
