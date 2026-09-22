@@ -668,14 +668,92 @@ def csv_template():
     return "question,A,B,C,D,reponse_correcte,explication\nQuelle est la capitale de la France ?,Paris,Londres,Rome,Berlin,A,Paris est la capitale de la France.\n"
 
 def normalize_questions(data):
+    """Normalise plusieurs formats Gemini sans jeter les questions valides.
+
+    Gemini peut renvoyer les 4 réponses soit dans ``options`` (liste), soit
+    sous forme de clés A/B/C/D. La bonne réponse peut également être renvoyée
+    comme lettre, ``A - texte`` ou comme texte de la réponse.
+    """
     out=[]
+    if not isinstance(data, list):
+        return out
+
     for q in data:
-        opts=q.get("options",[])
-        if not isinstance(opts,list) or len(opts)!=4: continue
-        ans=str(q.get("reponse_correcte","A")).strip().upper()
-        ans=ans[0] if ans and ans[0] in "ABCD" else "A"
-        out.append({"question":clean_text(q.get("question","")),"options":[clean_text(x) for x in opts],"reponse_correcte":ans,"explication":clean_text(q.get("explication",""))})
+        if not isinstance(q, dict):
+            continue
+
+        question = clean_text(q.get("question", q.get("question_text", "")))
+
+        # Format principal : options = [A, B, C, D]
+        raw_opts = q.get("options")
+        if isinstance(raw_opts, dict):
+            opts = [raw_opts.get(k, "") for k in "ABCD"]
+        elif isinstance(raw_opts, (list, tuple)):
+            opts = list(raw_opts)
+        else:
+            # Format alternatif : A/B/C/D directement dans l'objet.
+            opts = [q.get(k, q.get(k.lower(), "")) for k in "ABCD"]
+
+        opts = [clean_text(x) for x in opts]
+        if len(opts) != 4 or not question or not all(opts):
+            continue
+
+        raw_ans = q.get("reponse_correcte", q.get("correct_answer", q.get("answer", "A")))
+        raw_ans_text = clean_text(raw_ans)
+        upper_ans = raw_ans_text.upper()
+
+        # Lettre seule ou forme ``A - ...`` / ``A) ...``.
+        m = re.match(r"^\s*([ABCD])(?:\s*[-:.)]\s*.*)?$", upper_ans)
+        if m:
+            ans = m.group(1)
+        else:
+            # Si Gemini renvoie directement le texte de la bonne option,
+            # on retrouve son index dans les 4 réponses.
+            ans = "A"
+            for i, opt in enumerate(opts):
+                if upper_ans == opt.upper():
+                    ans = "ABCD"[i]
+                    break
+
+        exp = clean_text(q.get("explication", q.get("explanation", "")))
+        out.append({
+            "question": question,
+            "options": opts,
+            "reponse_correcte": ans,
+            "explication": exp,
+        })
+
     return out
+
+# ------------------- Cache / édition sans quota -------------------
+def _stable_hash(payload):
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+def _quiz_generation_key(nb, subject):
+    return _stable_hash({"type": "quiz", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower()})
+
+def _vocab_generation_key(nb, subject, language):
+    return _stable_hash({"type": "vocab", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower(), "language": language})
+
+def _save_quiz_editor(rows):
+    cleaned=[]
+    for row in rows:
+        q=clean_text(row.get("Question", ""))
+        opts=[clean_text(row.get(k, "")) for k in ["A","B","C","D"]]
+        ans=clean_text(row.get("Bonne", "A")).upper()[:1]
+        exp=clean_text(row.get("Explication", ""))
+        if q and all(opts) and ans in "ABCD":
+            cleaned.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
+    return cleaned[:10]
+
+def _save_vocab_editor(rows):
+    cleaned=[]
+    for row in rows:
+        fr=clean_text(row.get("Français", ""))
+        tr=clean_text(row.get("Traduction", ""))
+        if fr and tr:
+            cleaned.append({"fr":fr,"trad":tr})
+    return cleaned[:10]
 
 api_key=st.sidebar.text_input("Clé API Gemini",type="password")
 if api_key: genai.configure(api_key=api_key)
@@ -733,24 +811,56 @@ with tab1:
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
-        st.caption("Le style visuel ne change pas le contenu. Pour changer les questions, modifie le « Sujet du quiz ». Chaque clic produit un nouveau lot. Une seule requête Gemini est envoyée par clic.")
-        if st.button("✨ Générer de nouvelles questions",key="genq",use_container_width=True):
-            if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-            else:
-                try:
-                    nonce=random.randint(100000,999999999)
-                    prompt=f"""Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
-Varie les connaissances testées et évite toute répétition entre les questions. Ne recycle pas une liste fixe.
-Chaque objet doit contenir : question, options (exactement 4 réponses A/B/C/D), reponse_correcte (A/B/C/D), explication courte.
-Les 4 options doivent être plausibles et une seule doit être correcte.
-ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de tableau."""
-                    res_text, _ = gemini_generate_text(prompt)
-                    data=normalize_questions(parse_json(res_text))
-                    if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
-                    st.session_state.q_data=data[:nb_q]
-                    st.session_state.q_source=f"IA • {th_q}"
-                    st.success(f"✅ {len(st.session_state.q_data)} nouvelles questions sur « {th_q} ».")
-                except Exception as e: st.error(f"Erreur Gemini : {e}")
+        st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
+        gen_key=_quiz_generation_key(nb_q,th_q)
+        cached_key=st.session_state.get("q_ai_key")
+        if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
+            st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
+        bq1,bq2=st.columns(2)
+        with bq1:
+            if st.button("♻️ Charger / générer ce quiz",key="genq",use_container_width=True):
+                if cached_key==gen_key and st.session_state.get("q_ai_cache"):
+                    st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
+                    st.session_state.q_source=f"IA • {th_q} • cache"
+                    st.success("✅ Quiz déjà généré : réutilisation du cache, 0 nouvelle requête Gemini.")
+                elif not api_key:
+                    st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
+Varie les connaissances testées et évite toute répétition entre les questions.
+Chaque objet doit respecter EXACTEMENT cette structure :
+{{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
+IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
+reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
+Les 4 options doivent être plausibles et une seule correcte.
+Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=normalize_questions(parse_json(res_text))
+                        if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                        st.session_state.q_data=data[:nb_q]
+                        st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                        st.session_state.q_ai_key=gen_key
+                        st.session_state.q_source=f"IA • {th_q}"
+                        st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        with bq2:
+            if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
+                if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en français sur « {th_q} ».
+Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
+Une seule bonne réponse. Retourne uniquement le JSON.'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=normalize_questions(parse_json(res_text))
+                        if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                        st.session_state.q_data=data[:nb_q]
+                        st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                        st.session_state.q_ai_key=gen_key
+                        st.session_state.q_source=f"IA • {th_q}"
+                        st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
     else:
         st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 10 questions.</div></div>', unsafe_allow_html=True)
         st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
@@ -764,6 +874,29 @@ ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide sous forme de t
 
     if st.session_state.get("q_data"):
         st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
+        st.markdown("### ✏️ Modifier ou ajouter des questions — sans quota Gemini")
+        quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
+        edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={
+            "Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),
+            "Question":st.column_config.TextColumn("Question",width="large"),
+            "Explication":st.column_config.TextColumn("Explication",width="large")
+        },hide_index=True)
+        be1,be2=st.columns(2)
+        with be1:
+            if st.button("💾 Enregistrer les modifications",key="saveqedit",use_container_width=True):
+                saved=_save_quiz_editor(edited)
+                if saved:
+                    st.session_state.q_data=saved
+                    st.session_state.q_source="Questions modifiées manuellement"
+                    st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
+                else: st.error("Aucune question valide à enregistrer.")
+        with be2:
+            if st.button("↩️ Restaurer le dernier lot IA",key="restoreq",use_container_width=True):
+                if st.session_state.get("q_ai_cache"):
+                    st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
+                    st.session_state.q_source=f"IA • {th_q} • restauré"
+                    st.success("✅ Lot IA restauré, 0 quota consommé.")
+                else: st.info("Aucun lot IA en cache.")
         if st.button("🎬 Générer le Short Quiz V5",key="makeq"):
             try:
                 with st.spinner("Création du Short dynamique V5..."):
@@ -871,17 +1004,63 @@ with tab2:
     outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
     nb_v=st.slider("Nombre de mots",3,10,10,key="nbv")
     th_v=st.text_input("Sujet du vocabulaire","Voyage",key="thv")
-    if st.button("✨ Générer le vocabulaire par IA",key="genv"):
-        if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-        else:
-            try:
-                nonce=random.randint(100000,999999999)
-                prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. ID de génération : {nonce}. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
-                res_text, _ = gemini_generate_text(prompt)
-                st.session_state.v_data=parse_json(res_text)[:nb_v]
-                st.success("Vocabulaire prêt.")
-            except Exception as e: st.error(f"Erreur Gemini : {e}")
+    st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
+    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
+    vb1,vb2=st.columns(2)
+    with vb1:
+        if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
+            if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
+                st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
+                st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
+            elif not api_key:
+                st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+            else:
+                try:
+                    prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
+                    res_text,_=gemini_generate_text(prompt)
+                    data=parse_json(res_text)[:nb_v]
+                    if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                    st.session_state.v_data=data
+                    st.session_state.v_ai_cache=[dict(x) for x in data]
+                    st.session_state.v_ai_key=vg_key
+                    st.success("✅ Vocabulaire généré et mis en cache.")
+                except Exception as e: st.error(f"Erreur Gemini : {e}")
+    with vb2:
+        if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
+            if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+            else:
+                try:
+                    prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
+                    res_text,_=gemini_generate_text(prompt)
+                    data=parse_json(res_text)[:nb_v]
+                    if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                    st.session_state.v_data=data
+                    st.session_state.v_ai_cache=[dict(x) for x in data]
+                    st.session_state.v_ai_key=vg_key
+                    st.success("✅ Nouveau lot vocabulaire généré.")
+                except Exception as e: st.error(f"Erreur Gemini : {e}")
     if st.session_state.get("v_data"):
+        st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
+        st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
+        vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
+        edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={
+            "Français":st.column_config.TextColumn("Français",width="medium"),
+            "Traduction":st.column_config.TextColumn("Traduction",width="medium")
+        },hide_index=True)
+        ve1,ve2=st.columns(2)
+        with ve1:
+            if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
+                saved=_save_vocab_editor(edited_v)
+                if saved:
+                    st.session_state.v_data=saved
+                    st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
+                else: st.error("Aucun mot valide à enregistrer.")
+        with ve2:
+            if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
+                if st.session_state.get("v_ai_cache"):
+                    st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
+                    st.success("✅ Lot IA restauré, 0 quota consommé.")
+                else: st.info("Aucun lot IA en cache.")
         if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
             try:
                 with st.spinner("Création du Short vocabulaire V4..."):
