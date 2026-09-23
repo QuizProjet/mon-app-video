@@ -849,7 +849,7 @@ def _theme_keywords(topic):
 
 def generate_theme_background(theme_name,topic):
     'Crée un fond 9:16 stylisé localement selon le sujet. Aucun appel API.'
-    key=("auto_bg_v3",theme_name,clean_text(topic).lower())
+    key=("auto_bg_v4",theme_name,clean_text(topic).lower())
     if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
     theme=THEMES[theme_name]
     img=make_base(theme_name).convert("RGBA")
@@ -859,15 +859,15 @@ def generate_theme_background(theme_name,topic):
     rng=random.Random(seed)
     for _ in range(100):
         x=rng.randint(-80,WIDTH+80); y=rng.randint(0,HEIGHT); r=rng.randint(2,12)
-        d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,rng.randint(18,60)))
+        d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,rng.randint(24,78)))
     if kind=="espace":
         for _ in range(6):
             x=rng.randint(0,WIDTH); y=rng.randint(250,1650); r=rng.randint(90,260)
-            d.ellipse((x-r,y-r,x+r,y+r),outline=(*accent,42),width=4)
+            d.ellipse((x-r,y-r,x+r,y+r),outline=(*accent,58),width=4)
     elif kind=="geographie":
         cx,cy=540,820
         for rx,ry in [(300,300),(300,135),(135,300)]:
-            d.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),outline=(*accent,45),width=5)
+            d.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),outline=(*accent,62),width=5)
         d.line((cx-300,cy,cx+300,cy),fill=(*muted,35),width=4)
     elif kind=="histoire":
         for x in range(110,1000,175):
@@ -875,7 +875,7 @@ def generate_theme_background(theme_name,topic):
             d.rectangle((x+25,820,x+115,1080),fill=(*muted,12))
     elif kind=="science":
         cx,cy=540,850
-        for r in (120,220,320): d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,40),width=4)
+        for r in (120,220,320): d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,58),width=4)
         d.ellipse((cx-42,cy-42,cx+42,cy+42),fill=(*accent,90))
     elif kind=="animaux":
         for j in range(7):
@@ -886,17 +886,17 @@ def generate_theme_background(theme_name,topic):
     elif kind=="art":
         for _ in range(8):
             x=rng.randint(100,850); y=rng.randint(450,1400); w=rng.randint(130,360); h=rng.randint(80,220)
-            d.rounded_rectangle((x,y,x+w,y+h),radius=35,outline=(*accent,42),width=5)
+            d.rounded_rectangle((x,y,x+w,y+h),radius=35,outline=(*accent,58),width=5)
     elif kind=="food":
         for _ in range(8):
             x=rng.randint(150,850); y=rng.randint(450,1450); r=rng.randint(35,90)
-            d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,18),outline=(*accent,42),width=4)
+            d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,18),outline=(*accent,58),width=4)
     else:
         for _ in range(7):
             x=rng.randint(100,850); y=rng.randint(350,1500)
-            d.rounded_rectangle((x,y,x+rng.randint(140,320),y+rng.randint(70,180)),radius=35,outline=(*accent,34),width=4)
+            d.rounded_rectangle((x,y,x+rng.randint(140,320),y+rng.randint(70,180)),radius=35,outline=(*accent,48),width=4)
     vign=Image.new("L",(WIDTH,HEIGHT),0); vd=ImageDraw.Draw(vign)
-    vd.rectangle((80,150,1000,1780),fill=105); vign=vign.filter(ImageFilter.GaussianBlur(100))
+    vd.rectangle((80,150,1000,1780),fill=82); vign=vign.filter(ImageFilter.GaussianBlur(100))
     result=Image.alpha_composite(img,ov)
     dark=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dark.putalpha(vign)
     result=Image.alpha_composite(result,dark).convert("RGB")
@@ -963,6 +963,8 @@ with tab1:
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
     if bg_mode_clean_q=="Généré automatiquement":
         st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
+        if bg_q is not None:
+            st.image(bg_q, caption=f"Aperçu du fond automatique • {th_q}", width=180)
     elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
         st.success("✅ Fond personnalisé prêt.")
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
@@ -1106,7 +1108,6 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             reveal_points=[0.0,0.15,0.35,0.60,0.82,1.0]
                             for rp in reveal_points:
                                 reveal_frames.append((draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,channel_q,bg_q,entrance=1.0,correct_idx=corr,reveal_progress=rp,pulse=0.25*(1-rp),motion=rp,video_title=th_q),0.12))
-                            reveal_raw=os.path.join(tmp,f"reveal_voice_{idx}.mp3")
                             exp_text=f"La bonne réponse est {q['reponse_correcte']}. {q['options'][corr]}. {q.get('explication','') or 'Bravo !'}"
                             ea=os.path.join(tmp,f"exp_{idx}.mp3"); ewords=synthesize_audio(exp_text,voice_q,ea,tts_rate); edur=audio_duration(ea)
                             # Ding superposé au début de l'explication.
@@ -1175,6 +1176,8 @@ with tab2:
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     if bg_mode_clean_v=="Généré automatiquement":
         st.caption("✨ Fond visuel créé localement selon le thème — 0 quota Gemini.")
+        if bg_v is not None:
+            st.image(bg_v, caption=f"Aperçu du fond automatique • {th_v}", width=180)
     elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
         st.success("✅ Fond personnalisé prêt.")
     st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
