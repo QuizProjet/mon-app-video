@@ -290,13 +290,14 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     if title.lower().startswith("quiz "):
         title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(46)
+    cfg=_layout("quiz")
+    tf=get_font(int(cfg.get("title_size",46)))
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
     icon_size=26
     total_w=tw+54
     x=max(42,(WIDTH-total_w)/2)
-    y=42+int(4*math.sin(float(phase)*math.pi*2))
+    y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
     draw_thinking_face(draw,theme,int(x+tw+35),int(y+25),icon_size,phase)
@@ -307,9 +308,10 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    """Timer compact et très visible, sans emoji dépendant d'une police."""
-    color=theme["danger"] if timer<=1 else (249,115,22) if timer==2 else theme["accent"]
-    cx,cy,r=540,1045,58; pr=int(3+10*clamp(pulse))
+    """Timer compact et très visible, piloté par l'éditeur."""
+    cfg=_layout("quiz")
+    color=theme["danger"] if timer<=1 else (249,115,22) if timer==2 else _hex_rgb(cfg.get("primary"),theme["accent"])
+    cx,cy,r=540,int(cfg.get("timer_y",1045)),int(cfg.get("timer_size",58)); pr=int(3+10*clamp(pulse))
     draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=(*color,100),width=3)
     draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
     box=(cx-r+6,cy-r+6,cx+r-6,cy+r-6)
@@ -318,115 +320,137 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     draw.text((cx-text_width(draw,ts,tf)/2,cy-36),ts,font=tf,fill=color)
     # Petit libellé, volontairement dessiné sans emoji.
     lbl="RÉFLÉCHIS"; lf=get_font(23); lw=text_width(draw,lbl,lf)
-    draw.text(((WIDTH-lw)/2,1110),lbl,font=lf,fill=theme["accent"])
+    draw.text(((WIDTH-lw)/2,cy+r+18),lbl,font=lf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
 
+
+def _hex_rgb(value, fallback=(255,255,255)):
+    try:
+        h=str(value).strip().lstrip("#")
+        if len(h)==6:
+            return tuple(int(h[i:i+2],16) for i in (0,2,4))
+    except Exception:
+        pass
+    return fallback
+
+def _layout(module="quiz"):
+    """Réglages visuels pilotés entièrement par l'interface."""
+    prefix="v_" if module=="vocab" else "q_"
+    defaults={
+        "show_title":True,"title_y":42,"title_size":46,
+        "question_y":205,"question_size":47,"question_box_radius":28,
+        "answer_y":405,"answer_h":91,"answer_gap":12,"answer_size":30,"answer_radius":20,
+        "timer_y":1045,"timer_size":58,"timer_label_y":1110,
+        "explanation_y":1135,"explanation_h":380,"explanation_size":31,
+        "explanation_radius":24,"show_explanation":True,"show_timer":True,
+        "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
+        "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
+        "primary":"#FFCD40","answer":"#11305B","answer2":"#143765",
+        "correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
+    }
+    if module=="vocab":
+        defaults.update({"title_y":70,"title_size":32,"question_y":500,"question_size":88,
+                         "answer_y":760,"answer_size":58,"timer_y":1045,"timer_size":58,
+                         "animation":"Glissement","primary":"#FFCD40"})
+    out={}
+    for k,v in defaults.items():
+        out[k]=st.session_state.get(prefix+k,v)
+    return out
 
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
-    f=get_font(47); lines=wrap_text(question,f,900)[:3]; hi=_highlight_words(question); yy=y
-    box_top=y-18; box_bottom=y+len(lines)*56+12
-    draw.rounded_rectangle((58,box_top,1022,box_bottom),radius=28,fill=(6,12,28,218),outline=(*theme["accent"],105),width=2)
+    cfg=_layout("quiz")
+    f=get_font(cfg["question_size"]); lines=wrap_text(question,f,900)[:3]; hi=_highlight_words(question); yy=int(cfg["question_y"])
+    box_top=yy-18; box_bottom=yy+len(lines)*int(cfg["question_size"]*1.18)+12
+    radius=int(cfg["question_box_radius"])
+    draw.rounded_rectangle((58,box_top,1022,box_bottom),radius=radius,fill=(6,12,28,218),outline=(*_hex_rgb(cfg["primary"],theme["accent"]),105),width=2)
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
-        x=(WIDTH-totalw)/2+int(5*math.sin(phase*math.pi*2))
+        x=(WIDTH-totalw)/2+int(5*math.sin(phase*math.pi*2*cfg["motion_strength"]))
         for w,ww in zip(words,widths):
-            key=w.strip(".,?!:;()[]«»\"'").lower(); fill=theme["accent"] if key in hi else "white"
+            key=w.strip(".,?!:;()[]«»\"'").lower(); fill=_hex_rgb(cfg["primary"],theme["accent"]) if key in hi else _hex_rgb(cfg["text"],(255,255,255))
             draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
             x+=ww+space
-        yy+=56
+        yy+=int(cfg["question_size"]*1.18)
     return box_bottom
 
-
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
-    left,right=62,1018; card_h,gap=91,12; start_y=405; f_opt=get_font(30)
+    cfg=_layout("quiz"); left,right=62,1018
+    card_h=int(cfg["answer_h"]); gap=int(cfg["answer_gap"]); start_y=int(cfg["answer_y"]); f_opt=get_font(cfg["answer_size"])
+    anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
     for i,opt in enumerate(options[:4]):
-        local=ease_out(clamp((entrance-i*0.07)/0.48))
-        y=start_y+i*(card_h+gap)+int((1-local)*52)+int(2*math.sin((phase+i*.13)*math.pi*2))
+        if anim=="Aucune": local=1.0
+        else: local=ease_out(clamp((entrance-i*0.07*speed)/(0.48/max(.25,speed))))
+        offset=int((1-local)*52*strength) if anim=="Glissement" else 0
+        extra=int(7*ease_back(clamp(reveal_progress))) if correct_idx is not None and i==correct_idx else 0
+        xpad=0
+        if anim=="Glissement": xpad=int((1-local)*40*strength)
+        elif anim=="Pop": extra += int((1-local)*10*strength)
+        y=start_y+i*(card_h+gap)+offset+int(2*math.sin((phase+i*.13)*math.pi*2*cfg["motion_strength"]))
         correct=(correct_idx is not None and i==correct_idx)
         if correct:
-            p=ease_back(clamp(reveal_progress)); fill=theme["success"]; outline=(255,255,255); width=4; extra=int(7*p)
+            fill=_hex_rgb(cfg["correct"],theme["success"]); outline=(255,255,255); width=4
         else:
-            fill=(17,48,91) if i%2==0 else (20,55,101); outline=(210,225,250); width=2; extra=0
+            fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=(210,225,250); width=2
             if correct_idx is not None:
-                fade=0.55
-                fill=tuple(int(c*fade) for c in fill); outline=tuple(int(c*fade) for c in outline)
-        draw.rounded_rectangle((left-extra,y-extra,right+extra,y+card_h+extra),radius=20,fill=fill,outline=outline,width=width)
-        # Badge A/B/C/D bien lisible.
-        bx=82; by=y+11; bw=55; bh=card_h-22
-        badge_fill=theme["accent"] if not correct else "white"
-        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=16,fill=badge_fill)
-        lf=get_font(28); letter=chr(65+i)
-        lc=theme["card"] if not correct else theme["success"]
+                fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
+        draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg["answer_radius"]),fill=fill,outline=outline,width=width)
+        bx=82+xpad; by=y+11; bw=55; bh=card_h-22
+        badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
+        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(16,int(cfg["answer_radius"]*.8)),fill=badge_fill)
+        lf=get_font(min(34,int(cfg["answer_size"]))) ; letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
         draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+10),letter,font=lf,fill=lc)
-        text_x=154; maxw=right-text_x-26
-        lines=wrap_text(clean_text(opt),f_opt,maxw)[:2]
+        text_x=154+xpad; maxw=right-text_x-26; lines=wrap_text(clean_text(opt),f_opt,maxw)[:2]
         th=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*3; ty=y+(card_h-th)/2-2
         for line in lines:
-            draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill="white"); ty+=text_height(f_opt,line)+3
+            draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill=_hex_rgb(cfg["text"],(255,255,255))); ty+=text_height(f_opt,line)+3
         if correct:
-            cx=right-38; cy=y+card_h/2; rr=19
+            cx=right-38+xpad; cy=y+card_h/2; rr=19
             draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
-            draw.line((cx-8,cy,cx-2,cy+7),fill=theme["success"],width=4)
-            draw.line((cx-2,cy+7,cx+10,cy-9),fill=theme["success"],width=4)
-
+            draw.line((cx-8,cy,cx-2,cy+7),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
+            draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0):
-    """Explication compacte, intégrée à la même page que les réponses."""
-    y1,y2=1135,1515; p=ease_out(progress)
-    draw.rounded_rectangle((58,y1,1022,y2),radius=24,fill=(6,13,28),outline=theme["accent"],width=2)
-    draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=theme["accent"])
-    # Icône ampoule dessinée, indépendante des emojis.
-    cx,cy=98,1192
-    draw.ellipse((cx-16,cy-22,cx+16,cy+10),outline=theme["accent"],width=3)
-    draw.line((cx-10,cy+16,cx+10,cy+16),fill=theme["accent"],width=3)
-    draw.line((cx-7,cy+23,cx+7,cy+23),fill=theme["accent"],width=3)
-    draw.text((145,1167),"EXPLICATION",font=get_font(28),fill=theme["accent"])
-    f=get_font(31); lines=wrap_text(explanation or "Bravo !",f,865)[:4]; yy=1230
+    cfg=_layout("quiz"); y1=int(cfg["explanation_y"]); y2=min(1710,y1+int(cfg["explanation_h"])); p=ease_out(progress)
+    primary=_hex_rgb(cfg["primary"],theme["accent"])
+    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg["explanation_radius"]),fill=(6,13,28),outline=primary,width=2)
+    draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=primary)
+    cx,cy=98,y1+57
+    draw.ellipse((cx-16,cy-22,cx+16,cy+10),outline=primary,width=3)
+    draw.line((cx-10,cy+16,cx+10,cy+16),fill=primary,width=3); draw.line((cx-7,cy+23,cx+7,cy+23),fill=primary,width=3)
+    draw.text((145,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
+    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,865)[:5]; yy=y1+95
     max_visible=max(1,int(len(lines)*p+0.999))
     for line in lines[:max_visible]:
-        tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill="white"); yy+=43
-
+        tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=int(cfg["explanation_size"]*1.35)
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0):
-    theme=THEMES[theme_name]
+    cfg=_layout("quiz"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
-    phase=float(motion or 0.0)
-    scale=1.018+0.008*math.sin(phase*math.pi*2)
-    nw,nh=int(WIDTH*scale),int(HEIGHT*scale)
-    z=base.resize((nw,nh),Image.Resampling.LANCZOS)
-    sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.12*math.sin(phase*math.pi*2)))))
-    sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))))
-    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT))
-    img=add_top_glow(img,theme,1.0+0.55*pulse)
-    draw=ImageDraw.Draw(img)
-    # Mouvement d'ambiance : quelques particules lentes donnent le même
-    # sentiment de vie que le Short de référence sans gêner la lecture.
+    # Assombrissement réglable : le fond reste visible mais le texte reste lisible.
+    alpha=int(clamp(cfg["bg_opacity"],0,90))
+    if alpha:
+        ov=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha)); base=Image.alpha_composite(base.convert("RGBA"),ov).convert("RGB")
+    phase=float(motion or 0.0)*max(.25,float(cfg["motion_strength"]))
+    scale=float(cfg.get("bg_zoom",1.02))+0.008*math.sin(phase*math.pi*2)
+    nw,nh=int(WIDTH*scale),int(HEIGHT*scale); z=base.resize((nw,nh),Image.Resampling.LANCZOS)
+    sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.12*math.sin(phase*math.pi*2)))+int(cfg.get("bg_x",0))))
+    sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))+int(cfg.get("bg_y",0))))
+    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse); draw=ImageDraw.Draw(img)
     for k in range(9):
-        px=int((90+k*121+(phase*34*(1+k%3))) % 1000)+40
-        py=int(250+((k*177+phase*55) % 1420))
-        rr=2+(k%3)
-        draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=(*theme["accent"],55))
-    draw_header(draw,theme,q_num,total,video_title,phase)
-    _draw_question_rich(draw,question,theme,y=205,phase=phase)
+        px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=(*_hex_rgb(cfg["primary"],theme["accent"]),55))
+    if cfg["show_title"]:
+        draw_header(draw,theme,q_num,total,video_title,phase)
+    _draw_question_rich(draw,question,theme,y=int(cfg["question_y"]),phase=phase)
     _draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase)
-    if timer is not None:
+    if timer is not None and cfg["show_timer"]:
         draw_timer(draw,theme,timer,timer_fraction,pulse)
     if correct_idx is not None and reveal_progress>0:
-        # Flash très bref au moment où la bonne réponse passe au vert.
         rp=clamp(reveal_progress)
-        if rp < 0.45:
-            alpha=int(95*(1-rp/0.45))
-            glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0))
-            gd=ImageDraw.Draw(glow)
-            gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8)
-            glow=glow.filter(ImageFilter.GaussianBlur(12))
-            img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB")
-            draw=ImageDraw.Draw(img)
-    if correct_idx is not None and explanation and explanation_progress>0:
+        if rp<0.45:
+            alpha=int(95*(1-rp/0.45)); glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0)); gd=ImageDraw.Draw(glow); gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8); glow=glow.filter(ImageFilter.GaussianBlur(12)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
+    if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress)
-    # Barre et signature : zone basse minimale, jamais vide.
-    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
-    draw.text((55,1788),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=theme["muted"])
+    draw_brand(draw,theme,channel,(q_num-1)/max(1,total)); draw.text((55,1788),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
     return img
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
@@ -502,24 +526,21 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
 
 
 def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
-    theme=THEMES[theme_name]
-    img=add_top_glow(make_base(theme_name,bg_file),theme)
-    draw=ImageDraw.Draw(img)
-    rounded_text(draw,(55,70,430,135),f"VOCABULAIRE • {idx+1}/{len(items)}",get_font(32),theme["card"],theme["accent"],2,26)
-    item=items[idx]; fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad",""))
-    p=ease_out(entrance)
-    fbig=get_font(88)
-    y=500+int((1-p)*80)
-    draw.text(((WIDTH-text_width(draw,fr,fbig))/2,y),fr,font=fbig,fill=theme["accent"])
+    cfg=_layout("vocab"); theme=THEMES[theme_name]
+    base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
+    alpha=int(clamp(cfg["bg_opacity"],0,90))
+    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
+    img=add_top_glow(base,theme); draw=ImageDraw.Draw(img)
+    rounded_text(draw,(55,int(cfg["title_y"]),430,int(cfg["title_y"])+65),f"VOCABULAIRE • {idx+1}/{len(items)}",get_font(int(cfg["title_size"])),_hex_rgb(cfg["answer"],theme["card"]),_hex_rgb(cfg["primary"],theme["accent"]),2,26)
+    item=items[idx]; fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")); p=ease_out(entrance)
+    fbig=get_font(int(cfg["question_size"])); y=int(cfg["question_y"])+int((1-p)*80)
+    draw.text(((WIDTH-text_width(draw,fr,fbig))/2,y),fr,font=fbig,fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if phase in ("translation","reveal"):
-        ft=get_font(58)
-        lines=wrap_text(tr,ft,850); yy=760
-        for line in lines:
-            draw.text(((WIDTH-text_width(draw,line,ft))/2,yy),line,font=ft,fill="white"); yy+=75
-    if phase=="countdown" and timer is not None:
-        draw_timer(draw,theme,timer,timer_fraction,0.15)
-    draw_brand(draw,theme,channel,idx/max(1,len(items)))
-    return img
+        ft=get_font(int(cfg["answer_size"])); lines=wrap_text(tr,ft,850); yy=int(cfg["answer_y"])
+        for line in lines: draw.text(((WIDTH-text_width(draw,line,ft))/2,yy),line,font=ft,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=75
+    if phase=="countdown" and timer is not None and cfg["show_timer"]: draw_timer(draw,theme,timer,timer_fraction,0.15)
+    draw_brand(draw,theme,channel,idx/max(1,len(items))); return img
+
 
 # ------------------------- TTS ------------------------------
 async def _tts(text,voice,path,rate="+15%"):
@@ -1040,6 +1061,55 @@ st.sidebar.markdown("""
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
 """, unsafe_allow_html=True)
 
+
+def render_layout_editor(module, key_prefix):
+    """Panneau de contrôle visuel : les réglages sont sans quota Gemini."""
+    is_quiz=module=="quiz"; p=key_prefix
+    with st.expander("🎛️ Mise en page complète — tout est modifiable",expanded=False):
+        st.caption("Les réglages ci-dessous contrôlent le rendu vidéo. Ils ne consomment aucun quota Gemini.")
+        c1,c2,c3=st.columns(3)
+        with c1:
+            st.checkbox("Afficher le titre",True,key=p+"show_title")
+            st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
+            st.slider("Taille du titre",24,72,46 if is_quiz else 32,key=p+"title_size")
+            st.slider("Position question / mot",120,850,205 if is_quiz else 500,key=p+"question_y")
+            st.slider("Taille question / mot",28,100,47 if is_quiz else 88,key=p+"question_size")
+        with c2:
+            st.slider("Position des réponses",300,900,405,key=p+"answer_y")
+            st.slider("Hauteur des réponses",55,130,91,key=p+"answer_h")
+            st.slider("Espacement des réponses",4,30,12,key=p+"answer_gap")
+            st.slider("Taille du texte des réponses",20,52,30 if is_quiz else 58,key=p+"answer_size")
+            st.slider("Arrondi des cartes",5,40,20,key=p+"answer_radius")
+        with c3:
+            st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
+            st.slider("Position du compte à rebours",800,1250,1045,key=p+"timer_y")
+            st.slider("Taille du compte à rebours",35,90,58,key=p+"timer_size")
+            st.checkbox("Afficher l'explication",True,key=p+"show_explanation")
+            st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
+            st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
+        st.markdown("**🎞️ Animations**")
+        a1,a2,a3=st.columns(3)
+        with a1: st.selectbox("Style d'animation",["Glissement","Pop","Aucune"],key=p+"animation")
+        with a2: st.slider("Vitesse des animations",0.5,2.0,1.0,0.05,key=p+"animation_speed")
+        with a3: st.slider("Intensité des mouvements",0.0,2.0,1.0,0.05,key=p+"motion_strength")
+        st.slider("Force d'entrée des réponses",0.0,2.0,1.0,0.05,key=p+"animation_strength")
+        st.slider("Assombrissement du fond",0,80,18,key=p+"bg_opacity")
+        st.slider("Zoom du fond",1.00,1.25,1.02,0.01,key=p+"bg_zoom")
+        st.slider("Déplacement horizontal du fond",-120,120,0,key=p+"bg_x")
+        st.slider("Déplacement vertical du fond",-120,120,0,key=p+"bg_y")
+        st.markdown("**🎨 Couleurs**")
+        cc1,cc2,cc3,cc4=st.columns(4)
+        with cc1: st.color_picker("Accent / titre", "#FFCD40", key=p+"primary")
+        with cc2: st.color_picker("Réponses", "#11305B", key=p+"answer")
+        with cc3: st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
+        with cc4: st.color_picker("Texte", "#FFFFFF", key=p+"text")
+        if is_quiz:
+            st.color_picker("Deuxième couleur des réponses", "#143765", key=p+"answer2")
+            st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
+        else:
+            st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
+        st.info("💡 Tu peux modifier ces réglages, puis régénérer la vidéo sans refaire les questions Gemini.")
+
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
 with tab1:
@@ -1074,6 +1144,19 @@ with tab1:
         st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
     elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
         st.success("✅ Fond personnalisé prêt.")
+    render_layout_editor("quiz","q_")
+    with st.expander("👁️ Aperçu de la mise en page", expanded=True):
+        try:
+            sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
+            preview = draw_quiz_frame(
+                "Quelle est la capitale de la France ?",
+                ["Paris", "Londres", "Rome", "Berlin"],
+                theme_q, 1, max(1, int(nb_q)), channel_q, sample_bg,
+                entrance=1.0, timer=3, timer_fraction=0.75, pulse=0.2, motion=0.2, video_title=th_q,
+            )
+            st.image(preview, caption="Aperçu : les réglages ci-dessus sont appliqués au rendu vidéo.", use_container_width=True)
+        except Exception as e:
+            st.caption(f"Aperçu indisponible pour le moment : {e}")
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
@@ -1163,9 +1246,9 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.session_state.q_source=f"IA • {th_q} • restauré"
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer le Short Quiz V7",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq"):
             try:
-                with st.spinner("Création du Short Quiz V7..."):
+                with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
@@ -1255,12 +1338,12 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                                                 for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                                 oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
-                        final=os.path.join(tmp,"quizvideo_pro_v7.mp4")
+                        final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
                         concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V7 terminé.")
+                        st.success("✅ Short Quiz terminé avec ta mise en page.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger quizvideo_pro_v7.mp4",data=data,file_name="quizvideo_pro_v7.mp4",mime="video/mp4",key="dq7")
+                        st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
             except Exception as e:
                 st.error(f"Erreur pendant le montage V7 : {e}")
 
@@ -1293,6 +1376,15 @@ with tab2:
     elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
         st.success("✅ Fond personnalisé prêt.")
     st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
+    render_layout_editor("vocab","v_")
+    with st.expander("👁️ Aperçu de la mise en page vocabulaire", expanded=True):
+        try:
+            sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
+            sample_items=[{"fr":"Bonjour","trad":"Hello"}]
+            preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,"countdown",3,0.75,1.0)
+            st.image(preview_v, caption="Aperçu vocabulaire : les réglages ci-dessus sont appliqués au rendu.", use_container_width=True)
+        except Exception as e:
+            st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
     vb1,vb2=st.columns(2)
     with vb1:
