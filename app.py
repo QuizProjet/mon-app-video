@@ -68,6 +68,15 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-editor-tabs [data-testid="stTabs"] button { font-size:.86rem !important; padding:7px 10px !important; }
 .qvp-editor-tabs { margin-bottom:8px; }
 
+
+/* V8.1 — éditeur compact + aperçu plus proche */
+.qvp-editor-tabs [data-testid="stVerticalBlock"] { gap: 0.28rem; }
+.qvp-editor-tabs [data-testid="stHorizontalBlock"] { gap: 0.45rem; }
+.qvp-editor-tabs .stSlider { margin-bottom: -0.15rem; }
+.qvp-editor-tabs .stCheckbox { margin-bottom: -0.25rem; }
+.qvp-editor-tabs .stCaption { margin-top: -0.2rem; }
+.qvp-preview-sticky { top: 1rem !important; }
+.qvp-preview-panel { margin-bottom: 0.35rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1163,12 +1172,12 @@ with tab1:
         st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
     elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
         st.success("✅ Fond personnalisé prêt.")
-    left_q, right_q = st.columns([1.15, 0.85], gap="large")
+    left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
         render_layout_editor("quiz","q_")
     with right_q:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        preview_state_q=st.selectbox("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],key="preview_state_q")
+        preview_state_q=st.radio("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
         try:
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
             if preview_state_q=="Question + réponses":
@@ -1399,12 +1408,12 @@ with tab2:
     elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
         st.success("✅ Fond personnalisé prêt.")
     st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
-    left_v, right_v = st.columns([1.15, 0.85], gap="large")
+    left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
         render_layout_editor("vocab","v_")
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        preview_state_v=st.selectbox("État à prévisualiser",["Mot","Compte à rebours","Traduction"],key="preview_state_v")
+        preview_state_v=st.radio("État à prévisualiser",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
             sample_items=[{"fr":"Bonjour","trad":"Hello"}]
