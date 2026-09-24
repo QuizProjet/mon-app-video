@@ -68,6 +68,7 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
 _BASE_CACHE = {}
 
+APP_VERSION = "QuizVideo Pro V5.1"
 THEMES = {
     "Bleu Nuit & Or": {"bg": (7, 12, 28), "bg2": (20, 33, 62), "card": (25, 36, 61), "card2": (40, 55, 88), "accent": (255, 205, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (165, 181, 208)},
     "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
@@ -568,25 +569,55 @@ def synthesize_audio(text,voice,path,rate="+15%"):
     return run_async(_tts(text,voice,path,rate))
 
 def fit_audio_to_max(input_path, output_path, max_seconds, max_atempo=2.0):
-    """Accélère la voix sans changer sa hauteur pour garder le format Shorts."""
+    """Accélère la voix sans changer sa hauteur.
+
+    Protection importante : FFmpeg refuse de lire et d'écrire exactement le
+    même fichier. Si input_path == output_path, on écrit d'abord dans un
+    fichier temporaire puis on le remplace.
+    """
+    input_path=os.path.abspath(input_path)
+    output_path=os.path.abspath(output_path)
     dur=audio_duration(input_path)
     max_seconds=float(max_seconds)
-    if dur <= max_seconds + 0.05:
-        if input_path != output_path:
-            subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-c:a","aac","-b:a","160k",output_path],
+
+    # Toujours utiliser un fichier de sortie différent de l'entrée.
+    same_file=(os.path.normcase(input_path)==os.path.normcase(output_path))
+    actual_output=output_path
+    temp_output=None
+    if same_file:
+        base,ext=os.path.splitext(output_path)
+        temp_output=f"{base}_fit_tmp{ext or '.m4a'}"
+        actual_output=temp_output
+
+    try:
+        if dur <= max_seconds + 0.05:
+            # Pas besoin d'atempo, mais on normalise quand même en AAC/M4A
+            # lorsque la sortie est différente.
+            if input_path != actual_output:
+                subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-c:a","aac","-b:a","160k",actual_output],
+                               stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+        else:
+            factor=min(max_atempo, max(1.0, dur/max_seconds))
+            filters=[]
+            remain=factor
+            while remain > 1.999:
+                filters.append("atempo=2.0")
+                remain/=2.0
+            filters.append(f"atempo={remain:.4f}")
+            filt=",".join(filters)
+            subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-filter:a",filt,
+                            "-c:a","aac","-b:a","160k","-shortest",actual_output],
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+
+        if same_file:
+            os.replace(actual_output,output_path)
         return output_path
-    factor=min(max_atempo, max(1.0, dur/max_seconds))
-    filters=[]
-    remain=factor
-    while remain > 1.999:
-        filters.append("atempo=2.0"); remain/=2.0
-    filters.append(f"atempo={remain:.4f}")
-    filt=",".join(filters)
-    subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-filter:a",filt,
-                    "-c:a","aac","-b:a","160k","-shortest",output_path],
-                   stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-    return output_path
+    finally:
+        if temp_output and os.path.exists(temp_output):
+            try:
+                os.remove(temp_output)
+            except OSError:
+                pass
 
 def audio_duration(path):
     res=subprocess.run([get_ffmpeg(),"-i",path],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
