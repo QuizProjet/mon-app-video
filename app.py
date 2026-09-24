@@ -240,6 +240,36 @@ def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=1250, size=44):
     draw.line((cx+int(r*.15),cy+int(r*.55),cx+int(r*.42),cy+int(r*.82)),fill="white",width=5)
     draw.line((cx+int(r*.42),cy+int(r*.82),cx+int(r*.60),cy+int(r*.65)),fill="white",width=5)
 
+
+def draw_thinking_face(draw, theme, cx, cy, size=30, phase=0.0):
+    """Visage « réflexion » dessiné en vectoriel : fonctionne sans police emoji."""
+    a=theme["accent"]
+    pulse=1.0+0.08*math.sin(float(phase)*math.pi*2)
+    r=int(size*pulse)
+    # bulle
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(8,14,30,235),outline="white",width=max(2,int(size/8)))
+    # yeux
+    er=max(2,int(r*0.10))
+    for ex in (-int(r*.30), int(r*.30)):
+        draw.ellipse((cx+ex-er,cy-int(r*.18)-er,cx+ex+er,cy-int(r*.18)+er),fill="white")
+    # sourcils
+    draw.line((cx-int(r*.48),cy-int(r*.47),cx-int(r*.12),cy-int(r*.55)),fill=a,width=max(2,int(size/8)))
+    draw.line((cx+int(r*.12),cy-int(r*.55),cx+int(r*.48),cy-int(r*.47)),fill=a,width=max(2,int(size/8)))
+    # bouche réfléchie
+    draw.arc((cx-int(r*.30),cy-int(r*.02),cx+int(r*.30),cy+int(r*.38)),190,335,fill=a,width=max(2,int(size/9)))
+    # petites bulles
+    br=max(4,int(size*.18))
+    draw.ellipse((cx+int(r*.65),cy-int(r*.85),cx+int(r*.65)+br,cy-int(r*.85)+br),fill=a)
+    draw.ellipse((cx+int(r*.95),cy-int(r*1.15),cx+int(r*.95)+br//2,cy-int(r*1.15)+br//2),fill=a)
+
+def draw_lightning_icon(draw, theme, cx, cy, size=28):
+    """Éclair vectoriel pour remplacer ⚡ dans les scènes vidéo."""
+    a=theme["accent"]; r=size
+    pts=[(cx+int(.15*r),cy-r),(cx-int(.55*r),cy+int(.05*r)),
+         (cx-int(.08*r),cy+int(.05*r)),(cx-int(.28*r),cy+r),
+         (cx+int(.60*r),cy-int(.18*r)),(cx+int(.05*r),cy-int(.18*r))]
+    draw.polygon(pts,fill=a)
+
 def draw_brand(draw, theme, channel, progress=None):
     if channel:
         draw.text((55, 1810), clean_text(channel), font=get_font(28), fill=theme["muted"])
@@ -255,7 +285,7 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
-    """Header compact inspiré du Short de référence : titre court + score + icône dessinée."""
+    """Header inspiré du Short de référence : titre, pensée dessinée, compteur."""
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "):
         title=title[5:].strip()
@@ -263,16 +293,17 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     tf=get_font(46)
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
-    x=(WIDTH-tw)/2
-    y=42+int(3*math.sin(float(phase)*math.pi*2))
-    # Ombre + texte pour un rendu net sur tous les fonds.
+    icon_size=26
+    total_w=tw+54
+    x=max(42,(WIDTH-total_w)/2)
+    y=42+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
+    draw_thinking_face(draw,theme,int(x+tw+35),int(y+25),icon_size,phase)
     sf=get_font(31); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf)
     bx=(WIDTH-sw)//2-20; by=112; bw=sw+40; bh=48
     draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=22,fill=(7,13,28),outline=theme["accent"],width=2)
     draw.text(((WIDTH-sw)/2,by+7),score,font=sf,fill=theme["accent"])
-    draw_thinking_icon(draw,theme,phase=phase,cx=965,cy=82,size=25)
 
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
@@ -368,11 +399,29 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT))
     img=add_top_glow(img,theme,1.0+0.55*pulse)
     draw=ImageDraw.Draw(img)
+    # Mouvement d'ambiance : quelques particules lentes donnent le même
+    # sentiment de vie que le Short de référence sans gêner la lecture.
+    for k in range(9):
+        px=int((90+k*121+(phase*34*(1+k%3))) % 1000)+40
+        py=int(250+((k*177+phase*55) % 1420))
+        rr=2+(k%3)
+        draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=(*theme["accent"],55))
     draw_header(draw,theme,q_num,total,video_title,phase)
     _draw_question_rich(draw,question,theme,y=205,phase=phase)
     _draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase)
     if timer is not None:
         draw_timer(draw,theme,timer,timer_fraction,pulse)
+    if correct_idx is not None and reveal_progress>0:
+        # Flash très bref au moment où la bonne réponse passe au vert.
+        rp=clamp(reveal_progress)
+        if rp < 0.45:
+            alpha=int(95*(1-rp/0.45))
+            glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0))
+            gd=ImageDraw.Draw(glow)
+            gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8)
+            glow=glow.filter(ImageFilter.GaussianBlur(12))
+            img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB")
+            draw=ImageDraw.Draw(img)
     if correct_idx is not None and explanation and explanation_progress>0:
         draw_explanation_panel(draw,theme,explanation,explanation_progress)
     # Barre et signature : zone basse minimale, jamais vide.
@@ -389,7 +438,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     r=int(210*p)
     draw.ellipse((540-r,430-r,540+r,430+r),outline=(*theme["accent"],),width=4)
     badge_w=500; bx=(WIDTH-badge_w)//2; by=250-int(30*(1-p))
-    rounded_text(draw,(bx,by,bx+badge_w,by+76),"🎯 TESTE-TOI",get_font(34),theme["accent"],None,0,34)
+    rounded_text(draw,(bx,by,bx+badge_w,by+76),"TESTE-TOI",get_font(34),theme["accent"],None,0,34)
+    draw_lightning_icon(draw,theme,bx+42,by+38,18)
     f=get_font(76)
     lines=wrap_text(text,f,850)[:3]
     y=690-int(90*(1-p))
@@ -425,7 +475,11 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     # Explanation deliberately sits low in the frame, like a compact knowledge card.
     box_y1,box_y2=790,1175
     draw.rounded_rectangle((60,box_y1,1020,box_y2),radius=30,fill=theme["card"],outline=theme["accent"],width=3)
-    draw.text((95,820),"💡 EXPLICATION",font=get_font(32),fill=theme["accent"])
+    draw.text((145,820),"EXPLICATION",font=get_font(32),fill=theme["accent"])
+    # ampoule vectorielle
+    draw.ellipse((100,812,128,844),outline=theme["accent"],width=3)
+    draw.line((106,850,122,850),fill=theme["accent"],width=3)
+    draw.line((110,856,118,856),fill=theme["accent"],width=3)
     yy=885
     idx=0
     for line in lines:
@@ -829,7 +883,8 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.15)
     draw=ImageDraw.Draw(img)
     drift=int(22*math.sin(phase*math.pi*2))
-    rounded_text(draw,(90+drift,310,990+drift,420),"⚡ PAUSE QUIZ",get_font(42),theme["accent"],None,0,30)
+    rounded_text(draw,(90+drift,310,990+drift,420),"PAUSE QUIZ",get_font(42),theme["accent"],None,0,30)
+    draw_lightning_icon(draw,theme,128+drift,365,18)
     f=get_font(64)
     lines=wrap_text(text,f,850)[:3]
     y=650-int(40*(1-ease_out(phase)))
