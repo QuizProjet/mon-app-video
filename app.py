@@ -68,7 +68,6 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
 _BASE_CACHE = {}
 
-APP_VERSION = "QuizVideo Pro V6"
 THEMES = {
     "Bleu Nuit & Or": {"bg": (7, 12, 28), "bg2": (20, 33, 62), "card": (25, 36, 61), "card2": (40, 55, 88), "accent": (255, 205, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (165, 181, 208)},
     "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
@@ -181,14 +180,11 @@ def make_base(theme_name, bg_file=None):
 
     if bg is not None:
         base = bg.convert("RGBA")
-        # Fond thématique : on garde les éléments visuels réellement visibles.
-        # L'ancienne version assombrissait trop fortement le fond et donnait
-        # presque toujours un rendu noir.
-        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 62))
+        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 105))
         shade = Image.new("L", (WIDTH, HEIGHT), 0)
         sd = ImageDraw.Draw(shade)
-        sd.rectangle((70, 120, WIDTH-70, HEIGHT-100), fill=68)
-        shade = shade.filter(ImageFilter.GaussianBlur(110))
+        sd.rectangle((70, 120, WIDTH-70, HEIGHT-100), fill=115)
+        shade = shade.filter(ImageFilter.GaussianBlur(90))
         overlay.putalpha(shade)
         return Image.alpha_composite(base, overlay).convert("RGB")
 
@@ -227,24 +223,22 @@ def rounded_text(draw, xy, text, font, fill, outline=None, width=2, radius=20):
     th = text_height(font, text)
     draw.text(((x1+x2-tw)/2, (y1+y2-th)/2-4), text, font=font, fill="white")
 
-def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=1250):
-    """Dessine une petite icône de réflexion animée sans dépendre d'un emoji/font externe."""
-    phase = float(phase or 0.0)
-    pulse = 0.5 + 0.5 * math.sin(phase * math.pi * 2)
-    r = int(34 + 4 * pulse)
-    accent = theme.get("accent", (255, 205, 64))
-    # Bulle de réflexion
-    draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(10, 15, 25), outline=accent, width=4)
-    # Trois points qui pulsent légèrement
-    dot_r = 5
-    spacing = 15
-    for i in range(3):
-        local = 0.5 + 0.5 * math.sin(phase * math.pi * 2 + i * 0.9)
-        rr = max(3, int(dot_r + 2 * local))
-        dx = cx + (i - 1) * spacing
-        draw.ellipse((dx-rr, cy-rr, dx+rr, cy+rr), fill=accent)
-    # Petite queue de bulle
-    draw.polygon([(cx-18, cy+r-1), (cx-30, cy+r+15), (cx-3, cy+r-7)], fill=accent)
+def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=1250, size=44):
+    """Icône de réflexion dessinée en formes : aucun emoji/font externe nécessaire."""
+    phase=float(phase or 0.0)
+    accent=theme.get("accent",(255,205,64))
+    pulse=0.5+0.5*math.sin(phase*math.pi*2)
+    r=int(size+4*pulse)
+    draw.ellipse((cx-r-8,cy-r-8,cx+r+8,cy+r+8), outline=(*accent,90), width=3)
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=(8,13,27), outline="white", width=4)
+    er=max(3,int(r*.10))
+    draw.ellipse((cx-int(r*.32)-er,cy-int(r*.18)-er,cx-int(r*.32)+er,cy-int(r*.18)+er), fill="white")
+    draw.ellipse((cx+int(r*.32)-er,cy-int(r*.18)-er,cx+int(r*.32)+er,cy-int(r*.18)+er), fill="white")
+    draw.line((cx-int(r*.46),cy-int(r*.43),cx-int(r*.16),cy-int(r*.50)), fill=accent, width=4)
+    draw.line((cx+int(r*.16),cy-int(r*.50),cx+int(r*.46),cy-int(r*.43)), fill=accent, width=4)
+    draw.arc((cx-int(r*.28),cy-int(r*.02),cx+int(r*.30),cy+int(r*.40)),190,340,fill=accent,width=4)
+    draw.line((cx+int(r*.15),cy+int(r*.55),cx+int(r*.42),cy+int(r*.82)),fill="white",width=5)
+    draw.line((cx+int(r*.42),cy+int(r*.82),cx+int(r*.60),cy+int(r*.65)),fill="white",width=5)
 
 def draw_brand(draw, theme, channel, progress=None):
     if channel:
@@ -254,174 +248,148 @@ def draw_brand(draw, theme, channel, progress=None):
         draw.rounded_rectangle((x,y,x+w,y+h), radius=6, fill=(65,70,85))
         draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=6, fill=theme["accent"])
 
-def draw_header(draw, theme, q_num, total, title="Quiz Culture Générale"):
-    title=clean_text(title) or "Quiz"
-    if len(title)>28: title=title[:28].rstrip()+"…"
+def _highlight_words(question):
+    words=clean_text(question).split()
+    stop={"quel","quelle","quels","quelles","est","sont","le","la","les","un","une","des","du","de","dans","sur","au","aux","en","à","a","et","ou","pour","par","avec","qui","que","se","ce","cette","cet","d","l","comment","combien","où","on"}
+    candidates=[w.strip(".,?!:;()[]«»\"'") for w in words if len(w.strip(".,?!:;()[]«»\"'"))>=5 and w.lower().strip(".,?!:;()[]«»\"'") not in stop]
+    return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
+
+def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
+    """Header compact : plus d'espace utile pour la question et les réponses."""
+    title=clean_text(title) or "Culture Générale"
+    if len(title)>24: title=title[:24].rstrip()+"…"
+    tf=get_font(56)
     title_text=f"Quiz {title}" if not title.lower().startswith("quiz") else title
-    tf=get_font(62)
-    lines=wrap_text(title_text,tf,850)[:2]
-    y=70
+    lines=wrap_text(title_text,tf,900)[:2]
+    y=38+int(3*math.sin(float(phase)*math.pi*2))
     for line in lines:
-        tw=text_width(draw,line,tf)
-        # shadow + white title for the strong Shorts look
-        draw.text(((WIDTH-tw)/2+5,y+7),line,font=tf,fill=(0,0,0))
-        draw.text(((WIDTH-tw)/2,y),line,font=tf,fill="white")
-        y+=66
-    score=f"{q_num}/{total}"
-    sf=get_font(54)
-    sw=text_width(draw,score,sf)
-    draw.text(((WIDTH-sw)/2,205),score,font=sf,fill=theme["accent"])
-    # small thinking icon, without relying on an emoji font
-    draw_thinking_icon(draw,theme,phase=(q_num*0.17)%1.0,cx=960,cy=115)
+        tw=text_width(draw,line,tf); x=(WIDTH-tw)/2
+        draw.text((x+4,y+6),line,font=tf,fill=(0,0,0))
+        draw.text((x,y),line,font=tf,fill="white")
+        y+=59
+    sf=get_font(44); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf)
+    # score dans un petit badge plutôt qu'un gros espace vide
+    bx=(WIDTH-sw)//2-22; by=y+8; bw=sw+44; bh=58
+    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=25,fill=(8,13,27),outline=theme["accent"],width=2)
+    draw.text(((WIDTH-sw)/2,by+7),score,font=sf,fill=theme["accent"])
+    draw_thinking_icon(draw,theme,phase=phase,cx=960,cy=95,size=30)
+
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    # Countdown inspired by the reference: large, readable and visually urgent.
-    if timer <= 0:
-        color=theme["danger"]
-    elif timer == 1:
-        color=theme["danger"]
-    elif timer == 2:
-        color=(249,115,22)
-    else:
-        color=theme["accent"]
-    cx, cy, r = 540, 1370, 78
-    draw.ellipse((cx-r,cy-r,cx+r,cy+r), fill=(10,15,25), outline=(245,248,252), width=6)
-    box=(cx-r+6,cy-r+6,cx+r-6,cy+r-6)
-    draw.arc(box, -90, -90 + int(360*clamp(fraction)), fill=color, width=11)
-    if pulse > 0:
-        pr=int(5+18*pulse)
-        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr), outline=color, width=3)
-    tf=get_font(66+int(8*pulse))
-    ts=str(timer)
-    draw.text((cx-text_width(draw,ts,tf)/2,cy-42),ts,font=tf,fill=color)
+    color=theme["danger"] if timer<=1 else (249,115,22) if timer==2 else theme["accent"]
+    cx,cy,r=540,1515,68; pr=int(4+14*clamp(pulse))
+    draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=(*color,95),width=3)
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(8,12,25),outline="white",width=5)
+    box=(cx-r+7,cy-r+7,cx+r-7,cy+r-7)
+    draw.arc(box,-90,-90+int(360*clamp(fraction)),fill=color,width=10)
+    tf=get_font(64+int(7*pulse)); ts=str(timer)
+    draw.text((cx-text_width(draw,ts,tf)/2,cy-41),ts,font=tf,fill=color)
 
 
-def draw_quiz_frame(question, options, theme_name, q_num, total, channel,
-                    bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0,
-                    correct_idx=None, reveal_progress=0.0, pulse=0.0,
-                    motion=0.0, video_title="Culture Générale", explanation=None):
-    """Mise en page V6.2 calquée sur la vidéo de référence :
-    une seule page par question. Les propositions restent à l'écran pendant
-    le compte à rebours, la bonne réponse devient simplement verte, puis
-    l'explication apparaît en bas sans changer de page.
-    """
-    theme=THEMES[theme_name]
-    img=make_base(theme_name,bg_file)
-    draw=ImageDraw.Draw(img)
+def _draw_question_rich(draw, question, theme, y=275, phase=0.0):
+    f=get_font(51); lines=wrap_text(question,f,920)[:3]; hi=_highlight_words(question); yy=y
+    # panneau léger pour donner une vraie zone de lecture au texte
+    box_top=y-20; box_bottom=y+len(lines)*62+8
+    draw.rounded_rectangle((52,box_top,1028,box_bottom),radius=24,fill=(7,13,29,205),outline=(*theme["accent"],100),width=2)
+    for line in lines:
+        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
+        totalw=sum(widths)+space*max(0,len(words)-1)
+        x=(WIDTH-totalw)/2+int(8*math.sin(phase*math.pi*2))
+        for w,ww in zip(words,widths):
+            key=w.strip(".,?!:;()[]«»\"'").lower(); fill=theme["accent"] if key in hi else "white"
+            draw.text((x+3,yy+4),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
+            x+=ww+space
+        yy+=62
+    return box_bottom
 
-    # Mouvement de fond très léger, sans déplacer la mise en page.
-    phase=clamp(motion)
-    if phase:
-        overlay=Image.new("RGBA",img.size,(0,0,0,0))
-        od=ImageDraw.Draw(overlay)
-        od.ellipse((80+int(18*math.sin(phase*math.pi*2)),300,
-                    520+int(18*math.sin(phase*math.pi*2)),740),
-                   fill=(*theme["accent"],10))
-        overlay=overlay.filter(ImageFilter.GaussianBlur(35))
-        img=Image.alpha_composite(img.convert("RGBA"),overlay).convert("RGB")
-        draw=ImageDraw.Draw(img)
 
-    # ----- En-tête EXACTEMENT dans l'esprit de la vidéo test -----
-    title=clean_text(video_title) or "Culture Générale"
-    if not title.lower().startswith("quiz"):
-        title=f"Quiz {title}"
-    tf=get_font(64)
-    title_lines=wrap_text(title+" 🤔",tf,900)[:2]
-    yy=58
-    for line in title_lines:
-        tw=text_width(draw,line,tf)
-        draw.text(((WIDTH-tw)/2+5,yy+7),line,font=tf,fill=(0,0,0))
-        draw.text(((WIDTH-tw)/2,yy),line,font=tf,fill="white")
-        yy+=70
-
-    score=f"{q_num}/{total}"
-    sf=get_font(52)
-    sw=text_width(draw,score,sf)
-    draw.text(((WIDTH-sw)/2,yy+4),score,font=sf,fill=theme["accent"])
-
-    # ----- Question : grande, centrée, sans carte séparée -----
-    qf=get_font(52)
-    q_lines=wrap_text(clean_text(question),qf,900)[:3]
-    qy=330
-    for line in q_lines:
-        tw=text_width(draw,line,qf)
-        draw.text(((WIDTH-tw)/2+3,qy+5),line,font=qf,fill=(0,0,0))
-        draw.text(((WIDTH-tw)/2,qy),line,font=qf,fill="white")
-        qy+=62
-
-    # ----- 4 réponses : même position pendant toute la question -----
-    left,right=85,995
-    card_h=76
-    gap=14
-    start_y=650
-    f_opt=get_font(30)
+def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
+    left,right=58,1022; card_h,gap=102,14; start_y=515; f_opt=get_font(31)
     for i,opt in enumerate(options[:4]):
-        y=start_y+i*(card_h+gap)
-        is_correct=(correct_idx is not None and i==correct_idx)
-        if is_correct:
-            fill=theme["success"]
-            outline=(255,255,255)
-            width=3
+        local=ease_out(clamp((entrance-i*0.045)/0.48))
+        y=start_y+i*(card_h+gap)+int((1-local)*48)+int(3*math.sin((phase+i*.12)*math.pi*2))
+        correct=(correct_idx is not None and i==correct_idx)
+        if correct:
+            p=ease_back(reveal_progress); fill=theme["success"]; outline=(255,255,255); width=5; extra=int(8*p)
         else:
-            fill=(24,45,87)
-            outline=(225,235,255)
-            width=2
+            fill=(15,39,78) if i%2==0 else (20,48,94); outline=(190,215,250); width=3; extra=0
             if correct_idx is not None:
-                fill=(22,35,62)
-                outline=(150,165,190)
-
-        draw.rounded_rectangle((left,y,right,y+card_h),radius=15,
-                               fill=fill,outline=outline,width=width)
-        # Lettre à gauche, simple comme dans la vidéo de référence.
-        letter=chr(65+i)
-        lf=get_font(30)
-        draw.text((105,y+20),letter,font=lf,
-                  fill=(255,255,255) if not is_correct else (255,255,255))
-        label=clean_text(opt)
-        lines=wrap_text(label,f_opt,770)[:2]
-        total_h=sum(text_height(f_opt,l) for l in lines)+6*(len(lines)-1)
-        ty=y+(card_h-total_h)/2-1
+                fill=tuple(max(0,int(c*0.38)) for c in fill); outline=tuple(max(0,int(c*0.42)) for c in outline)
+        draw.rounded_rectangle((left-extra,y-extra,right+extra,y+card_h+extra),radius=22,fill=fill,outline=outline,width=width)
+        # badge A/B/C/D séparé, comme dans un vrai quiz
+        bx=78; by=y+13; bw=58; bh=card_h-26
+        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=17,fill=theme["accent"] if not correct else "white")
+        lf=get_font(30); letter=chr(65+i)
+        lc=theme["card"] if not correct else theme["success"]
+        draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+12),letter,font=lf,fill=lc)
+        text_x=154; maxw=right-text_x-22
+        lines=wrap_text(clean_text(opt),f_opt,maxw)[:2]
+        th=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*4; ty=y+(card_h-th)/2-2
         for line in lines:
-            draw.text((155,ty),line,font=f_opt,fill="white")
-            ty+=text_height(f_opt,line)+6
+            draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill="white")
+            ty+=text_height(f_opt,line)+4
+        if correct:
+            cx=right-38; cy=y+card_h/2; rr=20
+            draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
+            draw.line((cx-9,cy,cx-2,cy+7),fill=theme["success"],width=4)
+            draw.line((cx-2,cy+7,cx+11,cy-9),fill=theme["success"],width=4)
 
-    # ----- Réflexion : timer seulement avant la révélation -----
-    if timer is not None and correct_idx is None:
+
+def draw_explanation_panel(draw, theme, explanation, progress=1.0):
+    """Compact explanation : pas de grosse page résultat, juste un bloc bas de page."""
+    y1,y2=1085,1435
+    p=ease_out(progress)
+    draw.rounded_rectangle((55,y1,1025,y2),radius=24,fill=(7,14,29),outline=theme["accent"],width=3)
+    # petite barre d'accent animée
+    draw.rounded_rectangle((55,y1,55+int(970*p),y1+7),radius=4,fill=theme["accent"])
+    cx,cy=102,1148
+    draw.ellipse((cx-18,cy-18,cx+18,cy+18),outline=theme["accent"],width=4)
+    draw.line((cx-8,cy+24,cx+8,cy+24),fill=theme["accent"],width=4)
+    draw.text((145,1126),"EXPLICATION",font=get_font(29),fill=theme["accent"])
+    f=get_font(34); lines=wrap_text(explanation or "Bravo !",f,865)[:5]; yy=1195
+    max_visible=max(1,int(len(lines)*p+0.999))
+    for line in lines[:max_visible]:
+        tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill="white"); yy+=47
+
+
+def draw_bottom_hint(draw, theme, phase=0.0):
+    """Remplit l'espace inférieur sans ajouter de texte lourd."""
+    draw_thinking_icon(draw,theme,phase,cx=540,cy=1550,size=27)
+    txt="RÉFLÉCHIS"; f=get_font(25); tw=text_width(draw,txt,f)
+    draw.text(((WIDTH-tw)/2,1590),txt,font=f,fill=theme["accent"])
+
+
+def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0):
+    theme=THEMES[theme_name]
+    base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
+    phase=float(motion or 0.0)
+    scale=1.025+0.010*math.sin(phase*math.pi*2)
+    nw,nh=int(WIDTH*scale),int(HEIGHT*scale)
+    z=base.resize((nw,nh),Image.Resampling.LANCZOS)
+    sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.10*math.sin(phase*math.pi*2)))))
+    sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.08*math.cos(phase*math.pi*2)))))
+    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT))
+    img=add_top_glow(img,theme,1.0+0.45*pulse)
+    draw=ImageDraw.Draw(img)
+    draw_header(draw,theme,q_num,total,video_title,phase)
+    _draw_question_rich(draw,question,theme,y=275+int(5*math.sin(phase*math.pi*2)),phase=phase)
+    _draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase)
+    if timer is not None:
+        # Le timer est sous les réponses et ne masque jamais l'explication.
         draw_timer(draw,theme,timer,timer_fraction,pulse)
-        draw.text((635,1325),"RÉFLÉCHIS…",font=get_font(26),fill=(225,230,240))
-        draw_thinking_icon(draw,theme,phase,cx=930,cy=1295)
-
-    # ----- Explication en BAS DE LA MÊME PAGE -----
-    if correct_idx is not None and explanation:
-        box=(70,1240,1010,1695)
-        draw.rounded_rectangle(box,radius=24,fill=(7,18,36,235),outline=theme["accent"],width=2)
-        draw.text((100,1270),"💡 EXPLICATION",font=get_font(30),fill=theme["accent"])
-        ef=get_font(32)
-        words=clean_text(explanation).split()
-        lines=[]; cur=[]
-        for word in words:
-            cand=word if not cur else " ".join(cur+[word])
-            if text_width(draw,cand,ef)<=840:
-                cur.append(word)
-            else:
-                if cur: lines.append(cur)
-                cur=[word]
-        if cur: lines.append(cur)
-        lines=lines[:5]
-        ey=1325
-        for line in lines:
-            txt=" ".join(line)
-            tw=text_width(draw,txt,ef)
-            draw.text(((WIDTH-tw)/2,ey),txt,font=ef,fill="white")
-            ey+=42
-
-    # Barre de progression discrète, comme dans la vidéo de référence.
-    px1,py,pw,ph=55,1810,970,8
-    draw.rounded_rectangle((px1,py,px1+pw,py+ph),radius=4,fill=(90,100,115))
-    draw.rounded_rectangle((px1,py,px1+int(pw*(q_num/max(1,total))),py+ph),radius=4,fill=theme["accent"])
-    sf2=get_font(20)
-    draw.text((55,1840),clean_text(channel or ""),font=sf2,fill=(175,185,200))
+        draw_bottom_hint(draw,theme,phase)
+    elif correct_idx is None:
+        # petite zone respirante animée, sans grand vide
+        draw_thinking_icon(draw,theme,phase,cx=540,cy=1155,size=25)
+        txt="À TOI DE JOUER"; f=get_font(24); tw=text_width(draw,txt,f)
+        draw.text(((WIDTH-tw)/2,1190),txt,font=f,fill=theme["muted"])
+    if correct_idx is not None and explanation and explanation_progress>0:
+        draw_explanation_panel(draw,theme,explanation,explanation_progress)
+    # Progression et signature remontées pour réduire le vide inférieur.
+    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
+    draw.text((55,1812),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(22),fill=theme["muted"])
     return img
+
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
     theme=THEMES[theme_name]
@@ -490,55 +458,24 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     return img
 
 
-def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,
-                    phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
+def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
     theme=THEMES[theme_name]
-    img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.2*(timer is not None))
+    img=add_top_glow(make_base(theme_name,bg_file),theme)
     draw=ImageDraw.Draw(img)
+    rounded_text(draw,(55,70,430,135),f"VOCABULAIRE • {idx+1}/{len(items)}",get_font(32),theme["card"],theme["accent"],2,26)
+    item=items[idx]; fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad",""))
     p=ease_out(entrance)
-    item=items[idx]
-    fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad",""))
-
-    # En-tête premium.
-    draw.rounded_rectangle((55,55,1025,145),radius=28,fill=(8,13,27,215),
-                            outline=(*theme["accent"],150),width=2)
-    draw.text((82,79),f"VOCABULAIRE • {idx+1}/{len(items)}",font=get_font(30),fill=theme["accent"])
-    lf=get_font(34); langtxt=langue.upper()
-    draw.text((1025-85-text_width(draw,langtxt,lf),79),langtxt,font=lf,fill="white")
-
-    # Mot principal dans une carte.
-    card_y=245+int((1-p)*55)
-    draw.rounded_rectangle((55,card_y,1025,780),radius=38,fill=(8,13,27,220),
-                            outline=(255,255,255,32),width=2)
-    tag=get_font(27)
-    draw.text((90,card_y+38),"MOT DU JOUR",font=tag,fill=theme["muted"])
-    fbig=get_font(96)
-    lines=wrap_text(fr,fbig,850)[:2]
-    yy=card_y+145
-    for line in lines:
-        tw=text_width(draw,line,fbig)
-        draw.text(((WIDTH-tw)/2+4,yy+5),line,font=fbig,fill=(0,0,0))
-        draw.text(((WIDTH-tw)/2,yy),line,font=fbig,fill=theme["accent"])
-        yy+=105
-
+    fbig=get_font(88)
+    y=500+int((1-p)*80)
+    draw.text(((WIDTH-text_width(draw,fr,fbig))/2,y),fr,font=fbig,fill=theme["accent"])
     if phase in ("translation","reveal"):
-        # Traduction avec une flèche/ligne de séparation.
-        draw.line((170,890,910,890),fill=(*theme["accent"],85),width=3)
-        draw.text((455,845),"TRADUCTION",font=get_font(26),fill=theme["muted"])
-        ft=get_font(62)
-        lines=wrap_text(tr,ft,850)[:2]
-        yy=940
+        ft=get_font(58)
+        lines=wrap_text(tr,ft,850); yy=760
         for line in lines:
-            draw.text(((WIDTH-text_width(draw,line,ft))/2,yy),line,font=ft,fill="white")
-            yy+=76
-
+            draw.text(((WIDTH-text_width(draw,line,ft))/2,yy),line,font=ft,fill="white"); yy+=75
     if phase=="countdown" and timer is not None:
-        draw_timer(draw,theme,timer,timer_fraction,0.20)
-        draw.text((620,1340),"RÉPÈTE-LE !",font=get_font(28),fill=theme["muted"])
-
+        draw_timer(draw,theme,timer,timer_fraction,0.15)
     draw_brand(draw,theme,channel,idx/max(1,len(items)))
-    sf=get_font(22)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
 # ------------------------- TTS ------------------------------
@@ -567,57 +504,6 @@ def run_async(coro):
 
 def synthesize_audio(text,voice,path,rate="+15%"):
     return run_async(_tts(text,voice,path,rate))
-
-def fit_audio_to_max(input_path, output_path, max_seconds, max_atempo=2.0):
-    """Accélère la voix sans changer sa hauteur.
-
-    Protection importante : FFmpeg refuse de lire et d'écrire exactement le
-    même fichier. Si input_path == output_path, on écrit d'abord dans un
-    fichier temporaire puis on le remplace.
-    """
-    input_path=os.path.abspath(input_path)
-    output_path=os.path.abspath(output_path)
-    dur=audio_duration(input_path)
-    max_seconds=float(max_seconds)
-
-    # Toujours utiliser un fichier de sortie différent de l'entrée.
-    same_file=(os.path.normcase(input_path)==os.path.normcase(output_path))
-    actual_output=output_path
-    temp_output=None
-    if same_file:
-        base,ext=os.path.splitext(output_path)
-        temp_output=f"{base}_fit_tmp{ext or '.m4a'}"
-        actual_output=temp_output
-
-    try:
-        if dur <= max_seconds + 0.05:
-            # Pas besoin d'atempo, mais on normalise quand même en AAC/M4A
-            # lorsque la sortie est différente.
-            if input_path != actual_output:
-                subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-c:a","aac","-b:a","160k",actual_output],
-                               stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-        else:
-            factor=min(max_atempo, max(1.0, dur/max_seconds))
-            filters=[]
-            remain=factor
-            while remain > 1.999:
-                filters.append("atempo=2.0")
-                remain/=2.0
-            filters.append(f"atempo={remain:.4f}")
-            filt=",".join(filters)
-            subprocess.run([get_ffmpeg(),"-y","-i",input_path,"-filter:a",filt,
-                            "-c:a","aac","-b:a","160k","-shortest",actual_output],
-                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-
-        if same_file:
-            os.replace(actual_output,output_path)
-        return output_path
-    finally:
-        if temp_output and os.path.exists(temp_output):
-            try:
-                os.remove(temp_output)
-            except OSError:
-                pass
 
 def audio_duration(path):
     res=subprocess.run([get_ffmpeg(),"-i",path],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -686,23 +572,18 @@ def mix_voice_sfx(voice_path,sfx_path,output,delay_ms=0,sfx_volume=0.65):
     cmd=[get_ffmpeg(),"-y","-i",voice_path,"-i",sfx_path,"-filter_complex",filt,"-c:a","aac","-b:a","160k","-shortest",output]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return output
 
-# ---------------------- Video encoding ----------------------
-def concat_audio(inputs, output, tmpdir):
-    """Assemble plusieurs segments audio dans un seul fichier, dans l'ordre exact.
-    La durée de chaque scène vidéo est ensuite pilotée par ce fichier audio.
-    """
-    inputs=[os.path.abspath(x) for x in inputs if x and os.path.exists(x)]
-    if not inputs:
-        raise ValueError("Aucun segment audio à assembler.")
-    cmd=[get_ffmpeg(),"-y"]
-    for path in inputs:
-        cmd += ["-i", path]
-    labels=[f"[{i}:a]" for i in range(len(inputs))]
-    cmd += ["-filter_complex", "".join(labels)+f"concat=n={len(inputs)}:v=0:a=1[aout]",
-            "-map","[aout]","-c:a","aac","-b:a","160k","-movflags","+faststart",output]
+def concat_audio_files(audio_files, output):
+    """Concatène les segments audio dans l'ordre et réencode en AAC/M4A."""
+    inputs=[]
+    for p in audio_files: inputs += ["-i",p]
+    labels="".join(f"[{i}:a]" for i in range(len(audio_files)))
+    filt=f"{labels}concat=n={len(audio_files)}:v=0:a=1[a]"
+    cmd=[get_ffmpeg(),"-y",*inputs,"-filter_complex",filt,"-map","[a]","-c:a","aac","-b:a","160k","-movflags","+faststart",output]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return output
 
+
+# ---------------------- Video encoding ----------------------
 def make_image_video(frames,output,fps=30):
     list_path=output+".txt"
     with open(list_path,"w",encoding="utf-8") as f:
@@ -722,19 +603,11 @@ def make_segment(frames,audio,output,tmpdir,volume=1.0):
     make_image_video(frames,raw,FPS); return mux_audio(raw,audio,output,volume)
 
 def concat_videos(clips,output,tmpdir):
-    """Concatène en ré-encodant la sortie finale pour éviter les décalages de timestamps.
-    Chaque segment a déjà une durée pilotée par son audio; le ré-encodage final
-    stabilise la timeline du fichier Short.
-    """
     lst=os.path.join(tmpdir,"concat.txt")
     with open(lst,"w",encoding="utf-8") as f:
         for p in clips: f.write(f"file '{p.replace(chr(92),'/')}'\n")
-    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,
-         "-vf",f"fps={FPS},format=yuv420p","-c:v","libx264","-preset","veryfast","-crf","22",
-         "-c:a","aac","-b:a","160k","-af","aresample=async=1:first_pts=0",
-         "-movflags","+faststart",output]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-    return output
+    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,"-c","copy","-movflags","+faststart",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return output
 
 def save_frames(frames,tmpdir,prefix):
     out=[]
@@ -949,9 +822,9 @@ def _save_vocab_editor(rows):
 
 api_key=st.sidebar.text_input("Clé API Gemini",type="password")
 if api_key: genai.configure(api_key=api_key)
-voice_rate=st.sidebar.slider("⚡ Vitesse de la voix",0,20,0,step=1,key="voice_rate_v62")
-tts_rate=f"+{voice_rate}%"
-st.sidebar.caption(f"Vitesse réelle : {1.0 + voice_rate/100:.2f}×")
+voice_rate=st.sidebar.slider("⚡ Vitesse voix",-10,25,0,format="%+d%%")
+tts_rate=f"{voice_rate:+d}%"
+st.sidebar.caption(f"Vitesse sélectionnée : {1.0 + voice_rate/100:.2f}×")
 MODEL_NAME="gemini-3.6-flash"
 
 MOTIVATION_LINES=[
@@ -1002,120 +875,97 @@ def _theme_keywords(topic):
     return "general"
 
 def generate_theme_background(theme_name,topic):
-    """Fond 9:16 procédural reconnaissable selon le sujet, sans Gemini."""
+    """Fond local réellement illustratif selon le sujet. Aucun appel Gemini."""
     key=("auto_bg_v5",theme_name,clean_text(topic).lower())
-    if key in _BASE_CACHE:
-        return _BASE_CACHE[key].copy()
-
-    theme=THEMES[theme_name]
-    base=make_base(theme_name).convert("RGBA")
-    ov=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
-    d=ImageDraw.Draw(ov)
-    accent=theme["accent"]; muted=theme["muted"]
-    kind=_theme_keywords(topic)
-    seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16)
-    rng=random.Random(seed)
-
-    # Particules discrètes.
-    for _ in range(85):
-        x=rng.randint(-40,WIDTH+40); y=rng.randint(80,1780); r=rng.randint(2,8)
-        d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,rng.randint(20,48)))
-
-    # Grande zone visuelle thématique centrale, volontairement derrière les cartes.
-    cx,cy=540,860
+    if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
+    theme=THEMES[theme_name]; kind=_theme_keywords(topic)
+    seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16); rng=random.Random(seed)
+    img=Image.new("RGB",(WIDTH,HEIGHT),theme["bg"]); px=img.load(); c1,c2=theme["bg"],theme["bg2"]
+    for y in range(HEIGHT):
+        t=y/(HEIGHT-1); t2=0.5-0.5*math.cos(math.pi*t)
+        row=tuple(int(c1[k]*(1-t2)+c2[k]*t2) for k in range(3))
+        for x in range(WIDTH): px[x,y]=row
+    art=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); d=ImageDraw.Draw(art); accent=theme["accent"]; sec=theme["muted"]
+    # profondeur lumineuse
+    for (cx,cy,rx,ry,a) in [(160,250,360,300,28),(900,1180,500,520,20),(540,1750,650,260,18)]:
+        d.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),fill=(*accent,a))
+    # motif discret commun
+    for band in range(7):
+        pts=[]; basey=300+band*210
+        for x in range(-80,1160,35): pts.append((x,basey+50*math.sin(x/115+band)))
+        d.line(pts,fill=(*accent,18),width=10)
 
     if kind=="geographie":
-        # Globe + méridiens + trajectoire d'avion.
-        r=335
-        d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,18,36,85),outline=(*accent,85),width=7)
-        d.ellipse((cx-r,cy-105,cx+r,cy+105),outline=(*accent,48),width=4)
-        d.ellipse((cx-115,cy-r,cx+115,cy+r),outline=(*accent,48),width=4)
-        d.line((cx-r,cy,cx+r,cy),fill=(*muted,35),width=3)
-        # continents stylisés.
-        for pts in [
-            [(365,700),(430,650),(475,710),(450,770),(385,755)],
-            [(610,650),(700,690),(760,780),(700,820),(630,760)],
-            [(470,930),(520,1000),(490,1130),(430,1040)],
-        ]:
-            d.polygon(pts,fill=(*accent,24),outline=(*accent,45))
-        # route courbe + avion.
-        route=[(240,1050),(380,940),(540,900),(700,780),(845,660)]
-        d.line(route,fill=(*accent,100),width=5)
-        ax,ay=845,660
-        d.polygon([(ax,ay),(ax-45,ay-12),(ax-15,ay),(ax-45,ay+12)],fill=(*accent,180))
-        d.text((130,1330),"✈  VOYAGE  •  MONDE",font=get_font(34),fill=(*accent,125))
-
+        # globe reconnaissable + route aérienne
+        cx,cy,r=540,1390,285
+        d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(8,20,42,90),outline=(*accent,115),width=7)
+        d.ellipse((cx-r+35,cy-r,cx+r-35,cy+r),outline=(*sec,70),width=4)
+        d.ellipse((cx-r,cy-r+70,cx+r,cy+r-70),outline=(*sec,65),width=4)
+        for off in (-100,0,100): d.arc((cx-r,cy-r+off,cx+r,cy+r+off),205,335,fill=(*accent,45),width=3)
+        # continents stylisés
+        d.polygon([(380,1250),(450,1205),(515,1240),(495,1305),(430,1325),(395,1290)],fill=(*accent,55))
+        d.polygon([(620,1280),(700,1250),(755,1315),(720,1380),(650,1370),(615,1320)],fill=(*sec,45))
+        d.polygon([(500,1450),(565,1460),(600,1570),(555,1640),(505,1560)],fill=(*accent,45))
+        # trajectoire + avion stylisé
+        route=[(180,1530),(330,1390),(470,1430),(640,1280),(835,1190)]
+        d.line(route,fill=(*accent,150),width=6)
+        for x,y in route: d.ellipse((x-7,y-7,x+7,y+7),fill=(*accent,190))
+        ax,ay=820,1195
+        d.polygon([(ax,ay),(ax+70,ay-20),(ax+42,ay+3),(ax+78,ay+25),(ax+20,ay+12),(ax-15,ay+45),(ax-2,ay+8)],fill=(*accent,210))
+        # petites cartes/repères en haut
+        for x,y in [(130,500),(930,420),(180,760),(900,780)]:
+            d.rounded_rectangle((x,y,x+90,y+58),radius=12,outline=(*sec,45),width=3)
+            d.ellipse((x+35,y+17,x+55,y+37),fill=(*accent,100))
     elif kind=="espace":
-        d.ellipse((220,470,860,1110),outline=(*accent,75),width=7)
-        d.ellipse((310,590,770,990),outline=(*accent,45),width=4)
-        d.ellipse((455,705,625,875),fill=(*accent,30),outline=(*accent,100),width=5)
-        for _ in range(25):
-            x=rng.randint(80,1000); y=rng.randint(250,1500)
-            rr=rng.randint(2,6); d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(255,255,255,rng.randint(70,170)))
-        d.text((155,1320),"✦ ESPACE  •  UNIVERS",font=get_font(34),fill=(*accent,135))
-
+        for _ in range(7):
+            x=rng.randint(100,980); y=rng.randint(400,1550); r=rng.randint(120,300)
+            d.ellipse((x-r,y-r,x+r,y+r),outline=(*accent,48),width=5)
+        for _ in range(140):
+            x=rng.randint(0,WIDTH); y=rng.randint(120,1800); rr=rng.randint(1,4); d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(255,255,255,rng.randint(80,190)))
+        cx,cy=540,1300
+        d.ellipse((cx-150,cy-150,cx+150,cy+150),fill=(60,100,170,55),outline=(*accent,100),width=6)
+        d.arc((cx-230,cy-80,cx+230,cy+80),0,360,fill=(*sec,75),width=5)
     elif kind=="histoire":
-        # Architecture / colonnes / parchemin stylisé.
-        d.rounded_rectangle((180,570,900,1120),radius=45,fill=(*accent,18),outline=(*accent,60),width=5)
-        for x in (280,440,600,760):
-            d.rectangle((x,680,x+70,1040),fill=(*muted,20),outline=(*accent,55),width=4)
-            d.polygon([(x-15,680),(x+35,625),(x+85,680)],fill=(*accent,38))
-        d.line((220,1040,860,1040),fill=(*accent,70),width=8)
-        d.text((185,1300),"⌛ HISTOIRE  •  ÉPOQUES",font=get_font(34),fill=(*accent,135))
-
+        for x in (150,370,590,810):
+            d.rectangle((x,820,x+80,1430),fill=(*accent,20),outline=(*accent,60),width=4)
+            d.polygon([(x-18,820),(x+40,750),(x+98,820)],fill=(*accent,28),outline=(*accent,60))
+        d.rectangle((100,1430,980,1490),fill=(*accent,35))
+        d.ellipse((260,440,820,1000),outline=(*sec,40),width=6)
     elif kind=="science":
-        d.ellipse((250,560,830,1140),outline=(*accent,65),width=6)
+        cx,cy=540,1370
+        for r in (120,230,340): d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,55),width=4)
         for ang in (0,60,120):
-            pts=[]
-            for k in range(361):
-                a=math.radians(k)
-                x=cx+270*math.cos(a)
-                y=cy+120*math.sin(a)
-                ca,sa=math.cos(math.radians(ang)),math.sin(math.radians(ang))
-                xx=cx+(x-cx)*ca-(y-cy)*sa
-                yy=cy+(x-cx)*sa+(y-cy)*ca
-                pts.append((xx,yy))
-            d.line(pts,fill=(*accent,48),width=4)
-        d.ellipse((500,820,580,900),fill=(*accent,105))
-        d.text((210,1320),"⚛ SCIENCE  •  DÉCOUVERTE",font=get_font(34),fill=(*accent,135))
-
+            rad=math.radians(ang); d.line((cx+math.cos(rad)*340,cy+math.sin(rad)*340,cx-math.cos(rad)*340,cy-math.sin(rad)*340),fill=(*sec,45),width=4)
+        d.ellipse((cx-42,cy-42,cx+42,cy+42),fill=(*accent,130))
     elif kind=="animaux":
-        # Silhouette de montagne + empreintes.
-        d.polygon([(80,1120),(300,760),(480,1050),(700,690),(1010,1120)],fill=(*accent,18),outline=(*accent,55))
-        for x,y in [(250,1260),(330,1180),(420,1300),(520,1200),(650,1320)]:
-            d.ellipse((x,y,x+38,y+55),fill=(*accent,48))
-            d.ellipse((x+55,y+10,x+82,y+45),fill=(*accent,38))
-        d.text((235,1430),"NATURE  •  ANIMAUX",font=get_font(34),fill=(*accent,135))
-
+        # silhouettes de collines + empreintes stylisées
+        for j in range(6):
+            pts=[(x,900+j*120+int(35*math.sin(x/100+j))) for x in range(-30,1120,30)]; d.line(pts,fill=(*accent,45),width=9)
+        for x,y in [(300,1400),(540,1280),(780,1450)]:
+            d.ellipse((x-22,y-38,x+22,y+18),fill=(*sec,55)); d.ellipse((x-65,y-65,x-30,y-25),fill=(*sec,50)); d.ellipse((x+30,y-65,x+65,y-25),fill=(*sec,50))
     elif kind=="sport":
-        d.ellipse((230,610,850,1230),outline=(*accent,70),width=6)
-        d.line((540,610,540,1230),fill=(*accent,45),width=4)
-        d.arc((360,770,720,1070),0,360,fill=(*accent,50),width=4)
-        d.text((310,1320),"SPORT  •  DÉFI",font=get_font(34),fill=(*accent,135))
-
+        d.ellipse((540-300,1300-300,540+300,1300+300),outline=(*accent,55),width=8)
+        d.line((150,1300,930,1300),fill=(*sec,55),width=6); d.line((540,1000,540,1600),fill=(*sec,45),width=4)
+        d.ellipse((495,1255,585,1345),outline=(*accent,100),width=5)
+    elif kind=="art":
+        for _ in range(10):
+            x=rng.randint(100,760); y=rng.randint(900,1500); w=rng.randint(120,280); h=rng.randint(80,180)
+            d.rounded_rectangle((x,y,x+w,y+h),radius=30,fill=(*accent,16),outline=(*accent,50),width=4)
     elif kind=="food":
-        d.ellipse((250,650,830,1230),outline=(*accent,60),width=7)
-        d.ellipse((340,740,740,1140),outline=(*accent,42),width=5)
-        d.arc((385,785,695,1090),190,350,fill=(*accent,55),width=5)
-        d.text((330,1320),"CUISINE  •  GASTRONOMIE",font=get_font(31),fill=(*accent,135))
-
+        for x,y,r in [(250,1350,95),(540,1240,120),(800,1400,80),(400,1540,70),(720,1560,100)]:
+            d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,20),outline=(*accent,60),width=4)
+            d.ellipse((x-r//3,y-r//3,x+r//3,y+r//3),outline=(*sec,45),width=3)
     else:
-        # Motif générique mais avec une vraie scène graphique.
-        d.rounded_rectangle((180,590,900,1120),radius=50,fill=(*accent,14),outline=(*accent,50),width=5)
-        for _ in range(9):
-            x=rng.randint(230,820); y=rng.randint(650,1040)
-            d.rounded_rectangle((x,y,x+110,y+65),radius=18,outline=(*accent,38),width=3)
+        # culture générale : globe + cartes de connaissance
+        cx,cy,r=540,1360,275
+        d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,80),width=6)
+        d.ellipse((cx-r+35,cy-r,cx+r-35,cy+r),outline=(*sec,45),width=3)
+        d.arc((cx-r,cy-120,cx+r,cy+120),0,360,fill=(*sec,45),width=3)
+        for x,y in [(120,1050),(840,980),(120,1510),(850,1530)]:
+            d.rounded_rectangle((x,y,x+110,y+75),radius=14,fill=(*accent,18),outline=(*accent,45),width=3)
+    result=Image.alpha_composite(img.convert("RGBA"),art.filter(ImageFilter.GaussianBlur(0.25))).convert("RGB")
+    _BASE_CACHE[key]=result.copy(); return result
 
-    # Voile léger, pas noir : il protège la lisibilité sans supprimer le thème.
-    vign=Image.new("L",(WIDTH,HEIGHT),0)
-    vd=ImageDraw.Draw(vign)
-    vd.rectangle((55,120,1025,1780),fill=42)
-    vign=vign.filter(ImageFilter.GaussianBlur(120))
-    result=Image.alpha_composite(base,ov)
-    dark=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dark.putalpha(vign)
-    result=Image.alpha_composite(result,dark).convert("RGB")
-    _BASE_CACHE[key]=result.copy()
-    return result
 
 def selected_video_background(theme_name,topic,mode,uploaded=None):
     if mode=="Image personnalisée" and uploaded is not None: return fit_background(uploaded)
@@ -1151,7 +1001,8 @@ tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 with tab1:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 CRÉATEUR DE SHORTS 9:16</div><h1>Quiz TikTok Pro</h1><p>Créez des quiz rapides, élégants et captivants.</p></div><div class="qvp-hero-pill">✨ Créez • Apprenez • Partagez</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-card"><b>🎬 Studio Quiz</b><div class="qvp-small">Question → 4 réponses → 3·2·1 → révélation → explication → CTA</div></div>', unsafe_allow_html=True)
-    st.info("🎯 Le quiz commence directement par la première question : pas de page d’introduction longue.")
+    hook_q=st.text_input("Hook court (optionnel)","Teste tes connaissances !",key="hq")
+    st.caption("ℹ️ Le Short commence directement avec la question : pas de longue page d’introduction.")
     channel_q=st.text_input("Nom de la chaîne","@QuizMaster_Pro",key="cq")
     c1,c2=st.columns(2)
     with c1:
@@ -1268,113 +1119,105 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.session_state.q_source=f"IA • {th_q} • restauré"
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer le Short Quiz V6.2",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz V6.3",key="makeq"):
             try:
-                with st.spinner("Création du Short V6.2 — style vidéo test + synchronisation..."):
+                with st.spinner("Création du Short Quiz V6.3..."):
                     with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp)
-                        countdown_sfx=make_sfx_countdown(tic,tmp)
-                        total=len(st.session_state.q_data)
-                        clips=[]
+                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
+                        clips=[]; total=len(st.session_state.q_data)
 
+                        # Une seule timeline audio/vidéo par question.
+                        # Pas de page d'introduction, pas de page résultat.
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
 
-                            # ================= AUDIO =================
-                            # IMPORTANT : aucune compression artificielle à 1.65 s.
-                            # La voix garde son rythme naturel, comme dans la vidéo test.
-                            qa=os.path.join(tmp,f"q_{idx}.m4a")
-                            synthesize_audio(q["question"],voice_q,qa,tts_rate)
-                            qdur=audio_duration(qa)
+                            qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
+                            synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                            qdur=audio_duration(qa_raw)
 
-                            # Pause de réflexion fixe de 3 secondes.
-                            countdown_audio=os.path.join(tmp,f"countdown_{idx}.m4a")
-                            mix_background_music(
-                                countdown_sfx,
-                                make_suspense_music(3.12,tmp,f"countmusic_{idx}",0.045),
-                                countdown_audio,
-                                voice_volume=1.0,music_volume=0.045
-                            )
-                            countdown_dur=3.12
+                            exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
+                            ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
+                            synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
+                            edur=audio_duration(ea_raw)
 
-                            # Petit impact juste après 0.
-                            end_sfx=make_end_tick(tic,ding,tmp)
-                            end_dur=audio_duration(end_sfx)
+                            exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
+                            mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
 
-                            exp_clean=clean_text(q.get("explication","") or "Bravo !")
-                            exp_words=exp_clean.split()
-                            if len(exp_words)>20:
-                                exp_clean=" ".join(exp_words[:20]).rstrip(" ,.;:")+"…"
-                            exp_text=f"{q['options'][corr]}. {exp_clean}"
-                            ea=os.path.join(tmp,f"exp_{idx}.m4a")
-                            synthesize_audio(exp_text,voice_q,ea,tts_rate)
-                            edur=audio_duration(ea)
+                            full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
+                            concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
 
-                            # Un seul flux audio, dans le même ordre que les images.
-                            combined=os.path.join(tmp,f"question_chain_{idx}.m4a")
-                            concat_audio([qa,countdown_audio,end_sfx,ea],combined,tmp)
+                            frames=[]
 
-                            # ================= VIDEO =================
-                            # 1) Question : la voix pilote exactement la durée.
-                            qframes=[]
-                            for p in [0.0,0.22,0.45,0.70,0.90,1.0]:
-                                qframes.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
-                                                    channel_q,bg_q,entrance=p,video_title=th_q),
-                                    qdur/6.0
+                            # 1) QUESTION : la durée est exactement celle de la voix.
+                            q_steps=max(8,int(qdur*12))
+                            for j in range(q_steps):
+                                t=j/max(1,q_steps-1)
+                                frames.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_q,
+                                                    entrance=ease_out(t),motion=t*0.9,video_title=th_q),
+                                    qdur/q_steps
                                 ))
 
-                            # 2) Countdown : les propositions restent visibles.
-                            countdown_frames=[]
-                            for sec in (3,2,1):
-                                for step in range(10):
-                                    countdown_frames.append((
-                                        draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
-                                                        channel_q,bg_q,entrance=1.0,timer=sec,
-                                                        timer_fraction=1-step/10.0,pulse=1-step/10.0,
-                                                        motion=(idx*0.2+step/10.0),video_title=th_q),
-                                        0.1
-                                    ))
-
-                            # 3) Révélation : même page, seule la bonne proposition devient verte.
-                            reveal_frames=[]
-                            for p in [0.0,0.35,0.7,1.0]:
-                                reveal_frames.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
-                                                    channel_q,bg_q,entrance=1.0,timer=None,
-                                                    correct_idx=corr,reveal_progress=p,
-                                                    motion=p,video_title=th_q),
-                                    max(0.04,end_dur/4.0)
+                            # 2) REFLEXION : même page, 3 -> 2 -> 1 -> 0.
+                            cdur=3.12; cd_steps=94
+                            for j in range(cd_steps):
+                                t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                if elapsed < 1.04:
+                                    sec=3; frac=1-(elapsed/1.04)
+                                elif elapsed < 2.08:
+                                    sec=2; frac=1-((elapsed-1.04)/1.04)
+                                else:
+                                    sec=1; frac=1-((elapsed-2.08)/1.04)
+                                timer=0 if elapsed>=3.0 else sec
+                                timer_frac=0.0 if elapsed>=3.0 else frac
+                                frames.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_q,
+                                                    entrance=1.0,timer=timer,timer_fraction=timer_frac,
+                                                    pulse=0.55+0.45*math.sin(t*math.pi*12),
+                                                    motion=1.0+t*1.2,video_title=th_q),
+                                    cdur/cd_steps
                                 ))
 
-                            # 4) Explication : toujours exactement la même page.
-                            exp_frames=[]
-                            for p in [0.0,0.25,0.5,0.75,1.0]:
-                                exp_frames.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
-                                                    channel_q,bg_q,entrance=1.0,timer=None,
-                                                    correct_idx=corr,reveal_progress=1.0,
-                                                    motion=0.0,video_title=th_q,explanation=exp_text),
-                                    edur/5.0
+                            # 3) REVELATION + EXPLICATION : même page.
+                            # Seule la bonne réponse devient verte; explication en bas.
+                            ex_steps=max(8,int(edur*12))
+                            for j in range(ex_steps):
+                                t=j/max(1,ex_steps-1)
+                                frames.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_q,
+                                                    entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),
+                                                    pulse=0.15*(1-t),motion=2.0+t,
+                                                    video_title=th_q,explanation=exp_text,explanation_progress=t),
+                                    edur/ex_steps
                                 ))
 
-                            all_frames=qframes+countdown_frames+reveal_frames+exp_frames
-                            segment=os.path.join(tmp,f"qchain_{idx}.mp4")
-                            make_segment(save_frames(all_frames,tmp,f"chain_{idx}"),combined,segment,tmp,.95)
-                            clips.append(segment)
+                            frame_list=save_frames(frames,tmp,f"qfull_{idx}")
+                            out=os.path.join(tmp,f"qfull_{idx}.mp4")
+                            make_segment(frame_list,full_audio,out,tmp,1.0)
+                            clips.append(out)
 
-                        final=os.path.join(tmp,"quizvideo_pro_v6_2.mp4")
+                        # CTA très court seulement après le quiz.
+                        if clean_text(outro_q):
+                            oa=os.path.join(tmp,"outro.mp3")
+                            synthesize_audio(outro_q,voice_q,oa,tts_rate)
+                            od=audio_duration(oa)
+                            if od>0.15:
+                                of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/6)
+                                                for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
+                                oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+
+                        final=os.path.join(tmp,"quizvideo_pro_v6_3.mp4")
                         concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V6.2 terminé — structure et voix calées sur la vidéo test.")
+                        st.success("✅ Short Quiz V6.3 terminé.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger quizvideo_pro_v6_2.mp4",data=data,file_name="quizvideo_pro_v6_2.mp4",mime="video/mp4",key="dq62")
+                        st.download_button("⬇️ Télécharger quizvideo_pro_v6_3.mp4",data=data,file_name="quizvideo_pro_v6_3.mp4",mime="video/mp4",key="dq63")
             except Exception as e:
-                st.error(f"Erreur pendant le montage : {e}")
+                st.error(f"Erreur pendant le montage V6.3 : {e}")
 
 with tab2:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ SHORTS 9:16</div><h1>Vocabulaire Pro</h1><p>Apprenez et faites mémoriser un mot à la fois.</p></div><div class="qvp-hero-pill">✨ Apprenez • Répétez • Partagez</div></div>',unsafe_allow_html=True)
-    st.info("🎯 Le vocabulaire commence directement par le premier mot : pas de longue page d’introduction.")
+    hook_v=st.text_input("Hook","Tu prononces mal ces 5 mots !",key="hv")
     channel_v=st.text_input("Nom de la chaîne","@LingoPulse_Daily",key="cv")
     langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
@@ -1457,60 +1300,37 @@ with tab2:
                     st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer la vidéo Vocabulaire V6",key="makev"):
+        if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
             try:
-                with st.spinner("Création du Short vocabulaire V6 — synchronisation voix/vidéo..."):
+                with st.spinner("Création du Short vocabulaire V4..."):
                     with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
-                        clips=[]; items=st.session_state.v_data
+                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
+                        ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
+                        hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
+                        ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
                         for idx,item in enumerate(items):
-                            # MOT : la voix pilote exactement la durée de la scène.
-                            fa_raw=os.path.join(tmp,f"fr_{idx}_raw.mp3")
-                            synthesize_audio(item["fr"],VOICES_FR["Henri - Dynamique"],fa_raw,tts_rate)
-                            fa=os.path.join(tmp,f"fr_{idx}.m4a")
-                            fit_audio_to_max(fa_raw,fa,1.35,2.0); fd=audio_duration(fa)
-
-                            countdown_audio=os.path.join(tmp,f"vc_count_{idx}.m4a")
-                            mix_background_music(countdown_sfx,make_suspense_music(3.12,tmp,f"vcountmusic_{idx}",0.05),
-                                                 countdown_audio,voice_volume=1.0,music_volume=0.05)
-                            cd=audio_duration(countdown_audio)
-                            end_sfx=make_end_tick(tic,ding,tmp); endd=audio_duration(end_sfx)
-
-                            ta_raw=os.path.join(tmp,f"tr_{idx}_raw.mp3")
-                            synthesize_audio(item["trad"],voice_tr,ta_raw,tts_rate)
-                            ta=os.path.join(tmp,f"tr_{idx}.m4a")
-                            fit_audio_to_max(ta_raw,ta,1.45,2.0); td=audio_duration(ta)
-
-                            combined=os.path.join(tmp,f"vchain_{idx}.m4a")
-                            concat_audio([fa,countdown_audio,end_sfx,ta],combined,tmp)
-
-                            frames=[]
-                            for p in [0.0,0.2,0.45,0.7,1.0]:
-                                frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),fd/5.0))
+                            fa=os.path.join(tmp,f"fr_{idx}.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
+                            ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                            cframes=[]
                             for sec in (3,2,1):
-                                for step in range(10):
-                                    frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,
-                                                                     "countdown",sec,1-step/10.0,1.0),1.0/10.0))
-                            frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),endd))
-                            for p in [0.0,0.25,0.5,0.75,1.0]:
-                                frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td/5.0))
-
-                            segment=os.path.join(tmp,f"vchain_{idx}.mp4")
-                            make_segment(save_frames(frames,tmp,f"vchainframe_{idx}"),combined,segment,tmp,.95)
-                            clips.append(segment)
-
-                        if clean_text(outro_v):
-                            oa_raw=os.path.join(tmp,"vo_raw.mp3")
-                            synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa_raw,tts_rate)
-                            oa=os.path.join(tmp,"vo.m4a")
-                            fit_audio_to_max(oa_raw,oa,1.1,2.0); od=audio_duration(oa)
-                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),od/7.0) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"vo")
-                            oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-
-                        final=os.path.join(tmp,"vocabulaire_pro_v6.mp4")
-                        concat_videos(clips,final,tmp)
+                                for step in range(10): cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/10,1.0),.1))
+                            co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                            ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                            tf=[]
+                            if tw:
+                                for wi,w in enumerate(tw):
+                                    end=tw[wi+1]['start'] if wi+1<len(tw) else td
+                                    if end>w['start']:
+                                        tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),end-w['start']))
+                            if not tf: tf=[(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td)]
+                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
+                        oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
+                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
+                        oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                        final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Vocabulaire V6 terminé — voix et scènes synchronisées.")
+                        st.success("✅ Short Vocabulaire V4 terminé.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger vocabulaire_pro_v6.mp4",data=data,file_name="vocabulaire_pro_v6.mp4",mime="video/mp4",key="dv6")
+                        st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
             except Exception as e: st.error(f"Erreur pendant le montage : {e}")
