@@ -299,128 +299,128 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel,
                     bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0,
                     correct_idx=None, reveal_progress=0.0, pulse=0.0,
-                    motion=0.0, video_title="Culture Générale"):
-    """Moteur visuel Shorts : hiérarchie nette, cartes animées et timer proche des réponses."""
+                    motion=0.0, video_title="Culture Générale", explanation=None):
+    """Mise en page V6.2 calquée sur la vidéo de référence :
+    une seule page par question. Les propositions restent à l'écran pendant
+    le compte à rebours, la bonne réponse devient simplement verte, puis
+    l'explication apparaît en bas sans changer de page.
+    """
     theme=THEMES[theme_name]
-    base=make_base(theme_name,bg_file)
-    phase=clamp(motion)
-
-    # Léger mouvement caméra pendant la réflexion.
-    scale=1.0+0.012*math.sin(phase*math.pi*2)
-    bw,bh=base.size
-    nw,nh=int(bw*scale),int(bh*scale)
-    zoom=base.resize((nw,nh),Image.Resampling.LANCZOS)
-    sx=max(0,min(nw-bw,int((nw-bw)*0.5+10*math.sin(phase*math.pi*2))))
-    sy=max(0,min(nh-bh,int((nh-bh)*0.5+8*math.cos(phase*math.pi*2))))
-    img=zoom.crop((sx,sy,sx+bw,sy+bh))
-    img=add_top_glow(img,theme,1.0+0.25*pulse)
+    img=make_base(theme_name,bg_file)
     draw=ImageDraw.Draw(img)
 
-    # Header compact et premium.
-    title=clean_text(video_title) or "Quiz"
-    if len(title)>26: title=title[:26].rstrip()+"…"
-    pill=(55,52,1025,142)
-    draw.rounded_rectangle(pill,radius=28,fill=(8,13,27,220),outline=(*theme["accent"],150),width=2)
-    draw.text((82,72),f"QUIZ • {title.upper()}",font=get_font(30),fill=theme["accent"])
-    score=f"{q_num}/{total}"
-    sf=get_font(40); sw=text_width(draw,score,sf)
-    draw.text((930-sw,67),score,font=sf,fill="white")
+    # Mouvement de fond très léger, sans déplacer la mise en page.
+    phase=clamp(motion)
+    if phase:
+        overlay=Image.new("RGBA",img.size,(0,0,0,0))
+        od=ImageDraw.Draw(overlay)
+        od.ellipse((80+int(18*math.sin(phase*math.pi*2)),300,
+                    520+int(18*math.sin(phase*math.pi*2)),740),
+                   fill=(*theme["accent"],10))
+        overlay=overlay.filter(ImageFilter.GaussianBlur(35))
+        img=Image.alpha_composite(img.convert("RGBA"),overlay).convert("RGB")
+        draw=ImageDraw.Draw(img)
 
-    # Question dans une vraie zone de lecture.
-    qf=get_font(56)
-    q_lines=wrap_text(question,qf,900)[:3]
-    q_e=ease_out(entrance)
-    q_offset=int((1-q_e)*55)
-    qh=max(150, len(q_lines)*67+46)
-    qy=185
-    draw.rounded_rectangle((55,qy,1025,qy+qh),radius=30,fill=(8,13,27,215),
-                            outline=(255,255,255,38),width=2)
-    yy=qy+24+q_offset
+    # ----- En-tête EXACTEMENT dans l'esprit de la vidéo test -----
+    title=clean_text(video_title) or "Culture Générale"
+    if not title.lower().startswith("quiz"):
+        title=f"Quiz {title}"
+    tf=get_font(64)
+    title_lines=wrap_text(title+" 🤔",tf,900)[:2]
+    yy=58
+    for line in title_lines:
+        tw=text_width(draw,line,tf)
+        draw.text(((WIDTH-tw)/2+5,yy+7),line,font=tf,fill=(0,0,0))
+        draw.text(((WIDTH-tw)/2,yy),line,font=tf,fill="white")
+        yy+=70
+
+    score=f"{q_num}/{total}"
+    sf=get_font(52)
+    sw=text_width(draw,score,sf)
+    draw.text(((WIDTH-sw)/2,yy+4),score,font=sf,fill=theme["accent"])
+
+    # ----- Question : grande, centrée, sans carte séparée -----
+    qf=get_font(52)
+    q_lines=wrap_text(clean_text(question),qf,900)[:3]
+    qy=330
     for line in q_lines:
         tw=text_width(draw,line,qf)
-        x=(WIDTH-tw)/2+int(8*math.sin((phase+yy/300)*math.pi*2))
-        draw.text((x+3,yy+4),line,font=qf,fill=(0,0,0))
-        draw.text((x,yy),line,font=qf,fill="white")
-        yy+=67
+        draw.text(((WIDTH-tw)/2+3,qy+5),line,font=qf,fill=(0,0,0))
+        draw.text(((WIDTH-tw)/2,qy),line,font=qf,fill="white")
+        qy+=62
 
-    # Quatre réponses : plus larges, plus lisibles, badges A/B/C/D.
-    left,right=55,1025
-    card_h,gap=106,14
-    start_y=qy+qh+34
-    f_opt=get_font(35)
+    # ----- 4 réponses : même position pendant toute la question -----
+    left,right=85,995
+    card_h=76
+    gap=14
+    start_y=650
+    f_opt=get_font(30)
     for i,opt in enumerate(options[:4]):
-        local=ease_out(clamp((entrance-i*0.045)/0.48))
-        y=start_y+i*(card_h+gap)+int((1-local)*48)
-        # Mouvement très léger pendant la réflexion.
-        if timer is not None:
-            y+=int(5*math.sin((phase+i*.18)*math.pi*2))
-
-        correct=(correct_idx is not None and i==correct_idx)
-        dim=(correct_idx is not None and not correct)
-        if correct:
-            rp=ease_back(reveal_progress)
+        y=start_y+i*(card_h+gap)
+        is_correct=(correct_idx is not None and i==correct_idx)
+        if is_correct:
             fill=theme["success"]
             outline=(255,255,255)
-            width=5
-            glow=Image.new("RGBA",img.size,(0,0,0,0))
-            gd=ImageDraw.Draw(glow)
-            gd.rounded_rectangle((left-8,y-8,right+8,y+card_h+8),radius=30,
-                                 outline=(*theme["success"],90),width=14)
-            glow=glow.filter(ImageFilter.GaussianBlur(16))
-            img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB")
-            draw=ImageDraw.Draw(img)
+            width=3
         else:
-            fill=(19,31,55) if i%2==0 else (26,40,68)
-            outline=(*theme["accent"],210)
+            fill=(24,45,87)
+            outline=(225,235,255)
             width=2
-        if dim:
-            fill=tuple(int(c*.40) for c in fill[:3])
-            outline=tuple(int(c*.45) for c in outline[:3])
+            if correct_idx is not None:
+                fill=(22,35,62)
+                outline=(150,165,190)
 
-        draw.rounded_rectangle((left,y,right,y+card_h),radius=26,fill=fill,outline=outline,width=width)
-
-        # Badge lettre.
-        bx,by=77,y+18
-        badge_fill=(255,255,255,25) if not correct else (255,255,255,220)
-        draw.rounded_rectangle((bx,by,bx+68,by+70),radius=20,fill=badge_fill,
-                               outline=(255,255,255,100),width=1)
-        lf=get_font(31)
+        draw.rounded_rectangle((left,y,right,y+card_h),radius=15,
+                               fill=fill,outline=outline,width=width)
+        # Lettre à gauche, simple comme dans la vidéo de référence.
         letter=chr(65+i)
-        lc=theme["success"] if correct else "white"
-        draw.text((bx+(68-text_width(draw,letter,lf))/2,by+14),letter,font=lf,fill=lc)
-
+        lf=get_font(30)
+        draw.text((105,y+20),letter,font=lf,
+                  fill=(255,255,255) if not is_correct else (255,255,255))
         label=clean_text(opt)
-        maxw=right-170
-        lines=wrap_text(label,f_opt,maxw)[:2]
-        th=sum(text_height(f_opt,l) for l in lines)+8*max(0,len(lines)-1)
-        ty=y+(card_h-th)/2-2
+        lines=wrap_text(label,f_opt,770)[:2]
+        total_h=sum(text_height(f_opt,l) for l in lines)+6*(len(lines)-1)
+        ty=y+(card_h-total_h)/2-1
         for line in lines:
-            draw.text((165,ty),line,font=f_opt,fill="white")
-            ty+=text_height(f_opt,line)+8
+            draw.text((155,ty),line,font=f_opt,fill="white")
+            ty+=text_height(f_opt,line)+6
 
-        if correct:
-            ck=get_font(38)
-            draw.text((945, y+28),"✓",font=ck,fill="white")
-
-    # Timer placé juste sous les réponses, proche de la zone de réflexion.
-    if timer is not None:
-        draw_thinking_icon(draw,theme,phase,cx=770,cy=1255)
+    # ----- Réflexion : timer seulement avant la révélation -----
+    if timer is not None and correct_idx is None:
         draw_timer(draw,theme,timer,timer_fraction,pulse)
-        draw.text((620,1340),"RÉFLÉCHIS…",font=get_font(27),fill=theme["muted"])
+        draw.text((635,1325),"RÉFLÉCHIS…",font=get_font(26),fill=(225,230,240))
+        draw_thinking_icon(draw,theme,phase,cx=930,cy=1295)
 
-    # Bandeau de révélation.
-    if correct_idx is not None:
-        p=ease_back(reveal_progress)
-        by=1250-int(8*p)
-        draw.rounded_rectangle((185,by,895,1335),radius=28,fill=theme["success"],
-                               outline=(255,255,255),width=3)
-        txt="✓ BONNE RÉPONSE"
-        f=get_font(38+int(5*p))
-        draw.text(((WIDTH-text_width(draw,txt,f))/2,by+20),txt,font=f,fill="white")
+    # ----- Explication en BAS DE LA MÊME PAGE -----
+    if correct_idx is not None and explanation:
+        box=(70,1240,1010,1695)
+        draw.rounded_rectangle(box,radius=24,fill=(7,18,36,235),outline=theme["accent"],width=2)
+        draw.text((100,1270),"💡 EXPLICATION",font=get_font(30),fill=theme["accent"])
+        ef=get_font(32)
+        words=clean_text(explanation).split()
+        lines=[]; cur=[]
+        for word in words:
+            cand=word if not cur else " ".join(cur+[word])
+            if text_width(draw,cand,ef)<=840:
+                cur.append(word)
+            else:
+                if cur: lines.append(cur)
+                cur=[word]
+        if cur: lines.append(cur)
+        lines=lines[:5]
+        ey=1325
+        for line in lines:
+            txt=" ".join(line)
+            tw=text_width(draw,txt,ef)
+            draw.text(((WIDTH-tw)/2,ey),txt,font=ef,fill="white")
+            ey+=42
 
-    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
-    sf=get_font(22)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
+    # Barre de progression discrète, comme dans la vidéo de référence.
+    px1,py,pw,ph=55,1810,970,8
+    draw.rounded_rectangle((px1,py,px1+pw,py+ph),radius=4,fill=(90,100,115))
+    draw.rounded_rectangle((px1,py,px1+int(pw*(q_num/max(1,total))),py+ph),radius=4,fill=theme["accent"])
+    sf2=get_font(20)
+    draw.text((55,1840),clean_text(channel or ""),font=sf2,fill=(175,185,200))
     return img
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0):
@@ -949,8 +949,9 @@ def _save_vocab_editor(rows):
 
 api_key=st.sidebar.text_input("Clé API Gemini",type="password")
 if api_key: genai.configure(api_key=api_key)
-voice_rate=st.sidebar.slider("⚡ Vitesse voix",0,30,20)
+voice_rate=st.sidebar.slider("⚡ Vitesse de la voix",0,20,0,step=1,key="voice_rate_v62")
 tts_rate=f"+{voice_rate}%"
+st.sidebar.caption(f"Vitesse réelle : {1.0 + voice_rate/100:.2f}×")
 MODEL_NAME="gemini-3.6-flash"
 
 MOTIVATION_LINES=[
@@ -1267,62 +1268,63 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.session_state.q_source=f"IA • {th_q} • restauré"
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer le Short Quiz V6",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz V6.2",key="makeq"):
             try:
-                with st.spinner("Création du Short V6 — synchronisation voix/vidéo..."):
+                with st.spinner("Création du Short V6.2 — style vidéo test + synchronisation..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp)
                         countdown_sfx=make_sfx_countdown(tic,tmp)
                         total=len(st.session_state.q_data)
                         clips=[]
 
-                        # V6 : pas de page d'introduction. Le quiz commence directement par Q1.
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
 
-                            # ---------- AUDIO : une seule timeline par question ----------
-                            qa_raw=os.path.join(tmp,f"q_{idx}_raw.mp3")
-                            synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                            # ================= AUDIO =================
+                            # IMPORTANT : aucune compression artificielle à 1.65 s.
+                            # La voix garde son rythme naturel, comme dans la vidéo test.
                             qa=os.path.join(tmp,f"q_{idx}.m4a")
-                            fit_audio_to_max(qa_raw,qa,1.65,2.0)
+                            synthesize_audio(q["question"],voice_q,qa,tts_rate)
                             qdur=audio_duration(qa)
 
-                            qmusic=make_suspense_music(qdur,tmp,f"qmusic_{idx}",0.075)
-                            qmix=os.path.join(tmp,f"q_{idx}_mix.m4a")
-                            mix_background_music(qa,qmusic,qmix,music_volume=0.075)
-                            qdur=audio_duration(qmix)
-
+                            # Pause de réflexion fixe de 3 secondes.
                             countdown_audio=os.path.join(tmp,f"countdown_{idx}.m4a")
-                            mix_background_music(countdown_sfx,make_suspense_music(3.12,tmp,f"countmusic_{idx}",0.055),
-                                                 countdown_audio,voice_volume=1.0,music_volume=0.055)
-                            countdown_dur=audio_duration(countdown_audio)
+                            mix_background_music(
+                                countdown_sfx,
+                                make_suspense_music(3.12,tmp,f"countmusic_{idx}",0.045),
+                                countdown_audio,
+                                voice_volume=1.0,music_volume=0.045
+                            )
+                            countdown_dur=3.12
 
+                            # Petit impact juste après 0.
                             end_sfx=make_end_tick(tic,ding,tmp)
                             end_dur=audio_duration(end_sfx)
 
                             exp_clean=clean_text(q.get("explication","") or "Bravo !")
                             exp_words=exp_clean.split()
-                            if len(exp_words)>14:
-                                exp_clean=" ".join(exp_words[:14]).rstrip(" ,.;:")+"…"
-                            exp_text=f"La bonne réponse est {q['reponse_correcte']}, {q['options'][corr]}. {exp_clean}"
-                            ea_raw=os.path.join(tmp,f"exp_{idx}_raw.mp3")
-                            synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
+                            if len(exp_words)>20:
+                                exp_clean=" ".join(exp_words[:20]).rstrip(" ,.;:")+"…"
+                            exp_text=f"{q['options'][corr]}. {exp_clean}"
                             ea=os.path.join(tmp,f"exp_{idx}.m4a")
-                            fit_audio_to_max(ea_raw,ea,1.55,2.0)
+                            synthesize_audio(exp_text,voice_q,ea,tts_rate)
                             edur=audio_duration(ea)
 
+                            # Un seul flux audio, dans le même ordre que les images.
                             combined=os.path.join(tmp,f"question_chain_{idx}.m4a")
-                            concat_audio([qmix,countdown_audio,end_sfx,ea],combined,tmp)
+                            concat_audio([qa,countdown_audio,end_sfx,ea],combined,tmp)
 
-                            # ---------- VIDEO : mêmes durées que l'audio ----------
+                            # ================= VIDEO =================
+                            # 1) Question : la voix pilote exactement la durée.
                             qframes=[]
-                            for p in [0.0,0.18,0.38,0.60,0.82,1.0]:
+                            for p in [0.0,0.22,0.45,0.70,0.90,1.0]:
                                 qframes.append((
                                     draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
                                                     channel_q,bg_q,entrance=p,video_title=th_q),
                                     qdur/6.0
                                 ))
 
+                            # 2) Countdown : les propositions restent visibles.
                             countdown_frames=[]
                             for sec in (3,2,1):
                                 for step in range(10):
@@ -1331,77 +1333,42 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                                                         channel_q,bg_q,entrance=1.0,timer=sec,
                                                         timer_fraction=1-step/10.0,pulse=1-step/10.0,
                                                         motion=(idx*0.2+step/10.0),video_title=th_q),
-                                        1.0/10.0
+                                        0.1
                                     ))
 
-                            reveal_frame=draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
-                                                         channel_q,bg_q,entrance=1.0,timer=0,
-                                                         timer_fraction=0.0,pulse=1.0,motion=1.0,
-                                                         correct_idx=corr,reveal_progress=1.0,video_title=th_q)
-
-                            exp_frames=[]
-                            reveal_words=clean_text(exp_clean).split()
-                            for wi in range(6):
-                                active_idx=min(len(reveal_words)-1,
-                                               int((wi/max(1,5))*max(1,len(reveal_words)-1))) if reveal_words else -1
-                                exp_frames.append((
-                                    draw_explanation_scene(q["question"],q["options"][corr],exp_text,
-                                                           theme_q,channel_q,bg_q,active_word=active_idx,
-                                                           pulse=0.18,progress=(idx+1)/total,q_num=idx+1,
-                                                           total=total,video_title=th_q),
-                                    edur/6.0
+                            # 3) Révélation : même page, seule la bonne proposition devient verte.
+                            reveal_frames=[]
+                            for p in [0.0,0.35,0.7,1.0]:
+                                reveal_frames.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
+                                                    channel_q,bg_q,entrance=1.0,timer=None,
+                                                    correct_idx=corr,reveal_progress=p,
+                                                    motion=p,video_title=th_q),
+                                    max(0.04,end_dur/4.0)
                                 ))
 
-                            all_frames=[]
-                            all_frames.extend(qframes)
-                            all_frames.extend(countdown_frames)
-                            all_frames.append((reveal_frame,end_dur))
-                            all_frames.extend(exp_frames)
+                            # 4) Explication : toujours exactement la même page.
+                            exp_frames=[]
+                            for p in [0.0,0.25,0.5,0.75,1.0]:
+                                exp_frames.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
+                                                    channel_q,bg_q,entrance=1.0,timer=None,
+                                                    correct_idx=corr,reveal_progress=1.0,
+                                                    motion=0.0,video_title=th_q,explanation=exp_text),
+                                    edur/5.0
+                                ))
 
+                            all_frames=qframes+countdown_frames+reveal_frames+exp_frames
                             segment=os.path.join(tmp,f"qchain_{idx}.mp4")
                             make_segment(save_frames(all_frames,tmp,f"chain_{idx}"),combined,segment,tmp,.95)
                             clips.append(segment)
 
-                            # Micro-message facultatif toutes les 3 questions, après la scène complète.
-                            if idx < total-1 and ((idx+1)%3==0):
-                                mot=MOTIVATION_LINES[((idx+1)//3-1)%len(MOTIVATION_LINES)]
-                                ma_raw=os.path.join(tmp,f"mot_{idx}_raw.mp3")
-                                synthesize_audio(mot,voice_q,ma_raw,tts_rate)
-                                ma=os.path.join(tmp,f"mot_{idx}.m4a")
-                                fit_audio_to_max(ma_raw,ma,0.85,2.0)
-                                md=audio_duration(ma)
-                                mmusic=make_suspense_music(md,tmp,f"mmusic_{idx}",0.035)
-                                mmix=os.path.join(tmp,f"mot_mix_{idx}.m4a")
-                                mix_background_music(ma,mmusic,mmix,music_volume=0.035)
-                                mf=save_frames([
-                                    (draw_motivation_scene(mot,theme_q,channel_q,bg_q,(idx+1)/total,p),md/7.0)
-                                    for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]
-                                ],tmp,f"motframe_{idx}")
-                                mo=os.path.join(tmp,f"motivation_{idx}.mp4")
-                                make_segment(mf,mmix,mo,tmp,.95)
-                                clips.append(mo)
-
-                        # CTA final très court, sans grande page d'introduction.
-                        if clean_text(outro_q):
-                            oa_raw=os.path.join(tmp,"outro_raw.mp3")
-                            synthesize_audio(outro_q,voice_q,oa_raw,tts_rate)
-                            oa=os.path.join(tmp,"outro.m4a")
-                            fit_audio_to_max(oa_raw,oa,1.15,2.0)
-                            od=audio_duration(oa)
-                            of=save_frames([
-                                (draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/7.0)
-                                for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]
-                            ],tmp,"outro")
-                            oo=os.path.join(tmp,"outro.mp4")
-                            make_segment(of,oa,oo,tmp)
-                            clips.append(oo)
-
-                        final=os.path.join(tmp,"quizvideo_pro_v6.mp4")
+                        final=os.path.join(tmp,"quizvideo_pro_v6_2.mp4")
                         concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V6 terminé — voix et scènes synchronisées.")
+                        st.success("✅ Short Quiz V6.2 terminé — structure et voix calées sur la vidéo test.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger quizvideo_pro_v6.mp4",data=data,file_name="quizvideo_pro_v6.mp4",mime="video/mp4",key="dq6")
+                        st.download_button("⬇️ Télécharger quizvideo_pro_v6_2.mp4",data=data,file_name="quizvideo_pro_v6_2.mp4",mime="video/mp4",key="dq62")
             except Exception as e:
                 st.error(f"Erreur pendant le montage : {e}")
 
