@@ -1,4 +1,4 @@
-import streamlit as st
+
 import google.generativeai as genai
 import asyncio
 import edge_tts
@@ -1253,7 +1253,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         # Hook très court : on garde l'énergie sans sacrifier le temps du Short.
                         ha_raw=os.path.join(tmp,"hook_raw.mp3")
                         synthesize_audio(hook_q,voice_q,ha_raw,tts_rate)
-                        ha=os.path.join(tmp,"hook.mp3")
+                        ha=os.path.join(tmp,"hook.m4a")
                         fit_audio_to_max(ha_raw,ha,1.8,2.0)
                         hd=audio_duration(ha)
                         hf=save_frames([(draw_hook(hook_q,theme_q,channel_q,bg_q,p),max(0.04,hd/7))
@@ -1477,7 +1477,7 @@ with tab2:
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
                         ha0=os.path.join(tmp,"vh_raw.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha0,tts_rate)
-                        ha=os.path.join(tmp,"vh.mp3"); fit_audio_to_max(ha0,ha,1.8,2.0); hd=audio_duration(ha)
+                        ha=os.path.join(tmp,"vh.m4a"); fit_audio_to_max(ha0,ha,1.8,2.0); hd=audio_duration(ha)
                         hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
                         ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
                         for idx,item in enumerate(items):
@@ -1500,7 +1500,7 @@ with tab2:
                                 tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),max(.05,td/5)))
                             tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
                         oa0=os.path.join(tmp,"vo_raw.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa0,tts_rate)
-                        oa=os.path.join(tmp,"vo.mp3"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
+                        oa=os.path.join(tmp,"vo.m4a"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
                         of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
                         oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                         final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
