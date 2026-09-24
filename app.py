@@ -1272,6 +1272,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                 with st.spinner("Création du Short V6 — synchronisation voix/vidéo..."):
                     with tempfile.TemporaryDirectory() as tmp:
                         tic,ding=make_sfx(tmp)
+                        countdown_sfx=make_sfx_countdown(tic,tmp)
                         total=len(st.session_state.q_data)
                         clips=[]
 
