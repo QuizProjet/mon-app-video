@@ -68,7 +68,7 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
 _BASE_CACHE = {}
 
-APP_VERSION = "QuizVideo Pro V5.1"
+APP_VERSION = "QuizVideo Pro V6"
 THEMES = {
     "Bleu Nuit & Or": {"bg": (7, 12, 28), "bg2": (20, 33, 62), "card": (25, 36, 61), "card2": (40, 55, 88), "accent": (255, 205, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (165, 181, 208)},
     "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
@@ -687,6 +687,22 @@ def mix_voice_sfx(voice_path,sfx_path,output,delay_ms=0,sfx_volume=0.65):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return output
 
 # ---------------------- Video encoding ----------------------
+def concat_audio(inputs, output, tmpdir):
+    """Assemble plusieurs segments audio dans un seul fichier, dans l'ordre exact.
+    La durée de chaque scène vidéo est ensuite pilotée par ce fichier audio.
+    """
+    inputs=[os.path.abspath(x) for x in inputs if x and os.path.exists(x)]
+    if not inputs:
+        raise ValueError("Aucun segment audio à assembler.")
+    cmd=[get_ffmpeg(),"-y"]
+    for path in inputs:
+        cmd += ["-i", path]
+    labels=[f"[{i}:a]" for i in range(len(inputs))]
+    cmd += ["-filter_complex", "".join(labels)+f"concat=n={len(inputs)}:v=0:a=1[aout]",
+            "-map","[aout]","-c:a","aac","-b:a","160k","-movflags","+faststart",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return output
+
 def make_image_video(frames,output,fps=30):
     list_path=output+".txt"
     with open(list_path,"w",encoding="utf-8") as f:
@@ -706,11 +722,19 @@ def make_segment(frames,audio,output,tmpdir,volume=1.0):
     make_image_video(frames,raw,FPS); return mux_audio(raw,audio,output,volume)
 
 def concat_videos(clips,output,tmpdir):
+    """Concatène en ré-encodant la sortie finale pour éviter les décalages de timestamps.
+    Chaque segment a déjà une durée pilotée par son audio; le ré-encodage final
+    stabilise la timeline du fichier Short.
+    """
     lst=os.path.join(tmpdir,"concat.txt")
     with open(lst,"w",encoding="utf-8") as f:
         for p in clips: f.write(f"file '{p.replace(chr(92),'/')}'\n")
-    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,"-c","copy","-movflags","+faststart",output]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return output
+    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,
+         "-vf",f"fps={FPS},format=yuv420p","-c:v","libx264","-preset","veryfast","-crf","22",
+         "-c:a","aac","-b:a","160k","-af","aresample=async=1:first_pts=0",
+         "-movflags","+faststart",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return output
 
 def save_frames(frames,tmpdir,prefix):
     out=[]
@@ -1126,7 +1150,7 @@ tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 with tab1:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 CRÉATEUR DE SHORTS 9:16</div><h1>Quiz TikTok Pro</h1><p>Créez des quiz rapides, élégants et captivants.</p></div><div class="qvp-hero-pill">✨ Créez • Apprenez • Partagez</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-card"><b>🎬 Studio Quiz</b><div class="qvp-small">Question → 4 réponses → 3·2·1 → révélation → explication → CTA</div></div>', unsafe_allow_html=True)
-    hook_q=st.text_input("Hook","IMPOSSIBLE d'avoir 10 sur 10 !",key="hq")
+    st.info("🎯 Le quiz commence directement par la première question : pas de page d’introduction longue.")
     channel_q=st.text_input("Nom de la chaîne","@QuizMaster_Pro",key="cq")
     c1,c2=st.columns(2)
     with c1:
@@ -1243,153 +1267,146 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.session_state.q_source=f"IA • {th_q} • restauré"
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer le Short Quiz V5",key="makeq"):
+        if st.button("🎬 Générer le Short Quiz V6",key="makeq"):
             try:
-                with st.spinner("Création du Short dynamique V5..."):
+                with st.spinner("Création du Short V6 — synchronisation voix/vidéo..."):
                     with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
-                        clips=[]; total=len(st.session_state.q_data)
+                        tic,ding=make_sfx(tmp)
+                        total=len(st.session_state.q_data)
+                        clips=[]
 
-                        # Hook très court : on garde l'énergie sans sacrifier le temps du Short.
-                        ha_raw=os.path.join(tmp,"hook_raw.mp3")
-                        synthesize_audio(hook_q,voice_q,ha_raw,tts_rate)
-                        ha=os.path.join(tmp,"hook.m4a")
-                        fit_audio_to_max(ha_raw,ha,1.8,2.0)
-                        hd=audio_duration(ha)
-                        hf=save_frames([(draw_hook(hook_q,theme_q,channel_q,bg_q,p),max(0.04,hd/7))
-                                        for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"hook")
-                        hout=os.path.join(tmp,"hook.mp4"); make_segment(hf,ha,hout,tmp); clips.append(hout)
-
+                        # V6 : pas de page d'introduction. Le quiz commence directement par Q1.
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
 
-                            # 1) QUESTION : elle arrive avant le timer, avec les 4 réponses déjà visibles.
-                            qa_raw0=os.path.join(tmp,f"q_{idx}_raw.mp3")
-                            synthesize_audio(q['question'],voice_q,qa_raw0,tts_rate)
-                            qa_raw=os.path.join(tmp,f"q_{idx}.m4a")
-                            fit_audio_to_max(qa_raw0,qa_raw,2.0,2.0)
-                            qdur=audio_duration(qa_raw)
-                            qmusic=make_suspense_music(qdur,tmp,f"qmusic_{idx}",0.09)
-                            qa=os.path.join(tmp,f"q_{idx}_mix.m4a")
-                            mix_background_music(qa_raw,qmusic,qa,music_volume=0.09)
+                            # ---------- AUDIO : une seule timeline par question ----------
+                            qa_raw=os.path.join(tmp,f"q_{idx}_raw.mp3")
+                            synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                            qa=os.path.join(tmp,f"q_{idx}.m4a")
+                            fit_audio_to_max(qa_raw,qa,1.65,2.0)
+                            qdur=audio_duration(qa)
 
-                            qframes=[]
-                            for p in [0.0,0.16,0.34,0.55,0.78,1.0]:
-                                qframes.append((
-                                    draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,
-                                                    channel_q,bg_q,entrance=p,video_title=th_q),
-                                    max(0.05,qdur/6)
-                                ))
-                            qo=os.path.join(tmp,f"question_{idx}.mp4")
-                            make_segment(save_frames(qframes,tmp,f"qf_{idx}"),qa,qo,tmp)
-                            clips.append(qo)
+                            qmusic=make_suspense_music(qdur,tmp,f"qmusic_{idx}",0.075)
+                            qmix=os.path.join(tmp,f"q_{idx}_mix.m4a")
+                            mix_background_music(qa,qmusic,qmix,music_volume=0.075)
+                            qdur=audio_duration(qmix)
 
-                            # 2) RÉFLEXION : 3 → 2 → 1, très rapide mais lisible.
-                            countdown_frames=[]
-                            frame_no=0
-                            for sec in (3,2,1):
-                                for step in range(8):
-                                    frac=1-step/8
-                                    pulse=1-step/8
-                                    motion=frame_no/24.0
-                                    countdown_frames.append((
-                                        draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,
-                                                        channel_q,bg_q,entrance=1.0,timer=sec,
-                                                        timer_fraction=frac,pulse=pulse,motion=motion,
-                                                        video_title=th_q),
-                                        0.10
-                                    ))
-                                    frame_no+=1
-                            countdown_audio=os.path.join(tmp,f"countdown_mix_{idx}.m4a")
-                            # L'audio contient les 3 tics ; la vidéo les affiche sur ~2,4 s.
-                            mix_background_music(countdown_sfx,make_suspense_music(3.0,tmp,f"countmusic_{idx}",0.075),
-                                                 countdown_audio,voice_volume=1.0,music_volume=0.075)
-                            co=os.path.join(tmp,f"countdown_{idx}.mp4")
-                            make_segment(save_frames(countdown_frames,tmp,f"timer_{idx}"),
-                                         countdown_audio,co,tmp,.80)
-                            clips.append(co)
+                            countdown_audio=os.path.join(tmp,f"countdown_{idx}.m4a")
+                            mix_background_music(countdown_sfx,make_suspense_music(3.12,tmp,f"countmusic_{idx}",0.055),
+                                                 countdown_audio,voice_volume=1.0,music_volume=0.055)
+                            countdown_dur=audio_duration(countdown_audio)
 
-                            # 3) IMPACT : son final + réponse verte.
                             end_sfx=make_end_tick(tic,ding,tmp)
-                            end_frame=draw_quiz_frame(q['question'],q['options'],theme_q,idx+1,total,
-                                                      channel_q,bg_q,entrance=1.0,timer=0,
-                                                      timer_fraction=0.0,pulse=1.0,motion=1.0,
-                                                      correct_idx=corr,reveal_progress=1.0,
-                                                      video_title=th_q)
-                            end_path=save_frames([(end_frame,0.42)],tmp,f"end_{idx}")
-                            end_clip=os.path.join(tmp,f"end_{idx}.mp4")
-                            make_segment(end_path,end_sfx,end_clip,tmp,.95)
-                            clips.append(end_clip)
+                            end_dur=audio_duration(end_sfx)
 
-                            # 4) EXPLICATION : courte, claire, sans répéter la voix du reveal.
-                            exp_clean=clean_text(q.get('explication','') or 'Bravo !')
+                            exp_clean=clean_text(q.get("explication","") or "Bravo !")
                             exp_words=exp_clean.split()
                             if len(exp_words)>14:
                                 exp_clean=" ".join(exp_words[:14]).rstrip(" ,.;:")+"…"
                             exp_text=f"La bonne réponse est {q['reponse_correcte']}, {q['options'][corr]}. {exp_clean}"
-
-                            ea0=os.path.join(tmp,f"exp_{idx}_raw.mp3")
-                            synthesize_audio(exp_text,voice_q,ea0,tts_rate)
+                            ea_raw=os.path.join(tmp,f"exp_{idx}_raw.mp3")
+                            synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
                             ea=os.path.join(tmp,f"exp_{idx}.m4a")
-                            fit_audio_to_max(ea0,ea,1.65,2.0)
+                            fit_audio_to_max(ea_raw,ea,1.55,2.0)
                             edur=audio_duration(ea)
 
-                            # Animation de l'explication en 5 états, synchronisée sur la durée finale.
-                            tf=[]
-                            reveal_words=clean_text(exp_clean).split()
-                            for wi in range(5):
-                                active_idx=min(len(reveal_words)-1,
-                                               int((wi/max(1,4))*max(1,len(reveal_words)-1))) if reveal_words else -1
-                                tf.append((
-                                    draw_explanation_scene(q['question'],q['options'][corr],exp_text,
-                                                           theme_q,channel_q,bg_q,
-                                                           active_word=active_idx,pulse=0.18,
-                                                           progress=(idx+1)/total,q_num=idx+1,total=total,
-                                                           video_title=th_q),
-                                    max(0.06,edur/5)
-                                ))
-                            eo=os.path.join(tmp,f"explanation_{idx}.mp4")
-                            make_segment(save_frames(tf,tmp,f"expframe_{idx}"),ea,eo,tmp,.95)
-                            clips.append(eo)
+                            combined=os.path.join(tmp,f"question_chain_{idx}.m4a")
+                            concat_audio([qmix,countdown_audio,end_sfx,ea],combined,tmp)
 
-                            # Petite respiration seulement toutes les 3 questions.
-                            if idx < total-1 and ((idx+1) % 3 == 0):
-                                mot=MOTIVATION_LINES[((idx+1)//3-1) % len(MOTIVATION_LINES)]
-                                ma0=os.path.join(tmp,f"mot_{idx}_raw.mp3")
-                                synthesize_audio(mot,voice_q,ma0,tts_rate)
+                            # ---------- VIDEO : mêmes durées que l'audio ----------
+                            qframes=[]
+                            for p in [0.0,0.18,0.38,0.60,0.82,1.0]:
+                                qframes.append((
+                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
+                                                    channel_q,bg_q,entrance=p,video_title=th_q),
+                                    qdur/6.0
+                                ))
+
+                            countdown_frames=[]
+                            for sec in (3,2,1):
+                                for step in range(10):
+                                    countdown_frames.append((
+                                        draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
+                                                        channel_q,bg_q,entrance=1.0,timer=sec,
+                                                        timer_fraction=1-step/10.0,pulse=1-step/10.0,
+                                                        motion=(idx*0.2+step/10.0),video_title=th_q),
+                                        1.0/10.0
+                                    ))
+
+                            reveal_frame=draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,
+                                                         channel_q,bg_q,entrance=1.0,timer=0,
+                                                         timer_fraction=0.0,pulse=1.0,motion=1.0,
+                                                         correct_idx=corr,reveal_progress=1.0,video_title=th_q)
+
+                            exp_frames=[]
+                            reveal_words=clean_text(exp_clean).split()
+                            for wi in range(6):
+                                active_idx=min(len(reveal_words)-1,
+                                               int((wi/max(1,5))*max(1,len(reveal_words)-1))) if reveal_words else -1
+                                exp_frames.append((
+                                    draw_explanation_scene(q["question"],q["options"][corr],exp_text,
+                                                           theme_q,channel_q,bg_q,active_word=active_idx,
+                                                           pulse=0.18,progress=(idx+1)/total,q_num=idx+1,
+                                                           total=total,video_title=th_q),
+                                    edur/6.0
+                                ))
+
+                            all_frames=[]
+                            all_frames.extend(qframes)
+                            all_frames.extend(countdown_frames)
+                            all_frames.append((reveal_frame,end_dur))
+                            all_frames.extend(exp_frames)
+
+                            segment=os.path.join(tmp,f"qchain_{idx}.mp4")
+                            make_segment(save_frames(all_frames,tmp,f"chain_{idx}"),combined,segment,tmp,.95)
+                            clips.append(segment)
+
+                            # Micro-message facultatif toutes les 3 questions, après la scène complète.
+                            if idx < total-1 and ((idx+1)%3==0):
+                                mot=MOTIVATION_LINES[((idx+1)//3-1)%len(MOTIVATION_LINES)]
+                                ma_raw=os.path.join(tmp,f"mot_{idx}_raw.mp3")
+                                synthesize_audio(mot,voice_q,ma_raw,tts_rate)
                                 ma=os.path.join(tmp,f"mot_{idx}.m4a")
-                                fit_audio_to_max(ma0,ma,0.95,2.0)
+                                fit_audio_to_max(ma_raw,ma,0.85,2.0)
                                 md=audio_duration(ma)
-                                mmusic=make_suspense_music(md,tmp,f"mmusic_{idx}",0.045)
+                                mmusic=make_suspense_music(md,tmp,f"mmusic_{idx}",0.035)
                                 mmix=os.path.join(tmp,f"mot_mix_{idx}.m4a")
-                                mix_background_music(ma,mmusic,mmix,music_volume=0.045)
+                                mix_background_music(ma,mmusic,mmix,music_volume=0.035)
                                 mf=save_frames([
-                                    (draw_motivation_scene(mot,theme_q,channel_q,bg_q,(idx+1)/total,p),
-                                     max(0.04,md/7))
+                                    (draw_motivation_scene(mot,theme_q,channel_q,bg_q,(idx+1)/total,p),md/7.0)
                                     for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]
                                 ],tmp,f"motframe_{idx}")
                                 mo=os.path.join(tmp,f"motivation_{idx}.mp4")
                                 make_segment(mf,mmix,mo,tmp,.95)
                                 clips.append(mo)
 
-                        # CTA final animé et court.
-                        # IMPORTANT : fit_audio_to_max encode en AAC, donc la sortie doit être .m4a, jamais .mp3.
-                        oa0=os.path.join(tmp,"outro_raw.mp3"); synthesize_audio(outro_q,voice_q,oa0,tts_rate)
-                        oa=os.path.join(tmp,"outro.m4a"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
-                        of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),max(0.04,od/9)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"outro")
-                        oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                        # CTA final très court, sans grande page d'introduction.
+                        if clean_text(outro_q):
+                            oa_raw=os.path.join(tmp,"outro_raw.mp3")
+                            synthesize_audio(outro_q,voice_q,oa_raw,tts_rate)
+                            oa=os.path.join(tmp,"outro.m4a")
+                            fit_audio_to_max(oa_raw,oa,1.15,2.0)
+                            od=audio_duration(oa)
+                            of=save_frames([
+                                (draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/7.0)
+                                for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]
+                            ],tmp,"outro")
+                            oo=os.path.join(tmp,"outro.mp4")
+                            make_segment(of,oa,oo,tmp)
+                            clips.append(oo)
 
-                        final=os.path.join(tmp,"quizvideo_pro.mp4"); concat_videos(clips,final,tmp)
+                        final=os.path.join(tmp,"quizvideo_pro_v6.mp4")
+                        concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz V5 terminé.")
+                        st.success("✅ Short Quiz V6 terminé — voix et scènes synchronisées.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger quizvideo_pro.mp4",data=data,file_name="quizvideo_pro.mp4",mime="video/mp4",key="dq4")
+                        st.download_button("⬇️ Télécharger quizvideo_pro_v6.mp4",data=data,file_name="quizvideo_pro_v6.mp4",mime="video/mp4",key="dq6")
             except Exception as e:
                 st.error(f"Erreur pendant le montage : {e}")
 
 with tab2:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ SHORTS 9:16</div><h1>Vocabulaire Pro</h1><p>Apprenez et faites mémoriser un mot à la fois.</p></div><div class="qvp-hero-pill">✨ Apprenez • Répétez • Partagez</div></div>',unsafe_allow_html=True)
-    hook_v=st.text_input("Hook","Tu prononces mal ces 5 mots !",key="hv")
+    st.info("🎯 Le vocabulaire commence directement par le premier mot : pas de longue page d’introduction.")
     channel_v=st.text_input("Nom de la chaîne","@LingoPulse_Daily",key="cv")
     langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
@@ -1472,41 +1489,60 @@ with tab2:
                     st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
-        if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
+        if st.button("🎬 Générer la vidéo Vocabulaire V6",key="makev"):
             try:
-                with st.spinner("Création du Short vocabulaire V4..."):
+                with st.spinner("Création du Short vocabulaire V6 — synchronisation voix/vidéo..."):
                     with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
-                        ha0=os.path.join(tmp,"vh_raw.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha0,tts_rate)
-                        ha=os.path.join(tmp,"vh.m4a"); fit_audio_to_max(ha0,ha,1.8,2.0); hd=audio_duration(ha)
-                        hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
-                        ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
+                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
+                        clips=[]; items=st.session_state.v_data
                         for idx,item in enumerate(items):
-                            fa0=os.path.join(tmp,f"fr_{idx}_raw.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa0,tts_rate)
-                            fa=os.path.join(tmp,f"fr_{idx}.m4a"); fit_audio_to_max(fa0,fa,1.4,2.0); fd=audio_duration(fa)
-                            ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
-                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                            # MOT : la voix pilote exactement la durée de la scène.
+                            fa_raw=os.path.join(tmp,f"fr_{idx}_raw.mp3")
+                            synthesize_audio(item["fr"],VOICES_FR["Henri - Dynamique"],fa_raw,tts_rate)
+                            fa=os.path.join(tmp,f"fr_{idx}.m4a")
+                            fit_audio_to_max(fa_raw,fa,1.35,2.0); fd=audio_duration(fa)
 
-                            cframes=[]
+                            countdown_audio=os.path.join(tmp,f"vc_count_{idx}.m4a")
+                            mix_background_music(countdown_sfx,make_suspense_music(3.12,tmp,f"vcountmusic_{idx}",0.05),
+                                                 countdown_audio,voice_volume=1.0,music_volume=0.05)
+                            cd=audio_duration(countdown_audio)
+                            end_sfx=make_end_tick(tic,ding,tmp); endd=audio_duration(end_sfx)
+
+                            ta_raw=os.path.join(tmp,f"tr_{idx}_raw.mp3")
+                            synthesize_audio(item["trad"],voice_tr,ta_raw,tts_rate)
+                            ta=os.path.join(tmp,f"tr_{idx}.m4a")
+                            fit_audio_to_max(ta_raw,ta,1.45,2.0); td=audio_duration(ta)
+
+                            combined=os.path.join(tmp,f"vchain_{idx}.m4a")
+                            concat_audio([fa,countdown_audio,end_sfx,ta],combined,tmp)
+
+                            frames=[]
+                            for p in [0.0,0.2,0.45,0.7,1.0]:
+                                frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),fd/5.0))
                             for sec in (3,2,1):
-                                for step in range(8):
-                                    cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/8,1.0),.10))
-                            co=os.path.join(tmp,f"count_{idx}.mp4")
-                            make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.85); clips.append(co)
+                                for step in range(10):
+                                    frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,
+                                                                     "countdown",sec,1-step/10.0,1.0),1.0/10.0))
+                            frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),endd))
+                            for p in [0.0,0.25,0.5,0.75,1.0]:
+                                frames.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td/5.0))
 
-                            ta0=os.path.join(tmp,f"tr_{idx}_raw.mp3"); synthesize_audio(item['trad'],voice_tr,ta0,tts_rate)
-                            ta=os.path.join(tmp,f"tr_{idx}.m4a"); fit_audio_to_max(ta0,ta,1.6,2.0); td=audio_duration(ta)
-                            tf=[]
-                            for p in [.0,.2,.45,.7,1.0]:
-                                tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),max(.05,td/5)))
-                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
-                        oa0=os.path.join(tmp,"vo_raw.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa0,tts_rate)
-                        oa=os.path.join(tmp,"vo.m4a"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
-                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
-                        oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                        final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
+                            segment=os.path.join(tmp,f"vchain_{idx}.mp4")
+                            make_segment(save_frames(frames,tmp,f"vchainframe_{idx}"),combined,segment,tmp,.95)
+                            clips.append(segment)
+
+                        if clean_text(outro_v):
+                            oa_raw=os.path.join(tmp,"vo_raw.mp3")
+                            synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa_raw,tts_rate)
+                            oa=os.path.join(tmp,"vo.m4a")
+                            fit_audio_to_max(oa_raw,oa,1.1,2.0); od=audio_duration(oa)
+                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),od/7.0) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"vo")
+                            oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+
+                        final=os.path.join(tmp,"vocabulaire_pro_v6.mp4")
+                        concat_videos(clips,final,tmp)
                         with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Vocabulaire V4 terminé.")
+                        st.success("✅ Short Vocabulaire V6 terminé — voix et scènes synchronisées.")
                         st.video(data)
-                        st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+                        st.download_button("⬇️ Télécharger vocabulaire_pro_v6.mp4",data=data,file_name="vocabulaire_pro_v6.mp4",mime="video/mp4",key="dv6")
             except Exception as e: st.error(f"Erreur pendant le montage : {e}")
