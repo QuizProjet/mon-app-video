@@ -22,8 +22,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # QUIZVIDEO PRO — V4 DYNAMIC SHORTS ENGINE
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
-st.title("🎬 QuizVideo Pro")
-st.caption("Créateur de Shorts 9:16 • Quiz dynamique + Vocabulaire")
 
 st.markdown("""
 <style>
@@ -62,6 +60,14 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-mini-card span { color:#64748b; font-size:.88rem; }
 .qvp-preview-placeholder { height:250px; border:1px dashed #cbd5e1; border-radius:18px; display:flex; align-items:center; justify-content:center; text-align:center; color:#64748b; background:#f8fafc; }
 .qvp-economy { padding:13px 16px; border-radius:15px; border:1px solid #d6e7f7; background:#eef8ff; color:#28506d; margin:10px 0 16px; }
+.qvp-preview-sticky { z-index:20; }
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child { position:sticky; top:72px; align-self:flex-start; z-index:30; }
+.qvp-preview-panel { padding:14px; border:1px solid #dbe4f0; border-radius:20px; background:rgba(255,255,255,.96); box-shadow:0 14px 34px rgba(15,23,42,.10); }
+.qvp-preview-title { font-weight:800; color:#172033; font-size:1.05rem; margin-bottom:8px; }
+.qvp-preview-note { color:#64748b; font-size:.82rem; margin-bottom:10px; }
+.qvp-editor-tabs [data-testid="stTabs"] button { font-size:.86rem !important; padding:7px 10px !important; }
+.qvp-editor-tabs { margin-bottom:8px; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1063,11 +1069,13 @@ Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div
 
 
 def render_layout_editor(module, key_prefix):
-    """Panneau de contrôle visuel : les réglages sont sans quota Gemini."""
+    """Éditeur compact : contrôles regroupés en onglets pour éviter de faire défiler la page."""
     is_quiz=module=="quiz"; p=key_prefix
-    with st.expander("🎛️ Mise en page complète — tout est modifiable",expanded=False):
-        st.caption("Les réglages ci-dessous contrôlent le rendu vidéo. Ils ne consomment aucun quota Gemini.")
-        c1,c2,c3=st.columns(3)
+    st.markdown('<div class="qvp-editor-tabs">', unsafe_allow_html=True)
+    t1,t2,t3,t4=st.tabs(["📐 Position & taille","🎞️ Animations","🎨 Couleurs","🌄 Fond"])
+    with t1:
+        st.caption("Modifie un réglage : l’aperçu fixe à droite se met à jour automatiquement.")
+        c1,c2=st.columns(2)
         with c1:
             st.checkbox("Afficher le titre",True,key=p+"show_title")
             st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
@@ -1075,40 +1083,51 @@ def render_layout_editor(module, key_prefix):
             st.slider("Position question / mot",120,850,205 if is_quiz else 500,key=p+"question_y")
             st.slider("Taille question / mot",28,100,47 if is_quiz else 88,key=p+"question_size")
         with c2:
-            st.slider("Position des réponses",300,900,405,key=p+"answer_y")
-            st.slider("Hauteur des réponses",55,130,91,key=p+"answer_h")
-            st.slider("Espacement des réponses",4,30,12,key=p+"answer_gap")
-            st.slider("Taille du texte des réponses",20,52,30 if is_quiz else 58,key=p+"answer_size")
-            st.slider("Arrondi des cartes",5,40,20,key=p+"answer_radius")
-        with c3:
-            st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
-            st.slider("Position du compte à rebours",800,1250,1045,key=p+"timer_y")
-            st.slider("Taille du compte à rebours",35,90,58,key=p+"timer_size")
+            if is_quiz:
+                st.slider("Position des réponses",300,900,405,key=p+"answer_y")
+                st.slider("Hauteur des réponses",55,130,91,key=p+"answer_h")
+                st.slider("Espacement A/B/C/D",4,30,12,key=p+"answer_gap")
+                st.slider("Taille du texte des réponses",20,52,30,key=p+"answer_size")
+                st.slider("Arrondi des cartes",5,40,20,key=p+"answer_radius")
+            else:
+                st.slider("Position de la traduction",650,1100,760,key=p+"answer_y")
+                st.slider("Taille de la traduction",28,90,58,key=p+"answer_size")
+                st.slider("Arrondi de la carte",5,40,20,key=p+"answer_radius")
             st.checkbox("Afficher l'explication",True,key=p+"show_explanation")
             st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
             st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
-        st.markdown("**🎞️ Animations**")
-        a1,a2,a3=st.columns(3)
-        with a1: st.selectbox("Style d'animation",["Glissement","Pop","Aucune"],key=p+"animation")
-        with a2: st.slider("Vitesse des animations",0.5,2.0,1.0,0.05,key=p+"animation_speed")
-        with a3: st.slider("Intensité des mouvements",0.0,2.0,1.0,0.05,key=p+"motion_strength")
-        st.slider("Force d'entrée des réponses",0.0,2.0,1.0,0.05,key=p+"animation_strength")
-        st.slider("Assombrissement du fond",0,80,18,key=p+"bg_opacity")
-        st.slider("Zoom du fond",1.00,1.25,1.02,0.01,key=p+"bg_zoom")
-        st.slider("Déplacement horizontal du fond",-120,120,0,key=p+"bg_x")
-        st.slider("Déplacement vertical du fond",-120,120,0,key=p+"bg_y")
-        st.markdown("**🎨 Couleurs**")
-        cc1,cc2,cc3,cc4=st.columns(4)
-        with cc1: st.color_picker("Accent / titre", "#FFCD40", key=p+"primary")
-        with cc2: st.color_picker("Réponses", "#11305B", key=p+"answer")
-        with cc3: st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
-        with cc4: st.color_picker("Texte", "#FFFFFF", key=p+"text")
-        if is_quiz:
-            st.color_picker("Deuxième couleur des réponses", "#143765", key=p+"answer2")
+    with t2:
+        st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
+        a1,a2=st.columns(2)
+        with a1:
+            st.selectbox("Style",["Glissement","Pop","Aucune"],key=p+"animation")
+            st.slider("Vitesse",0.5,2.0,1.0,0.05,key=p+"animation_speed")
+            st.slider("Entrée des réponses",0.0,2.0,1.0,0.05,key=p+"animation_strength")
+        with a2:
+            st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
+            st.slider("Position du timer",800,1250,1045,key=p+"timer_y")
+            st.slider("Taille du timer",35,90,58,key=p+"timer_size")
+        st.info("💡 Le mode Aperçu à droite permet de vérifier séparément Question, Compte à rebours et Révélation.")
+    with t3:
+        c1,c2=st.columns(2)
+        with c1:
+            st.color_picker("Accent / titre", "#FFCD40", key=p+"primary")
+            st.color_picker("Réponses", "#11305B", key=p+"answer")
+            if is_quiz: st.color_picker("Deuxième couleur réponses", "#143765", key=p+"answer2")
+        with c2:
+            st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
+            st.color_picker("Texte", "#FFFFFF", key=p+"text")
             st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
-        else:
-            st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
-        st.info("💡 Tu peux modifier ces réglages, puis régénérer la vidéo sans refaire les questions Gemini.")
+    with t4:
+        c1,c2=st.columns(2)
+        with c1:
+            st.slider("Assombrissement",0,80,18,key=p+"bg_opacity")
+            st.slider("Zoom",1.00,1.25,1.02,0.01,key=p+"bg_zoom")
+        with c2:
+            st.slider("Déplacement horizontal",-120,120,0,key=p+"bg_x")
+            st.slider("Déplacement vertical",-120,120,0,key=p+"bg_y")
+        st.info("✨ Le fond automatique est choisi selon le sujet de chaque question. Ces réglages modifient son cadrage sans consommer Gemini.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
@@ -1144,17 +1163,21 @@ with tab1:
         st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
     elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
         st.success("✅ Fond personnalisé prêt.")
-    render_layout_editor("quiz","q_")
-    with st.expander("👁️ Aperçu de la mise en page", expanded=True):
+    left_q, right_q = st.columns([1.15, 0.85], gap="large")
+    with left_q:
+        render_layout_editor("quiz","q_")
+    with right_q:
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
+        preview_state_q=st.selectbox("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],key="preview_state_q")
         try:
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
-            preview = draw_quiz_frame(
-                "Quelle est la capitale de la France ?",
-                ["Paris", "Londres", "Rome", "Berlin"],
-                theme_q, 1, max(1, int(nb_q)), channel_q, sample_bg,
-                entrance=1.0, timer=3, timer_fraction=0.75, pulse=0.2, motion=0.2, video_title=th_q,
-            )
-            st.image(preview, caption="Aperçu : les réglages ci-dessus sont appliqués au rendu vidéo.", use_container_width=True)
+            if preview_state_q=="Question + réponses":
+                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.35,video_title=th_q)
+            elif preview_state_q=="Compte à rebours":
+                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
+            else:
+                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
+            st.image(preview, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
@@ -1376,13 +1399,18 @@ with tab2:
     elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
         st.success("✅ Fond personnalisé prêt.")
     st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
-    render_layout_editor("vocab","v_")
-    with st.expander("👁️ Aperçu de la mise en page vocabulaire", expanded=True):
+    left_v, right_v = st.columns([1.15, 0.85], gap="large")
+    with left_v:
+        render_layout_editor("vocab","v_")
+    with right_v:
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
+        preview_state_v=st.selectbox("État à prévisualiser",["Mot","Compte à rebours","Traduction"],key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
             sample_items=[{"fr":"Bonjour","trad":"Hello"}]
-            preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,"countdown",3,0.75,1.0)
-            st.image(preview_v, caption="Aperçu vocabulaire : les réglages ci-dessus sont appliqués au rendu.", use_container_width=True)
+            phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
+            preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,0.75,1.0)
+            st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
