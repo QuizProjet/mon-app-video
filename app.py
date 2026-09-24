@@ -1373,8 +1373,9 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                                 clips.append(mo)
 
                         # CTA final animé et court.
+                        # IMPORTANT : fit_audio_to_max encode en AAC, donc la sortie doit être .m4a, jamais .mp3.
                         oa0=os.path.join(tmp,"outro_raw.mp3"); synthesize_audio(outro_q,voice_q,oa0,tts_rate)
-                        oa=os.path.join(tmp,"outro.mp3"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
+                        oa=os.path.join(tmp,"outro.m4a"); fit_audio_to_max(oa0,oa,1.8,2.0); od=audio_duration(oa)
                         of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),max(0.04,od/9)) for p in [0.05,0.18,0.35,0.55,0.75,0.92,1.0]],tmp,"outro")
                         oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
