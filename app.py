@@ -33,7 +33,7 @@ st.markdown("""
 [data-testid="stSidebar"] .stRadio label { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:8px 10px; margin:4px 0; }
 label, [data-testid="stMarkdownContainer"] { color:#253047; }
 [data-testid="stHeader"] { background: rgba(255,255,255,.78); }
-.block-container { max-width: 1240px; padding-top: .65rem; padding-bottom: 1.2rem; }
+.block-container { max-width: 1220px; padding-top: .55rem; padding-bottom: 1rem; }
 h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 [data-testid="stTabs"] button { font-weight: 800; font-size: 1.02rem; color:#334155; padding:10px 18px; }
 [data-testid="stTabs"] [aria-selected="true"] { color:#6d4aff !important; border-bottom-color:#6d4aff !important; }
@@ -42,19 +42,19 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 [data-testid="stButton"] button { border-radius: 14px; min-height: 2.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: linear-gradient(135deg,#ffffff,#f3f6fa); color:#172033; box-shadow:0 4px 12px rgba(15,23,42,.06); }
 [data-testid="stButton"] button:hover { border-color:#7c8cff; transform: translateY(-1px); box-shadow:0 8px 18px rgba(15,23,42,.10); }
 [data-testid="stFileUploaderDropzone"] { border: 1px dashed #b9c5d6; border-radius: 16px; background: #ffffff; }
-.qvp-card { padding: 8px 12px; border: 1px solid #dbe2ec; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 28px rgba(15,23,42,.07); margin: 8px 0 18px; }
+.qvp-card { padding: 9px 12px; border: 1px solid #dbe2ec; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 28px rgba(15,23,42,.07); margin: 4px 0 8px; }
 .qvp-small { color:#64748b; font-size:.9rem; }
 .qvp-side-brand { display:flex; gap:12px; align-items:center; padding:8px 2px 18px; }
 .qvp-logo { width:42px; height:42px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:25px; font-weight:900; background:linear-gradient(135deg,#7b4dff,#36b8e8); color:white !important; box-shadow:0 8px 24px rgba(83,67,180,.35); }
 .qvp-side-title { font-size:1.18rem; font-weight:800; color:#fff !important; }
 .qvp-side-sub { font-size:.72rem; color:#b9c8e8 !important; margin-top:2px; }
 .qvp-side-note { margin-top:18px; padding:14px; border:1px solid rgba(255,255,255,.13); border-radius:16px; background:linear-gradient(135deg,rgba(124,77,255,.18),rgba(42,180,216,.10)); font-size:.78rem; line-height:1.45; }
-.qvp-hero { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 18px; border:1px solid #dbe4f0; border-radius:24px; background:rgba(255,255,255,.84); box-shadow:0 14px 36px rgba(31,48,82,.08); margin-bottom:18px; }
-.qvp-hero h1 { margin:0 0 2px; font-size:1.65rem; }
+.qvp-hero { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 16px; border:1px solid #dbe4f0; border-radius:24px; background:rgba(255,255,255,.84); box-shadow:0 14px 36px rgba(31,48,82,.08); margin-bottom:18px; }
+.qvp-hero h1 { margin:2px 0 3px; font-size:1.55rem; }
 .qvp-hero p { margin:0; color:#66748c; }
 .qvp-kicker { color:#6751e8; font-size:.78rem; font-weight:800; letter-spacing:.12em; }
-.qvp-hero-pill { padding:7px 11px; border-radius:999px; background:#f0edff; color:#5c45d5; font-weight:800; white-space:nowrap; }
-.qvp-flow { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; padding:8px 12px; border:1px solid #e1e7f0; border-radius:18px; background:#fff; color:#334155; margin:0 0 20px; box-shadow:0 7px 20px rgba(15,23,42,.04); }
+.qvp-hero-pill { padding:11px 16px; border-radius:999px; background:#f0edff; color:#5c45d5; font-weight:800; white-space:nowrap; }
+.qvp-flow { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding:13px 18px; border:1px solid #e1e7f0; border-radius:18px; background:#fff; color:#334155; margin:0 0 20px; box-shadow:0 7px 20px rgba(15,23,42,.04); }
 .qvp-flow b { color:#8b78ee; }
 .qvp-mini-card { min-height:94px; padding:18px; border:1px solid #ddd7ff; border-radius:17px; background:linear-gradient(135deg,#faf9ff,#f2f8ff); color:#334155; }
 .qvp-mini-card span { color:#64748b; font-size:.88rem; }
@@ -342,7 +342,7 @@ def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     style=str(cfg.get("timer_style","Cercle")); text_size=max(18,int(cfg.get("timer_text_size",55)))
     if style=="Cercle":
         draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=color,width=3)
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline=(255,255,255),width=4)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
         draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*clamp(fraction)),fill=color,width=max(4,int(r*.16)))
     elif style=="Carré":
         draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=4)
@@ -434,7 +434,7 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
     f=get_font(cfg["question_size"]); lines=wrap_text(question,f,900)[:3]; hi=_highlight_words(question); yy=int(cfg["question_y"])
     box_top=yy-18; box_bottom=yy+len(lines)*int(cfg["question_size"]*1.18)+12
     radius=int(cfg["question_box_radius"])
-    draw.rounded_rectangle((58,box_top,1022,box_bottom),radius=radius,fill=(6,12,28,218),outline=(*_hex_rgb(cfg["primary"],theme["accent"]),105),width=2)
+    draw.rounded_rectangle((58,box_top,1022,box_bottom),radius=radius,fill=(6,12,28,218),outline=_hex_rgb(cfg["primary"],theme["accent"]),width=2)
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
@@ -496,6 +496,64 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0):
     for line in lines[:max_visible]:
         tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=int(cfg["explanation_size"]*1.35)
 
+def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
+    cfg=_layout(module)
+    color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
+    if timer is not None and timer <= 1:
+        color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
+    r=max(18,int(cfg.get("timer_size",58)*0.62))
+    style=str(cfg.get("timer_style","Cercle"))
+    if style=="Carré":
+        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=3)
+        draw.rectangle((cx-r+5,cy+r-7-int((2*r-14)*clamp(fraction)),cx+r-5,cy+r-5),fill=color)
+    elif style=="Pill":
+        w=int(r*1.35); h=int(r*.65)
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=3)
+        draw.rounded_rectangle((cx-w+5,cy+h-7,cx-w+5+int((2*w-10)*clamp(fraction)),cy+h-4),radius=3,fill=color)
+    else:
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline=color,width=3)
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*clamp(fraction)),fill=color,width=5)
+    tf=get_font(max(24,int(cfg.get("timer_text_size",55)*.72)))
+    ts=str(timer)
+    th=text_height(tf,ts)
+    draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-2),ts,font=tf,fill=color)
+
+
+def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0, video_title="Voyage"):
+    """Vocabulaire Style 2 : la liste se construit progressivement sans effacer les mots précédents."""
+    cfg=_layout("vocab"); theme=THEMES[theme_name]
+    base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
+    alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
+    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
+    img=add_top_glow(base,theme,1.0); draw=ImageDraw.Draw(img)
+    total=len(items)
+    rounded_text(draw,(55,35,1025,100),f"VOCABULAIRE • {min(active_idx+1,total)}/{total}",get_font(32),_hex_rgb(cfg.get("text"),(255,255,255)),_hex_rgb(cfg.get("primary"),theme["accent"]),2,22)
+    top=125; row_h=105; gap=7; left=42; right=1038
+    qf=get_font(34); af=get_font(30); small=get_font(22)
+    for i,item in enumerate(items[:15]):
+        y=top+i*(row_h+gap)
+        if y>1800: break
+        active=(i==active_idx); answered=(i<active_idx) or (i==active_idx and reveal)
+        fill=_hex_rgb(cfg.get("answer2" if i%2 else "answer"),theme["card2"])
+        outline=_hex_rgb(cfg.get("primary"),theme["accent"]) if active else (80,100,130)
+        if answered: fill=_hex_rgb(cfg.get("correct"),theme["success"]); outline=theme["success"]
+        draw.rounded_rectangle((left,y,right,y+row_h),radius=18,fill=fill,outline=outline,width=3 if active else 1)
+        draw.text((65,y+12),f"{i+1}",font=small,fill="white")
+        fr=clean_text(item.get("fr", "")); tr=clean_text(item.get("trad", ""))
+        draw.text((125,y+13),fr,font=qf,fill="white")
+        if answered:
+            ans=wrap_text("✓ "+tr,af,380)[:2]
+            ay=y+18
+            for line in ans:
+                draw.text((650,ay),line,font=af,fill="white"); ay+=32
+        elif active:
+            draw.text((720,y+25),"…",font=get_font(38),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+            if timer is not None and cfg.get("show_timer",True):
+                draw_inline_timer(draw,theme,955,y+52,timer,timer_fraction,"vocab")
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+    return img
+
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale"):
     """Style 2 : une seule page cumulative. Chaque nouvelle question s'ajoute sans effacer les précédentes."""
     cfg=_layout("quiz"); theme=THEMES[theme_name]
@@ -541,10 +599,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
         elif active:
             draw.text((700,y+31),"…",font=get_font(42),fill=_hex_rgb(cfg["muted"],theme["muted"]))
             if timer is not None and cfg["show_timer"]:
-                # Petit timer directement sur la ligne de la question actuelle.
-                tc=_hex_rgb(cfg.get("timer_color"),theme["accent"]); tx=930; ty=y+row_h//2; rr=27
-                draw.ellipse((tx-rr,ty-rr,tx+rr,ty+rr),fill=(7,12,26),outline=tc,width=3)
-                tf=get_font(30); ts=str(timer); draw.text((tx-text_width(draw,ts,tf)/2,ty-text_height(tf,ts)/2-2),ts,font=tf,fill=tc)
+                draw_inline_timer(draw,theme,950,y+52,timer,timer_fraction,"quiz")
     draw_brand(draw,theme,channel,active_idx/max(1,total))
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
     return img
@@ -563,7 +618,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))+int(cfg.get("bg_y",0))))
     img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse); draw=ImageDraw.Draw(img)
     for k in range(9):
-        px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=(*_hex_rgb(cfg["primary"],theme["accent"]),55))
+        px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if cfg["show_title"]:
         draw_header(draw,theme,q_num,total,video_title,phase)
     _draw_question_rich(draw,question,theme,y=int(cfg["question_y"]),phase=phase)
@@ -650,36 +705,6 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
-
-def draw_vocab_cumulative_frame(items, active_idx, langue, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0):
-    """Structure vocabulaire cumulative : chaque mot/traduction reste sur la même page."""
-    cfg=_layout("vocab"); theme=THEMES[theme_name]
-    base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
-    alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
-    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
-    img=add_top_glow(base,theme,1.0+0.15*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
-    total=len(items); top=145; row_h=108; gap=8; left=45; right=1035
-    rounded_text(draw,(55,42,1025,112),f"VOCABULAIRE • {min(active_idx+1,total)}/{total}",get_font(34),_hex_rgb(cfg["text"],(255,255,255)),_hex_rgb(cfg["primary"],theme["accent"]),2,24)
-    for i,item in enumerate(items[:15]):
-        y=top+i*(row_h+gap); active=i==active_idx; answered=i<active_idx or (i==active_idx and reveal)
-        if y>1810: break
-        fill=_hex_rgb(cfg["correct"] if answered else (cfg["answer2"] if i%2 else cfg["answer"]), theme["card2"])
-        outline=_hex_rgb(cfg["primary"],theme["accent"]) if active else (80,100,130)
-        draw.rounded_rectangle((left,y,right,y+row_h),radius=int(cfg.get("answer_radius",20)),fill=fill,outline=outline,width=4 if active else 1)
-        draw.text((66,y+13),str(i+1),font=get_font(24),fill="white")
-        fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad",""))
-        ff=get_font(32); tf=get_font(29)
-        for line_no,line in enumerate(wrap_text(fr,ff,470)[:2]): draw.text((125,y+14+line_no*36),line,font=ff,fill="white")
-        if answered:
-            for line_no,line in enumerate(wrap_text("✓ "+tr,tf,340)[:2]): draw.text((650,y+18+line_no*34),line,font=tf,fill="white")
-        elif active:
-            draw.text((690,y+27),"…",font=get_font(40),fill=_hex_rgb(cfg["muted"],theme["muted"]))
-            if timer is not None and cfg.get("show_timer",True):
-                tc=_hex_rgb(cfg.get("timer_color"),theme["accent"]); tx=930; ty=y+row_h//2; rr=27
-                draw.ellipse((tx-rr,ty-rr,tx+rr,ty+rr),fill=(7,12,26),outline=tc,width=3)
-                tf2=get_font(30); ts=str(timer); draw.text((tx-text_width(draw,ts,tf2)/2,ty-text_height(tf2,ts)/2-2),ts,font=tf2,fill=tc)
-    draw_brand(draw,theme,channel,active_idx/max(1,total)); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
-    return img
 
 def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
     cfg=_layout("vocab"); theme=THEMES[theme_name]
@@ -1038,7 +1063,7 @@ def _save_vocab_editor(rows):
         tr=clean_text(row.get("Traduction", ""))
         if fr and tr:
             cleaned.append({"fr":fr,"trad":tr})
-    return cleaned[:10]
+    return cleaned[:15]
 
 api_key=st.sidebar.text_input("Clé API Gemini",type="password")
 if api_key: genai.configure(api_key=api_key)
@@ -1190,7 +1215,11 @@ def generate_theme_background(theme_name,topic):
 
 def selected_video_background(theme_name,topic,mode,uploaded=None):
     if mode=="Image personnalisée" and uploaded is not None: return fit_background(uploaded)
-    if mode=="Généré automatiquement": return generate_theme_background(theme_name,topic)
+    if mode=="Généré automatiquement":
+        # Une variation change réellement le fond local sans toucher au quota Gemini.
+        seed=st.session_state.get("q_variation_seed") or st.session_state.get("v_variation_seed") or 0
+        variant_topic=f"{topic} • variation {seed}" if seed else topic
+        return generate_theme_background(theme_name,variant_topic)
     return None
 
 # ============================================================
@@ -1205,13 +1234,7 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.markdown("### 🧭 Modules")
 st.sidebar.caption("🧠 Quiz TikTok Pro  •  🗣️ Vocabulaire Pro")
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📁 Mes projets")
-st.sidebar.caption("Vos quiz et réglages restent dans votre session.")
-st.sidebar.markdown("### ⚙️ Paramètres")
-st.sidebar.caption("Les changements visuels ne consomment pas de quota.")
 st.sidebar.markdown("""
 <div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
@@ -1219,115 +1242,128 @@ Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div
 
 
 def render_layout_editor(module, key_prefix):
-    """Éditeur compact à onglets : tous les réglages restent regroupés à gauche."""
+    """Éditeur compact : contrôles regroupés en onglets pour éviter de faire défiler la page."""
     is_quiz=module=="quiz"; p=key_prefix
-    t1,t2,t3,t4,t5=st.tabs(["📐 Structure","🎞️ Animation","🎨 Couleurs","⏱️ Minuteur","🌄 Fond"])
+    st.markdown('<div class="qvp-editor-tabs">', unsafe_allow_html=True)
+    t1,t2,t3,t4=st.tabs(["📐 Position & taille","🎞️ Animations","🎨 Couleurs","🌄 Fond"])
     with t1:
-        a,b=st.columns(2)
-        with a:
+        st.caption("Modifie un réglage : l’aperçu fixe à droite se met à jour automatiquement.")
+        c1,c2=st.columns(2)
+        with c1:
             st.checkbox("Afficher le titre",True,key=p+"show_title")
-            st.slider("Position du titre",20,160,42 if is_quiz else 55,key=p+"title_y")
-            st.slider("Taille du titre",24,68,46 if is_quiz else 32,key=p+"title_size")
+            st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
+            st.slider("Taille du titre",24,72,46 if is_quiz else 32,key=p+"title_size")
+            if is_quiz:
+                st.markdown("**🙂 Émotion à côté du titre**")
+                st.checkbox("Afficher l'émotion",True,key=p+"face_show")
+                st.selectbox("Style de l'émotion",["Réflexion","Sourire","Surpris","Clin d'œil","Simple"],key=p+"face_style")
+                st.slider("Taille de l'émotion",18,70,30,key=p+"face_size")
+                st.slider("Décalage horizontal",-80,80,0,key=p+"face_x")
+                st.slider("Décalage vertical",-50,50,0,key=p+"face_y")
+                st.color_picker("Couleur de l'émotion","#FFCD40",key=p+"face_color")
             st.slider("Position question / mot",120,850,205 if is_quiz else 500,key=p+"question_y")
             st.slider("Taille question / mot",28,100,47 if is_quiz else 88,key=p+"question_size")
-        with b:
             if is_quiz:
-                st.slider("Position des réponses",300,850,405,key=p+"answer_y")
-                st.slider("Hauteur des réponses",55,125,91,key=p+"answer_h")
-                st.slider("Espace A/B/C/D",4,26,12,key=p+"answer_gap")
-                st.slider("Taille des réponses",20,48,30,key=p+"answer_size")
+                st.markdown("**🔢 Compteur 1/8**")
+                st.slider("Position verticale",70,220,112,key=p+"score_y")
+                st.slider("Taille du compteur",20,70,31,key=p+"score_size")
+                st.slider("Arrondi du compteur",5,45,22,key=p+"score_radius")
+                st.color_picker("Couleur du 1/8","#FFCD40",key=p+"score_color")
+                st.color_picker("Fond du 1/8","#070D1C",key=p+"score_bg")
+        with c2:
+            if is_quiz:
+                st.slider("Position des réponses",300,900,405,key=p+"answer_y")
+                st.slider("Hauteur des réponses",55,130,91,key=p+"answer_h")
+                st.slider("Espacement A/B/C/D",4,30,12,key=p+"answer_gap")
+                st.slider("Taille du texte des réponses",20,52,30,key=p+"answer_size")
+                st.slider("Arrondi des cartes",5,40,20,key=p+"answer_radius")
             else:
-                st.slider("Position traduction",620,1050,760,key=p+"answer_y")
-                st.slider("Taille traduction",28,82,58,key=p+"answer_size")
-            st.slider("Coins arrondis",5,40,20,key=p+"answer_radius")
+                st.slider("Position de la traduction",650,1100,760,key=p+"answer_y")
+                st.slider("Taille de la traduction",28,90,58,key=p+"answer_size")
+                st.slider("Arrondi de la carte",5,40,20,key=p+"answer_radius")
             st.checkbox("Afficher l'explication",True,key=p+"show_explanation")
-            st.slider("Position explication",950,1400,1135,key=p+"explanation_y")
+            st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
+            st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
     with t2:
-        a,b=st.columns(2)
-        with a:
-            st.selectbox("Animation",["Glissement","Pop","Aucune"],key=p+"animation")
+        st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
+        a1,a2=st.columns(2)
+        with a1:
+            st.selectbox("Style",["Glissement","Pop","Aucune"],key=p+"animation")
             st.slider("Vitesse",0.5,2.0,1.0,0.05,key=p+"animation_speed")
-            st.slider("Force d'entrée",0.0,2.0,1.0,0.05,key=p+"animation_strength")
-        with b:
+            st.slider("Entrée des réponses",0.0,2.0,1.0,0.05,key=p+"animation_strength")
+        with a2:
             st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
-            if is_quiz:
-                st.checkbox("Émotion à côté du titre",True,key=p+"face_show")
-                st.selectbox("Émotion",["Réflexion","Sourire","Surpris","Clin d'œil","Simple"],key=p+"face_style")
+            st.slider("Position du timer",800,1250,1045,key=p+"timer_y")
+            st.slider("Taille du timer",30,120,58,key=p+"timer_size")
+            st.slider("Position horizontale du timer",250,830,540,key=p+"timer_x")
+            st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
+            st.selectbox("Style du minuteur",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
+            st.checkbox("Afficher le texte sous le timer",True,key=p+"timer_show_label")
+            st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
+            st.slider("Taille du texte timer",14,42,23,key=p+"timer_label_size")
+            st.color_picker("Couleur du timer","#FFCD40",key=p+"timer_color")
+            st.color_picker("Couleur du texte timer","#FFCD40",key=p+"timer_label_color")
+        st.info("💡 Le mode Aperçu à droite permet de vérifier séparément Question, Compte à rebours et Révélation.")
     with t3:
-        a,b=st.columns(2)
-        with a:
+        c1,c2=st.columns(2)
+        with c1:
             st.color_picker("Accent / titre", "#FFCD40", key=p+"primary")
-            st.color_picker("Cartes réponses", "#11305B", key=p+"answer")
-            if is_quiz: st.color_picker("Cartes alternées", "#143765", key=p+"answer2")
-        with b:
+            st.color_picker("Réponses", "#11305B", key=p+"answer")
+            if is_quiz: st.color_picker("Deuxième couleur réponses", "#143765", key=p+"answer2")
+        with c2:
             st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
             st.color_picker("Texte", "#FFFFFF", key=p+"text")
             st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
     with t4:
-        if is_quiz:
-            st.checkbox("Afficher le minuteur",True,key=p+"show_timer")
-            a,b=st.columns(2)
-            with a:
-                st.selectbox("Forme",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
-                st.slider("Taille",30,120,58,key=p+"timer_size")
-                st.slider("Position verticale",800,1250,1045,key=p+"timer_y")
-            with b:
-                st.slider("Position horizontale",250,830,540,key=p+"timer_x")
-                st.slider("Taille du chiffre",20,90,55,key=p+"timer_text_size")
-                st.color_picker("Couleur", "#FFCD40", key=p+"timer_color")
-                st.text_input("Libellé", "RÉFLÉCHIS", key=p+"timer_label")
-        else:
-            st.caption("Le minuteur suit la même logique que le style vocabulaire choisi.")
-    with t5:
-        a,b=st.columns(2)
-        with a:
+        c1,c2=st.columns(2)
+        with c1:
             st.slider("Assombrissement",0,80,18,key=p+"bg_opacity")
             st.slider("Zoom",1.00,1.25,1.02,0.01,key=p+"bg_zoom")
-        with b:
+        with c2:
             st.slider("Déplacement horizontal",-120,120,0,key=p+"bg_x")
             st.slider("Déplacement vertical",-120,120,0,key=p+"bg_y")
+        st.info("✨ Le fond automatique est choisi selon le sujet de chaque question. Ces réglages modifient son cadrage sans consommer Gemini.")
+    st.markdown('</div>', unsafe_allow_html=True)
     _save_settings()
 
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
 with tab1:
-    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 QUIZ • SHORTS 9:16</div><h1>Quiz TikTok Pro</h1><p>Question → réponses → minuteur → révélation → explication</p></div><div class="qvp-hero-pill">15 questions max</div></div>',unsafe_allow_html=True)
-    a,b,c,d=st.columns(4,gap="small")
-    with a: th_q=st.text_input("Sujet", "Culture Générale", key="thq")
-    with b: nb_q=st.slider("Questions",1,15,15,key="nbq")
-    with c: voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
-    with d: theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
-    a,b,c,d=st.columns(4,gap="small")
-    with a: channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
-    with b: hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
-    with c: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
-    with d: style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — questions/réponses cumulatives"],key="styleq")
-    st.caption("Le Short commence directement avec la question. Les changements visuels n'utilisent pas Gemini.")
-    st.markdown("### 🎨 Studio — réglages + aperçu 9:16")
-    bg_mode_q=st.radio("Fond",["✨ Généré automatiquement selon le thème","🖼️ Image personnalisée","◯ Aucun"],horizontal=True,key="bg_mode_q")
+    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 QUIZVIDEO PRO</div><h1>Quiz TikTok Pro</h1><p>Crée • personnalise • génère tes Shorts 9:16</p></div><div class="qvp-hero-pill">15 questions max</div></div>',unsafe_allow_html=True)
+    r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
+    with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
+    with r2: nb_q=st.slider("Questions",1,15,15,key="nbq")
+    with r3: voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
+    with r4: theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
+    r5,r6,r7,r8=st.columns([1.0,1.25,1.55,1.2])
+    with r5: channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
+    with r6: hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
+    with r7: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
+    with r8: style_q=st.radio("Structure",["Style 1","Style 2"],horizontal=True,key="styleq_compact")
+    style_q_full="Style 1 — 4 réponses + révélation" if style_q=="Style 1" else "Style 2 — questions/réponses cumulatives"
+    st.caption("Style 1 : 4 réponses → minuteur → bonne réponse verte → explication.  |  Style 2 : Q1 → minuteur → R1 → Q2 → R2… jusqu'à 15.")
+    bg_mode_q=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_q_compact")
     uploaded_bg_q=None
-    if bg_mode_q=="🖼️ Image personnalisée": uploaded_bg_q=st.file_uploader("Image 9:16",type=["png","jpg","jpeg"],key="bgq")
-    bg_mode_clean_q=("Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun")
-    if bg_mode_clean_q=="Généré automatiquement":
-        st.caption("✨ Fond visuel créé localement selon le sujet et le style — 0 quota Gemini.")
-    elif bg_mode_clean_q=="Image personnalisée" and uploaded_bg_q:
-        st.success("✅ Fond personnalisé prêt.")
+    if bg_mode_q=="🖼️ Personnalisé": uploaded_bg_q=st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key="bgq")
+    bg_mode_clean_q="Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun"
+    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
+    if bg_mode_clean_q=="Généré automatiquement": st.caption("✨ Fond local selon le sujet — 0 quota Gemini.")
     left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
         render_layout_editor("quiz","q_")
     with right_q:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        if style_q.startswith("Style 2"):
-            preview_state_q=st.radio("État à prévisualiser",["Q1 + minuteur","Q2 avec réponse 1","Q3 avec réponses 1–2"],horizontal=True,key="preview_state_q")
+        if style_q_full.startswith("Style 2"):
+            preview_state_q=st.radio("Aperçu",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
             preview_state_q=st.radio("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
         try:
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
-            if style_q.startswith("Style 2"):
+            if style_q_full.startswith("Style 2"):
                 demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
                 if preview_state_q=="Q1 + minuteur":
                     preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
-                elif preview_state_q=="Q2 avec réponse 1":
+                elif preview_state_q=="Q2 + R1":
                     preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
                 else:
                     preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
@@ -1429,6 +1465,19 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.session_state.q_source=f"IA • {th_q} • restauré"
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
+        act1,act2,act3=st.columns(3)
+        with act1:
+            if st.button("🎲 Variation",key="variation_q",use_container_width=True):
+                st.session_state["q_variation_seed"]=random.randint(1,999999); st.session_state["q_variation_notice"]=True
+                st.rerun()
+        with act2:
+            if st.button("💾 Enregistrer",key="save_style_q",use_container_width=True):
+                _save_settings(); st.success("Style enregistré.")
+        with act3:
+            st.caption("⬇️ Générer ci-dessous")
+        if st.session_state.get("q_variation_notice"):
+            st.info("🎲 Variation active : utilise le fond, les animations et les réglages actuels pour une nouvelle variante.")
+            st.session_state["q_variation_notice"]=False
         if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq"):
             try:
                 with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
@@ -1436,7 +1485,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
 
-                        if style_q.startswith("Style 2"):
+                        if style_q_full.startswith("Style 2"):
                             # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
                             # Les 15 questions restent toutes visibles dans le même écran.
                             items=st.session_state.q_data[:15]
@@ -1549,43 +1598,41 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                 st.error(f"Erreur pendant le montage V7 : {e}")
 
 with tab2:
-    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ VOCABULAIRE • SHORTS 9:16</div><h1>Vocabulaire Pro</h1><p>Mot → réflexion → traduction → mémorisation</p></div><div class="qvp-hero-pill">15 mots max</div></div>',unsafe_allow_html=True)
-    a,b,c,d=st.columns(4,gap="small")
-    with a: th_v=st.text_input("Sujet","Voyage",key="thv")
-    with b: nb_v=st.slider("Mots",3,15,10,key="nbv")
-    with c: langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
-    with d: voice_tr_name=st.selectbox("Voix",list(VOICES_MAP[langue_v]),key="vtr")
+    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ QUIZVIDEO PRO</div><h1>Vocabulaire Pro</h1><p>Crée • personnalise • génère tes vidéos vocabulaire 9:16</p></div><div class="qvp-hero-pill">15 mots max</div></div>',unsafe_allow_html=True)
+    a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
+    with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
+    with a2: nb_v=st.slider("Mots",1,15,15,key="nbv")
+    with a3: langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
+    with a4: theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
+    a5,a6,a7,a8=st.columns([1.0,1.25,1.4,1.25])
+    with a5: channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
+    with a6: hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
+    with a7: outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
+    with a8: style_v=st.radio("Structure",["Style 1","Style 2"],horizontal=True,key="stylev_compact")
+    voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
     voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-    a,b,c,d=st.columns(4,gap="small")
-    with a: channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
-    with b: hook_v=st.text_input("Hook","Tu prononces mal ces mots !",key="hv")
-    with c: outro_v=st.text_input("CTA final","Abonne-toi pour apprendre un mot par jour !",key="ov")
-    with d: theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
-    style_v=st.radio("Structure vocabulaire",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],horizontal=True,key="stylev")
-    bg_mode_v=st.radio("Fond",["✨ Généré automatiquement selon le thème","🖼️ Image personnalisée","◯ Aucun"],horizontal=True,key="bg_mode_v")
+    bg_mode_v=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_v_compact")
     uploaded_bg_v=None
-    if bg_mode_v=="🖼️ Image personnalisée": uploaded_bg_v=st.file_uploader("Image 9:16",type=["png","jpg","jpeg"],key="bgv")
-    bg_mode_clean_v=("Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun")
+    if bg_mode_v=="🖼️ Personnalisé": uploaded_bg_v=st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key="bgv")
+    bg_mode_clean_v="Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
-    if bg_mode_clean_v=="Généré automatiquement":
-        st.caption("✨ Fond visuel créé localement selon le thème — 0 quota Gemini.")
-    elif bg_mode_clean_v=="Image personnalisée" and uploaded_bg_v:
-        st.success("✅ Fond personnalisé prêt.")
-    st.caption("💡 Changer le thème visuel, la voix, le fond ou le CTA ne consomme aucun quota. Une nouvelle requête est nécessaire uniquement pour un nouveau contenu IA.")
+    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : Mot 1 → minuteur → traduction 1 → Mot 2 → traduction 2… cumulatif jusqu'à 15 mots.")
     left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
         render_layout_editor("vocab","v_")
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        preview_state_v=st.radio("État à prévisualiser",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
+        preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
-            sample_items=[{"fr":"Bonjour","trad":"Hello"}]
-            phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
-            if style_v.startswith("Style 2"):
-                preview_v=draw_vocab_cumulative_frame(sample_items,0,langue_v,theme_v,channel_v,bg_file=sample_bg_v,timer=3 if preview_state_v!="Traduction" else None,timer_fraction=0.75,reveal=(preview_state_v=="Traduction"))
+            if style_v=="Style 2":
+                sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
+                active=0 if preview_state_v=="Mot" else 1 if preview_state_v=="Compte à rebours" else 2
+                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Compte à rebours" else None,timer_fraction=.72,reveal=(preview_state_v=="Traduction"),video_title=th_v)
             else:
-                preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,bg_file=sample_bg_v,phase=phase_v,timer=3,timer_fraction=0.75,entrance=1.0)
+                sample_items=[{"fr":"Bonjour","trad":"Hello"}]
+                phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
+                preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,0.75,1.0)
             st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
@@ -1645,6 +1692,15 @@ with tab2:
                     st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
                     st.success("✅ Lot IA restauré, 0 quota consommé.")
                 else: st.info("Aucun lot IA en cache.")
+        act1,act2,act3=st.columns(3)
+        with act1:
+            if st.button("🎲 Variation",key="variation_v",use_container_width=True):
+                st.session_state["v_variation_seed"]=random.randint(1,999999); st.success("🎲 Variation visuelle prête.")
+        with act2:
+            if st.button("💾 Enregistrer",key="save_style_v",use_container_width=True):
+                _save_settings(); st.success("Style enregistré.")
+        with act3:
+            st.caption("⬇️ Générer ci-dessous")
         if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
             try:
                 with st.spinner("Création du Short vocabulaire V4..."):
@@ -1655,31 +1711,31 @@ with tab2:
                         ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
                         for idx,item in enumerate(items):
                             fa=os.path.join(tmp,f"fr_{idx}.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
-                            if style_v.startswith("Style 2"):
-                                ff=save_frames([(draw_vocab_cumulative_frame(items,idx,langue_v,theme_v,channel_v,bg_v,motion=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                            if style_v=="Style 2":
+                                ff=save_frames([(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=p,video_title=th_v),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                                fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                                cframes=[]
+                                for sec in (3,2,1):
+                                    for step in range(10): cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=1-step/10,reveal=False,motion=step/10,video_title=th_v),.1))
+                                co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                                ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                                tf=[(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=p,video_title=th_v),max(.04,td/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]]
+                                tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
                             else:
                                 ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
-                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
-                            cframes=[]
-                            for sec in (3,2,1):
-                                for step in range(10):
-                                    if style_v.startswith("Style 2"):
-                                        frame=draw_vocab_cumulative_frame(items,idx,langue_v,theme_v,channel_v,bg_v,timer=sec,timer_fraction=1-step/10,motion=step/10)
-                                    else:
-                                        frame=draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/10,1.0)
-                                    cframes.append((frame,.1))
-                            co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
-                            ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                            if style_v.startswith("Style 2"):
-                                tf=[(draw_vocab_cumulative_frame(items,idx,langue_v,theme_v,channel_v,bg_v,reveal=True,motion=p),max(.04,td/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]]
-                            else:
+                                fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                                cframes=[]
+                                for sec in (3,2,1):
+                                    for step in range(10): cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/10,1.0),.1))
+                                co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                                ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
                                 tf=[]
                                 if tw:
                                     for wi,w in enumerate(tw):
                                         end=tw[wi+1]['start'] if wi+1<len(tw) else td
                                         if end>w['start']: tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),end-w['start']))
                                 if not tf: tf=[(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td)]
-                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
+                                tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
                         oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
                         of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
                         oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
