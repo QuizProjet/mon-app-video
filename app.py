@@ -97,7 +97,7 @@ LAYOUT_DEFAULTS = {
     "timer_y": 1045, "timer_size": 58,
     "explanation_y": 1135, "explanation_size": 31,
     "header_size": 46, "animation": "Dynamique",
-    "question_color": "Blanc + accent", "answer_color": "Bleu quiz",
+    "question_color": "Blanc + accent", "answer_color": "Bleu quiz", "timer_style": "Cercle", "background_style": "Dynamique",
 }
 
 def layout_settings(prefix):
@@ -111,7 +111,7 @@ def layout_editor(prefix, theme_name, sample_question, sample_options, sample_an
     st.markdown("### 🎨 Éditeur de mise en page")
     left,right=st.columns([1.08,0.92],gap="large")
     with left:
-        tabs=st.tabs(["📐 Position & taille","🎞️ Animation","🎨 Couleurs"])
+        tabs=st.tabs(["📐 Position & taille","🎞️ Animation","🎨 Couleurs","⏱️ Minuteur","🌄 Fond"])
         with tabs[0]:
             a,b=st.columns(2)
             with a:
@@ -130,6 +130,12 @@ def layout_editor(prefix, theme_name, sample_question, sample_options, sample_an
         with tabs[2]:
             cfg["question_color"]=st.selectbox("Question",["Blanc + accent","Blanc","Accent"],index=["Blanc + accent","Blanc","Accent"].index(cfg["question_color"]),key=f"{prefix}_qc")
             cfg["answer_color"]=st.selectbox("Cartes réponses",["Bleu quiz","Carte du thème","Sombre"],index=["Bleu quiz","Carte du thème","Sombre"].index(cfg["answer_color"]),key=f"{prefix}_ac")
+        with tabs[3]:
+            cfg["timer_size"]=st.slider("Taille du minuteur",40,90,int(cfg.get("timer_size",58)),1,key=f"{prefix}_ts")
+            cfg["timer_style"]=st.selectbox("Style du minuteur",["Cercle","Anneau fin","Minimal"],index=["Cercle","Anneau fin","Minimal"].index(cfg.get("timer_style","Cercle")),key=f"{prefix}_tstyle")
+        with tabs[4]:
+            cfg["background_style"]=st.selectbox("Style du fond",["Dynamique","Thème","Sobre"],index=["Dynamique","Thème","Sobre"].index(cfg.get("background_style","Dynamique")),key=f"{prefix}_bgstyle")
+            st.caption("Le fond reste généré localement : aucun appel Gemini.")
     with right:
         st.markdown("**👀 Aperçu en direct**")
         prev=make_layout_preview(theme_name,cfg,sample_question,sample_options,sample_answer,sample_explication,title)
@@ -470,7 +476,23 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
         if correct:
             cx=right-38; cy=y+card_h/2; rr=19; draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white"); draw.line((cx-8,cy,cx-2,cy+7),fill=theme["success"],width=4); draw.line((cx-2,cy+7,cx+10,cy-9),fill=theme["success"],width=4)
     if timer is not None:
-        color=theme["danger"] if timer<=1 else (249,115,22) if timer==2 else theme["accent"]; cx,cy,r=540,int(cfg.get("timer_y",1045)),int(cfg.get("timer_size",58)); pr=int(3+10*clamp(pulse)); draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=(*color,100),width=3); draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4); box=(cx-r+6,cy-r+6,cx+r-6,cy+r-6); draw.arc(box,-90,-90+int(360*clamp(timer_fraction)),fill=color,width=9); tf=get_font(55+int(5*pulse)); ts=str(timer); draw.text((cx-text_width(draw,ts,tf)/2,cy-36),ts,font=tf,fill=color); lbl="RÉFLÉCHIS"; lf=get_font(23); draw.text(((WIDTH-text_width(draw,lbl,lf))/2),cy+r+8,lbl,font=lf,fill=theme["accent"])
+        # Timer robuste pour l'aperçu Streamlit et le rendu vidéo.
+        raw_color = theme.get("danger") if timer <= 1 else ((249,115,22) if timer == 2 else theme.get("accent"))
+        color = tuple(int(v) for v in raw_color[:3])
+        cx = 540
+        cy = int(cfg.get("timer_y", 1045))
+        r = int(cfg.get("timer_size", 58))
+        pr = int(3 + 10 * clamp(pulse))
+        draw.ellipse((cx-r-pr, cy-r-pr, cx+r+pr, cy+r+pr), outline=color, width=3)
+        draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(7,12,26), outline=(255,255,255), width=4)
+        box = (cx-r+6, cy-r+6, cx+r-6, cy+r-6)
+        draw.arc(box, -90, -90 + int(360 * clamp(timer_fraction)), fill=color, width=9)
+        tf = get_font(55 + int(5 * pulse))
+        ts = str(timer)
+        draw.text((int(cx-text_width(draw, ts, tf)/2), cy-36), ts, font=tf, fill=color)
+        lbl = "RÉFLÉCHIS"
+        lf = get_font(23)
+        draw.text((int((WIDTH-text_width(draw, lbl, lf))/2), cy+r+8), lbl, font=lf, fill=tuple(int(v) for v in theme["accent"][:3]))
     if correct_idx is not None and explanation and explanation_progress>0:
         y1=int(cfg.get("explanation_y",1135)); y2=min(1680,y1+380); p=ease_out(explanation_progress); draw.rounded_rectangle((58,y1,1022,y2),radius=24,fill=(6,13,28),outline=theme["accent"],width=2); draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=theme["accent"]); draw.text((90,y1+32),"EXPLICATION",font=get_font(28),fill=theme["accent"]); ef=get_font(int(cfg.get("explanation_size",31))); lines3=wrap_text(explanation,ef,865)[:4]; yy=y1+90; max_visible=max(1,int(len(lines3)*p+.999));
         for line in lines3[:max_visible]: draw.text(((WIDTH-text_width(draw,line,ef))/2,yy),line,font=ef,fill="white"); yy+=43
