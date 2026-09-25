@@ -77,6 +77,30 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-editor-tabs .stCaption { margin-top: -0.2rem; }
 .qvp-preview-sticky { top: 1rem !important; }
 .qvp-preview-panel { margin-bottom: 0.35rem; }
+
+/* V8.3 — studio compact / navigation always visible */
+/* Main module switcher: make the first tab bar look like a real app navigation. */
+[data-testid="stMain"] [data-testid="stTabs"]:not(.qvp-editor-tabs [data-testid="stTabs"]) > div:first-child {background:rgba(255,255,255,.97);border:1px solid #d9e2ef;border-radius:16px;padding:6px 8px;box-shadow:0 8px 24px rgba(15,23,42,.08);position:sticky;top:4px;z-index:100;}
+[data-testid="stMain"] [data-testid="stTabs"]:not(.qvp-editor-tabs [data-testid="stTabs"]) button {font-weight:850 !important;font-size:1rem !important;padding:10px 14px !important;border-radius:11px !important;}
+
+[data-testid="stAppViewContainer"] .main .block-container {max-width:1500px !important; padding-top:0.55rem !important; padding-bottom:0.7rem !important;}
+[data-testid="stHeader"] {background:transparent !important;}
+.qvp-studio-nav {position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border:1px solid #d9e2ef;border-radius:16px;padding:6px 8px;margin:0 0 10px;box-shadow:0 8px 24px rgba(15,23,42,.08);}
+.qvp-studio-nav [data-testid="stTabs"] {margin:0 !important;}
+.qvp-studio-nav [data-testid="stTabs"] [role="tablist"] {gap:6px;border-bottom:0 !important;}
+.qvp-studio-nav [data-testid="stTabs"] button {flex:1;font-weight:800;font-size:1rem !important;padding:10px 12px !important;border-radius:11px !important;border:1px solid transparent !important;}
+.qvp-studio-nav [data-testid="stTabs"] button[aria-selected="true"] {background:#172033 !important;color:#fff !important;border-color:#172033 !important;}
+.qvp-studio-nav [data-testid="stTabs"] button[aria-selected="false"] {background:#f3f6fb !important;color:#334155 !important;}
+.qvp-studio-nav [data-testid="stTabs"] > div:last-child {display:none !important;}
+.qvp-hero {padding:10px 14px !important;margin:0 0 8px !important;min-height:0 !important;}
+.qvp-card {padding:8px 12px !important;margin:5px 0 !important;}
+.qvp-editor-tabs {border:1px solid #dbe4f0;border-radius:16px;padding:8px;background:#fff;}
+.qvp-editor-tabs [data-testid="stTabs"] [role="tablist"] {gap:4px;overflow-x:auto;white-space:nowrap;border-bottom:1px solid #e2e8f0;}
+.qvp-editor-tabs [data-testid="stTabs"] button {font-weight:750 !important;font-size:.78rem !important;padding:7px 8px !important;border-radius:9px !important;}
+.qvp-editor-tabs [data-testid="stTabs"] button[aria-selected="true"] {background:#eef3fa !important;}
+.qvp-preview-panel {padding:9px 12px !important;}
+.qvp-preview-note {margin-bottom:5px !important;}
+.qvp-actionbar {position:sticky;bottom:8px;z-index:90;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border:1px solid #d9e2ef;border-radius:14px;padding:7px;margin-top:10px;box-shadow:0 8px 22px rgba(15,23,42,.10);}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1245,7 +1269,14 @@ def render_layout_editor(module, key_prefix):
     """Éditeur compact : contrôles regroupés en onglets pour éviter de faire défiler la page."""
     is_quiz=module=="quiz"; p=key_prefix
     st.markdown('<div class="qvp-editor-tabs">', unsafe_allow_html=True)
-    t1,t2,t3,t4=st.tabs(["📐 Position & taille","🎞️ Animations","🎨 Couleurs","🌄 Fond"])
+    t0,t1,t2,t3,t4,t5=st.tabs(["🧩 Structure","📐 Position & taille","🎞️ Animation","🎨 Couleurs","⏱️ Minuteur","🌄 Fond"])
+    with t0:
+        st.markdown("**Structure actuelle**")
+        if is_quiz:
+            st.info("Style 1 : Question → 4 réponses → minuteur → bonne réponse en vert → explication.\n\nStyle 2 : Q1 → minuteur → R1 → Q2 → minuteur → R2… Les précédentes restent visibles jusqu'à Q15.")
+        else:
+            st.info("Style 1 : Mot → minuteur → traduction.\n\nStyle 2 : Mot 1 → minuteur → traduction 1 → Mot 2 → traduction 2… cumulatif jusqu'à 15 mots.")
+        st.caption("Le choix de la structure se trouve dans la barre de commande du module. Les réglages ci-dessous contrôlent uniquement le rendu visuel.")
     with t1:
         st.caption("Modifie un réglage : l’aperçu fixe à droite se met à jour automatiquement.")
         c1,c2=st.columns(2)
@@ -1285,25 +1316,29 @@ def render_layout_editor(module, key_prefix):
             st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
             st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
     with t2:
-        st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
         a1,a2=st.columns(2)
         with a1:
             st.selectbox("Style",["Glissement","Pop","Aucune"],key=p+"animation")
             st.slider("Vitesse",0.5,2.0,1.0,0.05,key=p+"animation_speed")
-            st.slider("Entrée des réponses",0.0,2.0,1.0,0.05,key=p+"animation_strength")
+            st.slider("Entrée des éléments",0.0,2.0,1.0,0.05,key=p+"animation_strength")
         with a2:
             st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
-            st.slider("Position du timer",800,1250,1045,key=p+"timer_y")
-            st.slider("Taille du timer",30,120,58,key=p+"timer_size")
-            st.slider("Position horizontale du timer",250,830,540,key=p+"timer_x")
+            st.caption("Les animations restent synchronisées avec la durée de la voix lors du rendu final.")
+    with t4:
+        st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
+        a1,a2=st.columns(2)
+        with a1:
+            st.slider("Position verticale",800,1250,1045,key=p+"timer_y")
+            st.slider("Position horizontale",250,830,540,key=p+"timer_x")
+            st.slider("Taille du cercle / bloc",30,120,58,key=p+"timer_size")
             st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
-            st.selectbox("Style du minuteur",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
+            st.selectbox("Forme",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
+        with a2:
             st.checkbox("Afficher le texte sous le timer",True,key=p+"timer_show_label")
             st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
-            st.slider("Taille du texte timer",14,42,23,key=p+"timer_label_size")
+            st.slider("Taille du texte",14,42,23,key=p+"timer_label_size")
             st.color_picker("Couleur du timer","#FFCD40",key=p+"timer_color")
-            st.color_picker("Couleur du texte timer","#FFCD40",key=p+"timer_label_color")
-        st.info("💡 Le mode Aperçu à droite permet de vérifier séparément Question, Compte à rebours et Révélation.")
+            st.color_picker("Couleur du texte","#FFCD40",key=p+"timer_label_color")
     with t3:
         c1,c2=st.columns(2)
         with c1:
@@ -1314,7 +1349,7 @@ def render_layout_editor(module, key_prefix):
             st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
             st.color_picker("Texte", "#FFFFFF", key=p+"text")
             st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
-    with t4:
+    with t5:
         c1,c2=st.columns(2)
         with c1:
             st.slider("Assombrissement",0,80,18,key=p+"bg_opacity")
@@ -1376,6 +1411,7 @@ with tab1:
             st.image(preview, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
+    st.markdown('''<div class="qvp-actionbar"><b>🎲 Variation</b> &nbsp;&nbsp; <b>💾 Enregistrer</b> &nbsp;&nbsp; <b>🎬 Générer</b></div>''', unsafe_allow_html=True)
     mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
 
     if mode_q=="🤖 IA Gemini":
