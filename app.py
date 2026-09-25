@@ -256,9 +256,9 @@ def draw_thinking_icon(draw, theme, phase=0.0, cx=935, cy=1250, size=44):
     draw.line((cx+int(r*.42),cy+int(r*.82),cx+int(r*.60),cy+int(r*.65)),fill="white",width=5)
 
 
-def draw_thinking_face(draw, theme, cx, cy, size=30, phase=0.0):
-    """Visage « réflexion » dessiné en vectoriel : fonctionne sans police emoji."""
-    a=theme["accent"]
+def draw_thinking_face(draw, theme, cx, cy, size=30, phase=0.0, style="Réflexion", color=None):
+    """Visage personnalisable : Réflexion, Sourire, Surpris, Clin d'œil ou Simple."""
+    a=color or theme["accent"]
     pulse=1.0+0.08*math.sin(float(phase)*math.pi*2)
     r=int(size*pulse)
     # bulle
@@ -267,15 +267,24 @@ def draw_thinking_face(draw, theme, cx, cy, size=30, phase=0.0):
     er=max(2,int(r*0.10))
     for ex in (-int(r*.30), int(r*.30)):
         draw.ellipse((cx+ex-er,cy-int(r*.18)-er,cx+ex+er,cy-int(r*.18)+er),fill="white")
-    # sourcils
-    draw.line((cx-int(r*.48),cy-int(r*.47),cx-int(r*.12),cy-int(r*.55)),fill=a,width=max(2,int(size/8)))
-    draw.line((cx+int(r*.12),cy-int(r*.55),cx+int(r*.48),cy-int(r*.47)),fill=a,width=max(2,int(size/8)))
-    # bouche réfléchie
-    draw.arc((cx-int(r*.30),cy-int(r*.02),cx+int(r*.30),cy+int(r*.38)),190,335,fill=a,width=max(2,int(size/9)))
-    # petites bulles
-    br=max(4,int(size*.18))
-    draw.ellipse((cx+int(r*.65),cy-int(r*.85),cx+int(r*.65)+br,cy-int(r*.85)+br),fill=a)
-    draw.ellipse((cx+int(r*.95),cy-int(r*1.15),cx+int(r*.95)+br//2,cy-int(r*1.15)+br//2),fill=a)
+    style=str(style or "Réflexion")
+    if style=="Surpris":
+        draw.ellipse((cx-int(r*.28),cy-int(r*.05),cx+int(r*.28),cy+int(r*.48)),outline=a,width=max(2,int(size/9)))
+    elif style=="Sourire":
+        draw.arc((cx-int(r*.34),cy-int(r*.05),cx+int(r*.34),cy+int(r*.45)),10,170,fill=a,width=max(2,int(size/9)))
+    elif style=="Clin d'œil":
+        draw.line((cx-int(r*.48),cy-int(r*.18),cx-int(r*.12),cy-int(r*.18)),fill=a,width=max(2,int(size/9)))
+        draw.arc((cx-int(r*.30),cy-int(r*.02),cx+int(r*.30),cy+int(r*.38)),190,335,fill=a,width=max(2,int(size/9)))
+    elif style=="Simple":
+        draw.line((cx-int(r*.25),cy+int(r*.22),cx+int(r*.25),cy+int(r*.22)),fill=a,width=max(2,int(size/9)))
+    else:
+        draw.line((cx-int(r*.48),cy-int(r*.47),cx-int(r*.12),cy-int(r*.55)),fill=a,width=max(2,int(size/8)))
+        draw.line((cx+int(r*.12),cy-int(r*.55),cx+int(r*.48),cy-int(r*.47)),fill=a,width=max(2,int(size/8)))
+        draw.arc((cx-int(r*.30),cy-int(r*.02),cx+int(r*.30),cy+int(r*.38)),190,335,fill=a,width=max(2,int(size/9)))
+    if style in ("Réflexion","Surpris"):
+        br=max(4,int(size*.18))
+        draw.ellipse((cx+int(r*.65),cy-int(r*.85),cx+int(r*.65)+br,cy-int(r*.85)+br),fill=a)
+        draw.ellipse((cx+int(r*.95),cy-int(r*1.15),cx+int(r*.95)+br//2,cy-int(r*1.15)+br//2),fill=a)
 
 def draw_lightning_icon(draw, theme, cx, cy, size=28):
     """Éclair vectoriel pour remplacer ⚡ dans les scènes vidéo."""
@@ -309,34 +318,47 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     tf=get_font(int(cfg.get("title_size",46)))
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
-    icon_size=26
-    total_w=tw+54
+    icon_size=int(cfg.get("face_size",30)); total_w=tw+max(46,icon_size+28)
     x=max(42,(WIDTH-total_w)/2)
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
-    draw_thinking_face(draw,theme,int(x+tw+35),int(y+25),icon_size,phase)
-    sf=get_font(31); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf)
-    bx=(WIDTH-sw)//2-20; by=112; bw=sw+40; bh=48
-    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=22,fill=(7,13,28),outline=theme["accent"],width=2)
-    draw.text(((WIDTH-sw)/2,by+7),score,font=sf,fill=theme["accent"])
+    if cfg.get("face_show",True):
+        fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
+        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
+    sf=get_font(int(cfg.get("score_size",31))); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
+    score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
+    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=radius,fill=score_bg,outline=score_color,width=int(cfg.get("score_border",2)))
+    draw.text(((WIDTH-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=score_color)
 
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    """Timer compact et très visible, piloté par l'éditeur."""
+    """Minuteur entièrement personnalisable depuis l'éditeur."""
     cfg=_layout("quiz")
-    color=theme["danger"] if timer<=1 else (249,115,22) if timer==2 else _hex_rgb(cfg.get("primary"),theme["accent"])
-    cx,cy,r=540,int(cfg.get("timer_y",1045)),int(cfg.get("timer_size",58)); pr=int(3+10*clamp(pulse))
-    draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=(*color,100),width=3)
-    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
-    box=(cx-r+6,cy-r+6,cx+r-6,cy+r-6)
-    draw.arc(box,-90,-90+int(360*clamp(fraction)),fill=color,width=9)
-    tf=get_font(55+int(5*pulse)); ts=str(timer)
-    draw.text((cx-text_width(draw,ts,tf)/2,cy-36),ts,font=tf,fill=color)
-    # Petit libellé, volontairement dessiné sans emoji.
-    lbl="RÉFLÉCHIS"; lf=get_font(23); lw=text_width(draw,lbl,lf)
-    draw.text(((WIDTH-lw)/2,cy+r+18),lbl,font=lf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
-
+    color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
+    if timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
+    cx=int(cfg.get("timer_x",540)); cy=int(cfg.get("timer_y",1045)); r=max(18,int(cfg.get("timer_size",58))); pr=int(3+10*clamp(pulse))
+    style=str(cfg.get("timer_style","Cercle")); text_size=max(18,int(cfg.get("timer_text_size",55)))
+    if style=="Cercle":
+        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=(*color,100),width=3)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
+        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*clamp(fraction)),fill=color,width=max(4,int(r*.16)))
+    elif style=="Carré":
+        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=4)
+        draw.rectangle((cx-r+6,cy+r-10-int((2*r-16)*clamp(fraction)),cx+r-6,cy+r-6),fill=color)
+    elif style=="Pill":
+        w=int(r*2.7); h=int(r*1.15)
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=4)
+        draw.rounded_rectangle((cx-w+6,cy+h-10,cx-w+6+int((2*w-12)*clamp(fraction)),cy+h-6),radius=4,fill=color)
+    else:
+        draw.line((cx-r,cy,cx+r,cy),fill=(*color,90),width=max(2,int(r*.08)))
+    ts=str(timer); tf=get_font(text_size); th=text_height(tf,ts)
+    draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
+    if cfg.get("timer_show_label",True):
+        lbl=clean_text(cfg.get("timer_label","RÉFLÉCHIS")); lf=get_font(int(cfg.get("timer_label_size",23))); lw=text_width(draw,lbl,lf)
+        ly=cy+r+18
+        draw.text(((WIDTH-lw)/2,ly),lbl,font=lf,fill=_hex_rgb(cfg.get("timer_label_color"),color))
 
 def _hex_rgb(value, fallback=(255,255,255)):
     try:
@@ -347,14 +369,50 @@ def _hex_rgb(value, fallback=(255,255,255)):
         pass
     return fallback
 
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qvp_settings.json")
+
+def _load_saved_settings():
+    if st.session_state.get("_qvp_settings_loaded"):
+        return
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            saved=json.load(f)
+        for k,v in saved.items():
+            if k not in st.session_state:
+                st.session_state[k]=v
+    except Exception:
+        pass
+    st.session_state["_qvp_settings_loaded"]=True
+
+def _save_settings():
+    keys=[]
+    for k in st.session_state.keys():
+        if k.startswith(("q_","v_")):
+            keys.append(k)
+    data={}
+    for k in keys:
+        v=st.session_state.get(k)
+        if isinstance(v,(str,int,float,bool)):
+            data[k]=v
+    try:
+        tmp=SETTINGS_FILE+".tmp"
+        with open(tmp,"w",encoding="utf-8") as f: json.dump(data,f,ensure_ascii=False,indent=2)
+        os.replace(tmp,SETTINGS_FILE)
+    except Exception:
+        pass
+
+_load_saved_settings()
+
 def _layout(module="quiz"):
-    """Réglages visuels pilotés entièrement par l'interface."""
+    """Réglages visuels pilotés entièrement par l'interface et persistants."""
     prefix="v_" if module=="vocab" else "q_"
     defaults={
         "show_title":True,"title_y":42,"title_size":46,
         "question_y":205,"question_size":47,"question_box_radius":28,
         "answer_y":405,"answer_h":91,"answer_gap":12,"answer_size":30,"answer_radius":20,
-        "timer_y":1045,"timer_size":58,"timer_label_y":1110,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
+        "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
@@ -409,11 +467,11 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
         draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg["answer_radius"]),fill=fill,outline=outline,width=width)
-        bx=82+xpad; by=y+11; bw=55; bh=card_h-22
+        badge_size=max(44,int(cfg["answer_size"]*1.75)); bw=badge_size; bh=badge_size; bx=82+xpad; by=int(y+(card_h-bh)/2)
         badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
-        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(16,int(cfg["answer_radius"]*.8)),fill=badge_fill)
-        lf=get_font(min(34,int(cfg["answer_size"]))) ; letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
-        draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+10),letter,font=lf,fill=lc)
+        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
+        lf=get_font(max(18,min(42,int(cfg["answer_size"]*1.02)))); letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
+        lh=text_height(lf,letter); draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+(bh-lh)/2-2),letter,font=lf,fill=lc)
         text_x=154+xpad; maxw=right-text_x-26; lines=wrap_text(clean_text(opt),f_opt,maxw)[:2]
         th=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*3; ty=y+(card_h-th)/2-2
         for line in lines:
@@ -1089,8 +1147,23 @@ def render_layout_editor(module, key_prefix):
             st.checkbox("Afficher le titre",True,key=p+"show_title")
             st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
             st.slider("Taille du titre",24,72,46 if is_quiz else 32,key=p+"title_size")
+            if is_quiz:
+                st.markdown("**🙂 Émotion à côté du titre**")
+                st.checkbox("Afficher l'émotion",True,key=p+"face_show")
+                st.selectbox("Style de l'émotion",["Réflexion","Sourire","Surpris","Clin d'œil","Simple"],key=p+"face_style")
+                st.slider("Taille de l'émotion",18,70,30,key=p+"face_size")
+                st.slider("Décalage horizontal",-80,80,0,key=p+"face_x")
+                st.slider("Décalage vertical",-50,50,0,key=p+"face_y")
+                st.color_picker("Couleur de l'émotion","#FFCD40",key=p+"face_color")
             st.slider("Position question / mot",120,850,205 if is_quiz else 500,key=p+"question_y")
             st.slider("Taille question / mot",28,100,47 if is_quiz else 88,key=p+"question_size")
+            if is_quiz:
+                st.markdown("**🔢 Compteur 1/8**")
+                st.slider("Position verticale",70,220,112,key=p+"score_y")
+                st.slider("Taille du compteur",20,70,31,key=p+"score_size")
+                st.slider("Arrondi du compteur",5,45,22,key=p+"score_radius")
+                st.color_picker("Couleur du 1/8","#FFCD40",key=p+"score_color")
+                st.color_picker("Fond du 1/8","#070D1C",key=p+"score_bg")
         with c2:
             if is_quiz:
                 st.slider("Position des réponses",300,900,405,key=p+"answer_y")
@@ -1115,7 +1188,15 @@ def render_layout_editor(module, key_prefix):
         with a2:
             st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
             st.slider("Position du timer",800,1250,1045,key=p+"timer_y")
-            st.slider("Taille du timer",35,90,58,key=p+"timer_size")
+            st.slider("Taille du timer",30,120,58,key=p+"timer_size")
+            st.slider("Position horizontale du timer",250,830,540,key=p+"timer_x")
+            st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
+            st.selectbox("Style du minuteur",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
+            st.checkbox("Afficher le texte sous le timer",True,key=p+"timer_show_label")
+            st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
+            st.slider("Taille du texte timer",14,42,23,key=p+"timer_label_size")
+            st.color_picker("Couleur du timer","#FFCD40",key=p+"timer_color")
+            st.color_picker("Couleur du texte timer","#FFCD40",key=p+"timer_label_color")
         st.info("💡 Le mode Aperçu à droite permet de vérifier séparément Question, Compte à rebours et Révélation.")
     with t3:
         c1,c2=st.columns(2)
@@ -1137,6 +1218,7 @@ def render_layout_editor(module, key_prefix):
             st.slider("Déplacement vertical",-120,120,0,key=p+"bg_y")
         st.info("✨ Le fond automatique est choisi selon le sujet de chaque question. Ces réglages modifient son cadrage sans consommer Gemini.")
     st.markdown('</div>', unsafe_allow_html=True)
+    _save_settings()
 
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
