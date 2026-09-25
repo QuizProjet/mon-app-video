@@ -496,6 +496,57 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0):
     for line in lines[:max_visible]:
         tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=int(cfg["explanation_size"]*1.35)
 
+def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale"):
+    """Style 2 : une seule page cumulative. Chaque nouvelle question s'ajoute sans effacer les précédentes."""
+    cfg=_layout("quiz"); theme=THEMES[theme_name]
+    base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
+    alpha=int(clamp(cfg["bg_opacity"],0,90))
+    if alpha:
+        base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
+    img=add_top_glow(base,theme,1.0+0.25*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
+    total=len(items)
+    rounded_text(draw,(55,42,1025,112),f"{video_title}  •  {min(active_idx+1,total)}/{total}",get_font(34),_hex_rgb(cfg["text"],(255,255,255)),_hex_rgb(cfg["primary"],theme["accent"]),2,24)
+    # 15 lignes maximum : la page reste unique et lisible en 9:16.
+    top=145; row_h=105; gap=8; left=42; right=1038
+    qf=get_font(31); af=get_font(30); small=get_font(24)
+    for i,item in enumerate(items):
+        y=top+i*(row_h+gap)
+        if y>1800: break
+        active=(i==active_idx)
+        answered=(i<active_idx) or (i==active_idx and answer_reveal)
+        fill=_hex_rgb(cfg["answer2"] if i%2 else cfg["answer"],theme["card2"])
+        outline=_hex_rgb(cfg["primary"],theme["accent"]) if active else (80,100,130)
+        width=4 if active else 1
+        if answered and i<=active_idx:
+            fill=_hex_rgb(cfg["correct"],theme["success"])
+            outline=theme["success"]
+        draw.rounded_rectangle((left,y,right,y+row_h),radius=18,fill=fill,outline=outline,width=width)
+        label=f"{i+1}/{total}"
+        draw.text((65,y+13),label,font=small,fill=_hex_rgb(cfg["primary"],theme["accent"]) if not answered else "white")
+        q=clean_text(item.get("question",""))
+        a=""
+        if answered:
+            opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
+            try: a=clean_text(opts["ABCD".index(rc)])
+            except Exception: a=""
+        q_lines=wrap_text(q,qf,560)[:2]
+        qx=135; qy=y+10
+        for line in q_lines:
+            draw.text((qx,qy),line,font=qf,fill="white"); qy+=36
+        if answered and a:
+            answer_lines=wrap_text("✓ "+a,af,300)[:2]
+            ay=y+18
+            for line in answer_lines:
+                draw.text((690,ay),line,font=af,fill="white"); ay+=34
+        elif active:
+            draw.text((700,y+31),"…",font=get_font(42),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+            if timer is not None and cfg["show_timer"]:
+                # Petit timer directement sur la ligne de la question actuelle.
+                draw_timer(draw,theme,timer,timer_fraction,0.35)
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+    return img
+
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0):
     cfg=_layout("quiz"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
@@ -946,7 +997,7 @@ def _save_quiz_editor(rows):
         exp=clean_text(row.get("Explication", ""))
         if q and all(opts) and ans in "ABCD":
             cleaned.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
-    return cleaned[:10]
+    return cleaned[:15]
 
 def _save_vocab_editor(rows):
     cleaned=[]
@@ -1233,8 +1284,9 @@ with tab1:
         voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
         theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
     with c2:
-        nb_q=st.slider("Nombre de questions",1,10,10,key="nbq")
+        nb_q=st.slider("Nombre de questions",1,15,15,key="nbq")
         th_q=st.text_input("Sujet du quiz","Culture Générale",key="thq")
+    style_q=st.radio("🎬 Style du quiz",["Style 1 — 4 réponses + révélation","Style 2 — questions/réponses cumulatives"],horizontal=True,key="styleq")
     outro_q=st.text_input("CTA final","Quel est ton score ? Écris-le en commentaire !",key="oq")
     st.caption("💡 Le CSV accepte aussi la colonne « explication » : elle sera lue après la révélation et affichée dans la vidéo.")
     st.markdown("### 🖼️ Fond de la vidéo")
@@ -1259,10 +1311,21 @@ with tab1:
         render_layout_editor("quiz","q_")
     with right_q:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        preview_state_q=st.radio("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
+        if style_q.startswith("Style 2"):
+            preview_state_q=st.radio("État à prévisualiser",["Q1 + minuteur","Q2 avec réponse 1","Q3 avec réponses 1–2"],horizontal=True,key="preview_state_q")
+        else:
+            preview_state_q=st.radio("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
         try:
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
-            if preview_state_q=="Question + réponses":
+            if style_q.startswith("Style 2"):
+                demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
+                if preview_state_q=="Q1 + minuteur":
+                    preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
+                elif preview_state_q=="Q2 avec réponse 1":
+                    preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
+                else:
+                    preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
+            elif preview_state_q=="Question + réponses":
                 preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.35,video_title=th_q)
             elif preview_state_q=="Compte à rebours":
                 preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
@@ -1325,7 +1388,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
                     except Exception as e: st.error(f"Erreur Gemini : {e}")
     else:
-        st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 10 questions.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>', unsafe_allow_html=True)
         st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
         csv_file=st.file_uploader("Choisir ton fichier CSV",type=["csv"],key="quizcsv")
         if csv_file is not None:
@@ -1367,80 +1430,98 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                         clips=[]; total=len(st.session_state.q_data)
 
-                        # Une seule timeline audio/vidéo par question.
-                        # Pas de page d'introduction, pas de page résultat.
-                        # IMPORTANT : le fond automatique est calculé pour CHAQUE question,
-                        # à partir de son texte, et non uniquement du sujet général.
-                        for idx,q in enumerate(st.session_state.q_data):
-                            corr="ABCD".index(q["reponse_correcte"])
-                            bg_question = selected_video_background(
-                                theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q
-                            )
+                        if style_q.startswith("Style 2"):
+                            # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
+                            # Les 15 questions restent toutes visibles dans le même écran.
+                            items=st.session_state.q_data[:15]
+                            total=len(items)
+                            for idx,q in enumerate(items):
+                                bg_question=bg_q
+                                corr="ABCD".index(q["reponse_correcte"])
+                                answer_text=clean_text(q["options"][corr])
+                                qa_raw=os.path.join(tmp,f"s2_q_{idx}.mp3")
+                                ans_raw=os.path.join(tmp,f"s2_a_{idx}.mp3")
+                                synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                synthesize_audio(answer_text,voice_q,ans_raw,tts_rate)
+                                qdur=audio_duration(qa_raw)
+                                adur=audio_duration(ans_raw)
+                                # La question apparaît d'abord, puis le minuteur, puis sa réponse.
+                                frames=[]
+                                q_steps=max(8,int(qdur*12))
+                                for j in range(q_steps):
+                                    t=j/max(1,q_steps-1)
+                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
+                                cdur=3.12; cd_steps=94
+                                for j in range(cd_steps):
+                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                    if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
+                                    elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
+                                    else: sec=1; frac=1-((elapsed-2.08)/1.04)
+                                    timer=0 if elapsed>=3.0 else sec
+                                    timer_frac=0.0 if elapsed>=3.0 else frac
+                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
+                                a_steps=max(8,int(adur*12))
+                                for j in range(a_steps):
+                                    t=j/max(1,a_steps-1)
+                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
+                                audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
+                                concat_audio_files([qa_raw,countdown_sfx,ans_raw],audio)
+                                out=os.path.join(tmp,f"s2_{idx}.mp4")
+                                make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
+                                clips.append(out)
 
-                            qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
-                            synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
-                            qdur=audio_duration(qa_raw)
-
-                            exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
-                            ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
-                            synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
-                            edur=audio_duration(ea_raw)
-
-                            exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
-                            mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
-
-                            full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                            concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
-
-                            frames=[]
-
-                            # 1) QUESTION : la durée est exactement celle de la voix.
-                            q_steps=max(8,int(qdur*12))
-                            for j in range(q_steps):
-                                t=j/max(1,q_steps-1)
-                                frames.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,
-                                                    entrance=ease_out(t),motion=t*0.9,video_title=th_q),
-                                    qdur/q_steps
-                                ))
-
-                            # 2) REFLEXION : même page, 3 -> 2 -> 1 -> 0.
-                            cdur=3.12; cd_steps=94
-                            for j in range(cd_steps):
-                                t=j/max(1,cd_steps-1); elapsed=t*cdur
-                                if elapsed < 1.04:
-                                    sec=3; frac=1-(elapsed/1.04)
-                                elif elapsed < 2.08:
-                                    sec=2; frac=1-((elapsed-1.04)/1.04)
-                                else:
-                                    sec=1; frac=1-((elapsed-2.08)/1.04)
-                                timer=0 if elapsed>=3.0 else sec
-                                timer_frac=0.0 if elapsed>=3.0 else frac
-                                frames.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,
-                                                    entrance=1.0,timer=timer,timer_fraction=timer_frac,
-                                                    pulse=0.55+0.45*math.sin(t*math.pi*12),
-                                                    motion=1.0+t*1.2,video_title=th_q),
-                                    cdur/cd_steps
-                                ))
-
-                            # 3) REVELATION + EXPLICATION : même page.
-                            # Seule la bonne réponse devient verte; explication en bas.
-                            ex_steps=max(8,int(edur*12))
-                            for j in range(ex_steps):
-                                t=j/max(1,ex_steps-1)
-                                frames.append((
-                                    draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,
-                                                    entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),
-                                                    pulse=0.15*(1-t),motion=2.0+t,
-                                                    video_title=th_q,explanation=exp_text,explanation_progress=t),
-                                    edur/ex_steps
-                                ))
-
-                            frame_list=save_frames(frames,tmp,f"qfull_{idx}")
-                            out=os.path.join(tmp,f"qfull_{idx}.mp4")
-                            make_segment(frame_list,full_audio,out,tmp,1.0)
-                            clips.append(out)
+                            # Explications seulement après les 15 questions.
+                            for idx,q in enumerate(items):
+                                corr="ABCD".index(q["reponse_correcte"])
+                                answer_text=clean_text(q["options"][corr])
+                                exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {answer_text}."
+                                ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
+                                synthesize_audio(exp_text,voice_q,ea,tts_rate)
+                                edur=audio_duration(ea)
+                                exp_frames=max(8,int(edur*12))
+                                eframes=[]
+                                for j in range(exp_frames):
+                                    t=j/max(1,exp_frames-1)
+                                    eframes.append((draw_explanation_scene(q["question"],answer_text,exp_text,theme_q,channel_q,bg_q,progress=t,q_num=idx+1,total=total,video_title=th_q),edur/exp_frames))
+                                eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
+                                make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
+                                clips.append(eo)
+                        else:
+                            # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
+                            for idx,q in enumerate(st.session_state.q_data):
+                                corr="ABCD".index(q["reponse_correcte"])
+                                bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
+                                qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
+                                synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                qdur=audio_duration(qa_raw)
+                                exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
+                                ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
+                                synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
+                                edur=audio_duration(ea_raw)
+                                exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
+                                mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
+                                full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
+                                concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
+                                frames=[]
+                                q_steps=max(8,int(qdur*12))
+                                for j in range(q_steps):
+                                    t=j/max(1,q_steps-1)
+                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
+                                cdur=3.12; cd_steps=94
+                                for j in range(cd_steps):
+                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                    if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
+                                    elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
+                                    else: sec=1; frac=1-((elapsed-2.08)/1.04)
+                                    timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
+                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
+                                ex_steps=max(8,int(edur*12))
+                                for j in range(ex_steps):
+                                    t=j/max(1,ex_steps-1)
+                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
+                                out=os.path.join(tmp,f"qfull_{idx}.mp4")
+                                make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
+                                clips.append(out)
 
                         # CTA très court seulement après le quiz.
                         if clean_text(outro_q):
