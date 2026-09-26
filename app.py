@@ -777,7 +777,7 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
     return img
 
 
-def draw_vocab_frame(items,idx,langue,theme_name,channel="",bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
+def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
     cfg=_layout("vocab"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg["bg_opacity"],0,90))
@@ -1315,6 +1315,25 @@ Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div
 def render_layout_editor(module, key_prefix):
     """Éditeur compact : contrôles regroupés en onglets pour éviter de faire défiler la page."""
     is_quiz=module=="quiz"; p=key_prefix
+    # Valeurs par défaut persistantes : on initialise Session State une seule fois,
+    # puis les widgets utilisent uniquement leur clé (sans valeur par défaut concurrente).
+    _editor_defaults={
+        "show_title":True,"title_y":42 if is_quiz else 70,"title_size":46 if is_quiz else 32,
+        "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
+        "question_y":205 if is_quiz else 500,"question_size":47 if is_quiz else 88,
+        "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
+        "answer_y":405 if is_quiz else 760,"answer_h":91,"answer_gap":12,"answer_size":30 if is_quiz else 58,"answer_radius":20,
+        "show_explanation":True,"explanation_y":1135,"explanation_h":380,
+        "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
+        "show_timer":True,"timer_y":1045,"timer_x":540,"timer_size":58,"timer_text_size":55,"timer_style":"Anneau",
+        "timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
+        "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
+        "bg_opacity":18,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
+    }
+    for _k,_v in _editor_defaults.items():
+        _full=p+_k
+        if _full not in st.session_state:
+            st.session_state[_full]=_v
     st.markdown('<div class="qvp-editor-tabs">', unsafe_allow_html=True)
     t0,t1,t2,t3,t4,t5=st.tabs(["🧩 Structure","📐 Position & taille","🎞️ Animation","🎨 Couleurs","⏱️ Minuteur","🌄 Fond"])
     with t0:
@@ -1328,12 +1347,12 @@ def render_layout_editor(module, key_prefix):
         st.caption("Modifie un réglage : l’aperçu fixe à droite se met à jour automatiquement.")
         c1,c2=st.columns(2)
         with c1:
-            st.checkbox("Afficher le titre",True,key=p+"show_title")
+            st.checkbox("Afficher le titre",key=p+"show_title")
             st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
             st.slider("Taille du titre",24,72,46 if is_quiz else 32,key=p+"title_size")
             if is_quiz:
                 st.markdown("**🙂 Émotion à côté du titre**")
-                st.checkbox("Afficher l'émotion",True,key=p+"face_show")
+                st.checkbox("Afficher l'émotion",key=p+"face_show")
                 st.selectbox("Style de l'élément",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style")
                 st.slider("Taille de l'élément",18,70,30,key=p+"face_size")
                 st.slider("Décalage horizontal",-80,80,0,key=p+"face_x")
@@ -1359,7 +1378,7 @@ def render_layout_editor(module, key_prefix):
                 st.slider("Position de la traduction",650,1100,760,key=p+"answer_y")
                 st.slider("Taille de la traduction",28,90,58,key=p+"answer_size")
                 st.slider("Arrondi de la carte",5,40,20,key=p+"answer_radius")
-            st.checkbox("Afficher l'explication",True,key=p+"show_explanation")
+            st.checkbox("Afficher l'explication",key=p+"show_explanation")
             st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
             st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
     with t2:
@@ -1372,7 +1391,7 @@ def render_layout_editor(module, key_prefix):
             st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
             st.caption("Les animations restent synchronisées avec la durée de la voix lors du rendu final.")
     with t4:
-        st.checkbox("Afficher le compte à rebours",True,key=p+"show_timer")
+        st.checkbox("Afficher le compte à rebours",key=p+"show_timer")
         a1,a2=st.columns(2)
         with a1:
             st.slider("Position verticale",800,1250,1045,key=p+"timer_y")
@@ -1381,7 +1400,7 @@ def render_layout_editor(module, key_prefix):
             st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
             st.selectbox("Style du chronomètre",["Anneau","Barre","Pill","Points","Minimal"],key=p+"timer_style")
         with a2:
-            st.checkbox("Afficher le texte sous le timer",True,key=p+"timer_show_label")
+            st.checkbox("Afficher le texte sous le timer",key=p+"timer_show_label")
             st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
             st.slider("Taille du texte",14,42,23,key=p+"timer_label_size")
             st.color_picker("Couleur du timer","#FFCD40",key=p+"timer_color")
