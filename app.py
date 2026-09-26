@@ -101,6 +101,19 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-preview-panel {padding:9px 12px !important;}
 .qvp-preview-note {margin-bottom:5px !important;}
 .qvp-actionbar {position:sticky;bottom:8px;z-index:90;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border:1px solid #d9e2ef;border-radius:14px;padding:7px;margin-top:10px;box-shadow:0 8px 22px rgba(15,23,42,.10);}
+
+/* V8.5 Studio : interface compacte, pensée pour 100% de zoom. */
+.qvp-studio-header{display:flex;align-items:center;gap:12px;padding:6px 10px;margin:0 0 6px;border-bottom:1px solid #dbe4f0;font-size:.92rem;color:#172033}
+.qvp-studio-header span{padding:4px 9px;border-radius:999px;background:#172033;color:#fff;font-weight:800;font-size:.75rem}
+.qvp-studio-header small{margin-left:auto;color:#64748b;font-size:.72rem}
+.qvp-hero{display:none !important}
+[data-testid="stMain"] .stCaption{font-size:.72rem !important;margin-top:2px !important;margin-bottom:4px !important}
+[data-testid="stMain"] [data-testid="stHorizontalBlock"]{gap:.38rem !important}
+.qvp-preview-panel{padding:8px 10px !important;border-radius:12px !important}
+.qvp-preview-title{font-size:.88rem !important;margin-bottom:3px !important}
+.qvp-preview-note{font-size:.68rem !important;margin-bottom:4px !important}
+.qvp-actionbar{padding:5px 8px !important;margin-top:5px !important}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -587,7 +600,12 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     return img
 
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale"):
-    """Style 2 : une seule page cumulative. Chaque nouvelle question s'ajoute sans effacer les précédentes."""
+    """Quiz Style 2 demandé : une seule page cumulative qui se construit.
+
+    Q1 apparaît seule avec son minuteur. Après révélation, sa bonne réponse reste
+    visible. Q2 apparaît alors avec son minuteur, puis Q3, etc. Les questions
+    futures restent cachées jusqu'à leur tour.
+    """
     cfg=_layout("quiz"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg["bg_opacity"],0,90))
@@ -595,11 +613,13 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
         base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
     img=add_top_glow(base,theme,1.0+0.25*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=len(items)
+    visible_items=items[:min(active_idx+1,total)]
     rounded_text(draw,(55,42,1025,112),f"{video_title}  •  {min(active_idx+1,total)}/{total}",get_font(34),_hex_rgb(cfg["text"],(255,255,255)),_hex_rgb(cfg["primary"],theme["accent"]),2,24)
-    # 15 lignes maximum : la page reste unique et lisible en 9:16.
-    top=145; row_h=105; gap=8; left=42; right=1038
-    qf=get_font(31); af=get_font(30); small=get_font(24)
-    for i,item in enumerate(items):
+
+    # Les lignes apparaissent progressivement : aucune question future n'est affichée.
+    top=145; row_h=112; gap=9; left=42; right=1038
+    qf=get_font(31); af=get_font(28); small=get_font(23)
+    for i,item in enumerate(visible_items):
         y=top+i*(row_h+gap)
         if y>1800: break
         active=(i==active_idx)
@@ -607,31 +627,34 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
         fill=_hex_rgb(cfg["answer2"] if i%2 else cfg["answer"],theme["card2"])
         outline=_hex_rgb(cfg["primary"],theme["accent"]) if active else (80,100,130)
         width=4 if active else 1
-        if answered and i<=active_idx:
-            fill=_hex_rgb(cfg["correct"],theme["success"])
-            outline=theme["success"]
         draw.rounded_rectangle((left,y,right,y+row_h),radius=18,fill=fill,outline=outline,width=width)
         label=f"{i+1}/{total}"
-        draw.text((65,y+13),label,font=small,fill=_hex_rgb(cfg["primary"],theme["accent"]) if not answered else "white")
+        draw.text((65,y+13),label,font=small,fill=_hex_rgb(cfg["primary"],theme["accent"]))
         q=clean_text(item.get("question",""))
+        q_lines=wrap_text(q,qf,545)[:2]
+        qx=135; qy=y+10
+        for line in q_lines:
+            draw.text((qx,qy),line,font=qf,fill="white"); qy+=36
+
         a=""
         if answered:
             opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
             try: a=clean_text(opts["ABCD".index(rc)])
             except Exception: a=""
-        q_lines=wrap_text(q,qf,560)[:2]
-        qx=135; qy=y+10
-        for line in q_lines:
-            draw.text((qx,qy),line,font=qf,fill="white"); qy+=36
-        if answered and a:
-            answer_lines=wrap_text("✓ "+a,af,300)[:2]
-            ay=y+18
-            for line in answer_lines:
-                draw.text((690,ay),line,font=af,fill="white"); ay+=34
+            if a:
+                # La bonne réponse apparaît dans un badge vert, sans transformer
+                # toute la question en vert.
+                answer_lines=wrap_text("✓ "+a,af,315)[:2]
+                ay=y+17
+                badge_h=78 if len(answer_lines)==1 else 92
+                draw.rounded_rectangle((680,y+16,1018,y+16+badge_h),radius=18,fill=_hex_rgb(cfg["correct"],theme["success"]),outline=_hex_rgb(cfg["correct"],theme["success"]),width=2)
+                for line in answer_lines:
+                    tw=text_width(draw,line,af); draw.text((850-tw/2,ay),line,font=af,fill="white"); ay+=34
         elif active:
-            draw.text((700,y+31),"…",font=get_font(42),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+            draw.text((700,y+31),"Réfléchis…",font=get_font(24),fill=_hex_rgb(cfg["muted"],theme["muted"]))
             if timer is not None and cfg["show_timer"]:
-                draw_inline_timer(draw,theme,950,y+52,timer,timer_fraction,"quiz")
+                draw_inline_timer(draw,theme,950,y+58,timer,timer_fraction,"quiz")
+
     draw_brand(draw,theme,channel,active_idx/max(1,total))
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
     return img
@@ -1293,6 +1316,7 @@ def render_layout_editor(module, key_prefix):
         "timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
         "bg_opacity":18,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
+        "bg_mode":"✨ Automatique",
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
 
@@ -1377,6 +1401,9 @@ def render_layout_editor(module, key_prefix):
             st.slider("Taille du texte",14,42,st.session_state[p+"timer_label_size"],key=p+"timer_label_size")
             st.color_picker("Couleur",key=p+"timer_color")
     with tabs[5]:
+        st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
+        if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
+            st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
         c1,c2=st.columns(2)
         with c1:
             st.slider("Assombrissement",0,80,st.session_state[p+"bg_opacity"],key=p+"bg_opacity")
@@ -1390,7 +1417,7 @@ def render_layout_editor(module, key_prefix):
 tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
 with tab1:
-    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 QUIZVIDEO PRO</div><h1>Quiz TikTok Pro</h1><p>Crée • personnalise • génère tes Shorts 9:16</p></div><div class="qvp-hero-pill">15 questions max</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
     r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
     with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
     with r2: nb_q=st.slider("Questions",1,15,15,key="nbq")
@@ -1402,16 +1429,15 @@ with tab1:
     with r7: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
     with r8: style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],horizontal=True,key="styleq_compact")
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
-    st.caption("Style 1 : 4 réponses → minuteur → bonne réponse verte → explication.  |  Style 2 : Q1 → minuteur → R1 → Q2 → R2… jusqu'à 15.")
-    bg_mode_q=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_q_compact")
-    uploaded_bg_q=None
-    if bg_mode_q=="🖼️ Personnalisé": uploaded_bg_q=st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key="bgq")
-    bg_mode_clean_q="Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun"
-    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
-    if bg_mode_clean_q=="Généré automatiquement": st.caption("✨ Fond local selon le sujet — 0 quota Gemini.")
+    st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : Q1 + minuteur → R1 → Q2 + minuteur → R2… cumulatif.")
     left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
-        render_layout_editor("quiz","q_")
+        with st.container(height=430, border=True):
+            render_layout_editor("quiz","q_")
+    bg_mode_q=st.session_state.get("q_bg_mode","✨ Automatique")
+    uploaded_bg_q=st.session_state.get("q_bg_upload")
+    bg_mode_clean_q="Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun"
+    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
     with right_q:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
         if style_q_full.startswith("Style 2"):
@@ -1549,7 +1575,7 @@ with tab1:
 
                             if style_q_full.startswith("Style 2"):
                                 # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
-                                # Les 15 questions restent toutes visibles dans le même écran.
+                                # Les questions apparaissent progressivement : seules les questions déjà atteintes restent visibles.
                                 items=st.session_state.q_data[:15]
                                 total=len(items)
                                 for idx,q in enumerate(items):
@@ -1660,7 +1686,7 @@ with tab1:
                     st.error(f"Erreur pendant le montage V7 : {e}")
 
 with tab2:
-    st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ QUIZVIDEO PRO</div><h1>Vocabulaire Pro</h1><p>Crée • personnalise • génère tes vidéos vocabulaire 9:16</p></div><div class="qvp-hero-pill">15 mots max</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
     a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
     with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
     with a2: nb_v=st.slider("Mots",1,15,15,key="nbv")
@@ -1673,15 +1699,15 @@ with tab2:
     with a8: style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],horizontal=True,key="stylev_compact")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
     voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-    bg_mode_v=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_v_compact")
-    uploaded_bg_v=None
-    if bg_mode_v=="🖼️ Personnalisé": uploaded_bg_v=st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key="bgv")
-    bg_mode_clean_v="Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun"
-    bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
-    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : Mot 1 → minuteur → traduction 1 → Mot 2 → traduction 2… cumulatif jusqu'à 15 mots.")
+    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : Mot 1 + minuteur → traduction 1 → Mot 2 + minuteur → traduction 2… cumulatif.")
     left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
-        render_layout_editor("vocab","v_")
+        with st.container(height=430, border=True):
+            render_layout_editor("vocab","v_")
+    bg_mode_v=st.session_state.get("v_bg_mode","✨ Automatique")
+    uploaded_bg_v=st.session_state.get("v_bg_upload")
+    bg_mode_clean_v="Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun"
+    bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
         preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
