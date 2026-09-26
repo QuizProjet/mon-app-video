@@ -575,7 +575,8 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     rounded_text(draw,(55,35,1025,100),f"VOCABULAIRE • {min(active_idx+1,total)}/{total}",get_font(32),_hex_rgb(cfg.get("text"),(255,255,255)),_hex_rgb(cfg.get("primary"),theme["accent"]),2,22)
     top=125; row_h=105; gap=7; left=42; right=1038
     qf=get_font(34); af=get_font(30); small=get_font(22)
-    for i,item in enumerate(items[:15]):
+    visible_items=items[:min(active_idx+1,15)]
+    for i,item in enumerate(visible_items):
         y=top+i*(row_h+gap)
         if y>1800: break
         active=(i==active_idx); answered=(i<active_idx) or (i==active_idx and reveal)
@@ -1432,7 +1433,7 @@ with tab1:
     st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : Q1 + minuteur → R1 → Q2 + minuteur → R2… cumulatif.")
     left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
-        with st.container(height=430, border=True):
+        with st.container(height=390, border=True):
             render_layout_editor("quiz","q_")
     bg_mode_q=st.session_state.get("q_bg_mode","✨ Automatique")
     uploaded_bg_q=st.session_state.get("q_bg_upload")
@@ -1465,7 +1466,7 @@ with tab1:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     st.markdown('''<div class="qvp-actionbar"><b>🎲 Variation</b> &nbsp;&nbsp; <b>💾 Enregistrer</b> &nbsp;&nbsp; <b>🎬 Générer</b></div>''', unsafe_allow_html=True)
     with st.expander("🎯 Contenu — Questions / réponses", expanded=False):
-
+        mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
         if mode_q=="🤖 IA Gemini":
             st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
             gen_key=_quiz_generation_key(nb_q,th_q)
@@ -1699,10 +1700,10 @@ with tab2:
     with a8: style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],horizontal=True,key="stylev_compact")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
     voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : Mot 1 + minuteur → traduction 1 → Mot 2 + minuteur → traduction 2… cumulatif.")
+    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : Mot 1 → minuteur → traduction 1 → Mot 2 → minuteur → traduction 2… les précédents restent visibles.")
     left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
-        with st.container(height=430, border=True):
+        with st.container(height=390, border=True):
             render_layout_editor("vocab","v_")
     bg_mode_v=st.session_state.get("v_bg_mode","✨ Automatique")
     uploaded_bg_v=st.session_state.get("v_bg_upload")
@@ -1710,13 +1711,16 @@ with tab2:
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
+        if style_v.startswith("Style 2"):
+            preview_state_v=st.radio("Aperçu",["Mot 1 + minuteur","Mot 2 + traduction 1","Mot 3 + traductions 1–2"],horizontal=True,key="preview_state_v")
+        else:
+            preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
             if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
-                active=0 if preview_state_v=="Mot" else 1 if preview_state_v=="Compte à rebours" else 2
-                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Compte à rebours" else None,timer_fraction=.72,reveal=(preview_state_v=="Traduction"),video_title=th_v)
+                active=0 if preview_state_v=="Mot 1 + minuteur" else 1 if preview_state_v=="Mot 2 + traduction 1" else 2
+                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Mot 1 + minuteur" else None,timer_fraction=.72,reveal=False,video_title=th_v)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]
                 phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
