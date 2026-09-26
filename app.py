@@ -565,108 +565,114 @@ def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
 
 
 def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0, video_title="Voyage"):
-    """Style 2 validé : une seule page cumulative.
-    Mot à gauche -> temps de réflexion au centre -> traduction en face après révélation.
-    Les lignes terminées restent visibles et les mots futurs restent cachés.
-    Les réglages de l'éditeur pilotent aussi ce mode.
+    """Vocabulaire Style 2 validé : une seule page qui avance.
+
+    Le mot actif occupe la zone principale. Après sa révélation, seule sa
+    traduction est conservée dans l'historique, puis le mot suivant prend
+    exactement la même place. Les mots futurs restent cachés.
     """
     cfg=_layout("vocab"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
-    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
-    img=add_top_glow(base,theme,1.0+0.18*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
-    total=max(1,len(items)); visible_items=items[:min(active_idx+1,total)]
+    if alpha:
+        base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
+    img=add_top_glow(base,theme,1.0+0.16*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
+    total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1))
+    active=items[active_idx]
+    title=clean_text(video_title or "Vocabulaire")
+
     if cfg.get("show_title",True):
         title_y=int(cfg.get("title_y",70)); title_size=int(cfg.get("title_size",32))
-        draw.text((55,title_y),clean_text(video_title or "Vocabulaire"),font=get_font(title_size),fill=_hex_rgb(cfg.get("text"),(255,255,255)))
-    score_y=int(cfg.get("score_y",112)); score_size=int(cfg.get("score_size",31)); score=f"{min(active_idx+1,total)}/{total}"
-    draw.rounded_rectangle((WIDTH-150,score_y-8,WIDTH-55,score_y+score_size+10),radius=int(cfg.get("score_radius",22)),fill=_hex_rgb(cfg.get("score_bg"),(7,13,28)),outline=_hex_rgb(cfg.get("score_color"),theme["accent"]),width=2)
-    draw.text((WIDTH-135,score_y),score,font=get_font(score_size),fill=_hex_rgb(cfg.get("score_color"),theme["accent"]))
-    top=int(cfg.get("answer_y",760)); row_h=max(70,int(cfg.get("answer_h",91))); gap=max(2,int(cfg.get("answer_gap",12)))
-    left=42; right=1038; word_size=int(cfg.get("question_size",88)); trans_size=int(cfg.get("answer_size",58)); radius=int(cfg.get("answer_radius",20))
-    wf=get_font(word_size); tf=get_font(trans_size); small=get_font(22)
-    if len(visible_items)>1:
-        max_bottom=1770; needed=top+len(visible_items)*row_h+(len(visible_items)-1)*gap
-        if needed>max_bottom:
-            row_h=max(58,int((max_bottom-top-(len(visible_items)-1)*gap)/len(visible_items)))
-            wf=get_font(max(30,min(word_size,int(row_h*.52)))); tf=get_font(max(24,min(trans_size,int(row_h*.40))))
-    for i,item in enumerate(visible_items):
-        y=top+i*(row_h+gap); active=(i==active_idx); answered=(i<active_idx) or (i==active_idx and reveal)
-        fill=_hex_rgb(cfg.get("answer2" if i%2 else "answer"),theme["card2"]); outline=_hex_rgb(cfg.get("primary"),theme["accent"]) if active else (80,100,130)
-        draw.rounded_rectangle((left,y,right,y+row_h),radius=radius,fill=fill,outline=outline,width=3 if active else 1)
-        draw.text((62,y+int(row_h*.18)),str(i+1),font=small,fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
-        fr=clean_text(item.get("fr", "")); tr=clean_text(item.get("trad", "")); wy=y+int(row_h*.18)
-        for line in wrap_text(fr,wf,390)[:2]:
-            draw.text((125,wy),line,font=wf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); wy+=int(wf.size*1.02)
-        if active and cfg.get("show_timer",True) and timer is not None:
-            draw_inline_timer(draw,theme,565,y+row_h//2,timer,timer_fraction,"vocab")
-        elif active and not answered:
-            draw.text((545,y+int(row_h*.28)),"…",font=get_font(max(28,int(row_h*.38))),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
-        if answered:
-            for j,line in enumerate(wrap_text("✓ "+tr,tf,380)[:2]):
-                draw.text((650,y+int(row_h*.17)+j*int(tf.size*1.02)),line,font=tf,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
+        tw=text_width(draw,title,get_font(title_size))
+        draw.text(((WIDTH-tw)//2,title_y),title,font=get_font(title_size),fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+
+    # Mot actif : il remplace le mot précédent dans cette zone.
+    q_size=int(cfg.get("question_size",88)); qf=get_font(q_size)
+    word=clean_text(active.get("fr",""))
+    lines=wrap_text(word,qf,900)[:2]
+    y=int(cfg.get("question_y",500))
+    for line in lines:
+        tw=text_width(draw,line,qf)
+        draw.text(((WIDTH-tw)//2,y),line,font=qf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+        y+=int(qf.size*1.02)
+
+    # Le minuteur est lié uniquement au mot actif pendant la réflexion.
+    if timer is not None and cfg.get("show_timer",True):
+        draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",1045)),timer,timer_fraction,"vocab")
+
+    # Historique : uniquement les traductions déjà révélées.
+    hist=[]
+    for i in range(active_idx):
+        hist.append((i,items[i]))
+    if reveal:
+        hist.append((active_idx,active))
+    if hist:
+        hy=1120; row_h=max(62,int(cfg.get("answer_h",91)*.78)); gap=max(8,int(cfg.get("answer_gap",12)))
+        for i,item in hist[-7:]:
+            y=hy; radius=int(cfg.get("answer_radius",20));
+            draw.rounded_rectangle((80,y,1000,y+row_h),radius=radius,fill=_hex_rgb(cfg.get("answer"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
+            fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad",""))
+            fs=get_font(max(28,min(52,int(cfg.get("answer_size",58)*.62))))
+            ts=get_font(max(24,min(42,int(cfg.get("answer_size",58)*.48))))
+            draw.text((110,y+int(row_h*.22)),fr,font=fs,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+            draw.text((600,y+int(row_h*.25)),"✓ "+tr,font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
+            hy+=row_h+gap
+
     draw_brand(draw,theme,channel,active_idx/max(1,total))
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
     return img
 
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale"):
-    """Quiz Style 2 demandé : une seule page cumulative qui se construit.
+    """Quiz Style 2 validé : une seule page, avec une question active en titre.
 
-    Q1 apparaît seule avec son minuteur. Après révélation, sa bonne réponse reste
-    visible. Q2 apparaît alors avec son minuteur, puis Q3, etc. Les questions
-    futures restent cachées jusqu'à leur tour.
+    Q1 occupe la zone de titre. Après R1, Q2 prend exactement la place de Q1
+    tandis que R1 reste visible dans l'historique. Même principe jusqu'à Q15.
+    Les questions futures ne sont jamais affichées.
     """
     cfg=_layout("quiz"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
-    alpha=int(clamp(cfg["bg_opacity"],0,90))
+    alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha:
         base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
-    img=add_top_glow(base,theme,1.0+0.25*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
-    total=len(items)
-    visible_items=items[:min(active_idx+1,total)]
-    rounded_text(draw,(55,42,1025,112),f"{video_title}  •  {min(active_idx+1,total)}/{total}",get_font(34),_hex_rgb(cfg["text"],(255,255,255)),_hex_rgb(cfg["primary"],theme["accent"]),2,24)
+    img=add_top_glow(base,theme,1.0+0.20*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
+    total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]
 
-    # Les lignes apparaissent progressivement : aucune question future n'est affichée.
-    top=145; row_h=112; gap=9; left=42; right=1038
-    qf=get_font(31); af=get_font(28); small=get_font(23)
-    for i,item in enumerate(visible_items):
-        y=top+i*(row_h+gap)
-        if y>1800: break
-        active=(i==active_idx)
-        answered=(i<active_idx) or (i==active_idx and answer_reveal)
-        fill=_hex_rgb(cfg["answer2"] if i%2 else cfg["answer"],theme["card2"])
-        outline=_hex_rgb(cfg["primary"],theme["accent"]) if active else (80,100,130)
-        width=4 if active else 1
-        draw.rounded_rectangle((left,y,right,y+row_h),radius=18,fill=fill,outline=outline,width=width)
-        label=f"{i+1}/{total}"
-        draw.text((65,y+13),label,font=small,fill=_hex_rgb(cfg["primary"],theme["accent"]))
-        q=clean_text(item.get("question",""))
-        q_lines=wrap_text(q,qf,545)[:2]
-        qx=135; qy=y+10
-        for line in q_lines:
-            draw.text((qx,qy),line,font=qf,fill="white"); qy+=36
+    if cfg.get("show_title",True):
+        title=clean_text(video_title or "Culture Générale")
+        tf=get_font(int(cfg.get("title_size",46))); tw=text_width(draw,title,tf)
+        draw.text(((WIDTH-tw)//2,int(cfg.get("title_y",42))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
 
-        a=""
-        if answered:
+    # Q active : toujours au même emplacement, comme un titre principal.
+    q=clean_text(active.get("question","")); qf=get_font(int(cfg.get("question_size",47)))
+    q_lines=wrap_text(q,qf,900)[:3]
+    qy=int(cfg.get("question_y",205))
+    for line in q_lines:
+        tw=text_width(draw,line,qf); draw.text(((WIDTH-tw)//2,qy),line,font=qf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); qy+=int(qf.size*1.12)
+
+    # Minuteur sous la question active.
+    if timer is not None and cfg.get("show_timer",True):
+        draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",430)),timer,timer_fraction,"quiz")
+
+    # Historique : R1, R2, ... seulement. La question correspondante disparaît
+    # de la zone active dès que la question suivante prend sa place.
+    hist=[]
+    for i in range(active_idx): hist.append((i,items[i]))
+    if answer_reveal: hist.append((active_idx,active))
+    if hist:
+        top=int(cfg.get("answer_y",650)); row_h=max(64,int(cfg.get("answer_h",91)*.82)); gap=max(8,int(cfg.get("answer_gap",12)))
+        af=get_font(int(cfg.get("answer_size",30)))
+        for i,item in hist[-8:]:
+            y=top+(hist.index((i,item)))*(row_h+gap)
+            draw.rounded_rectangle((100,y,980,y+row_h),radius=int(cfg.get("answer_radius",20)),fill=_hex_rgb(cfg.get("answer"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
             opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
-            try: a=clean_text(opts["ABCD".index(rc)])
-            except Exception: a=""
-            if a:
-                # La bonne réponse apparaît dans un badge vert, sans transformer
-                # toute la question en vert.
-                answer_lines=wrap_text("✓ "+a,af,315)[:2]
-                ay=y+17
-                badge_h=78 if len(answer_lines)==1 else 92
-                draw.rounded_rectangle((680,y+16,1018,y+16+badge_h),radius=18,fill=_hex_rgb(cfg["correct"],theme["success"]),outline=_hex_rgb(cfg["correct"],theme["success"]),width=2)
-                for line in answer_lines:
-                    tw=text_width(draw,line,af); draw.text((850-tw/2,ay),line,font=af,fill="white"); ay+=34
-        elif active:
-            draw.text((700,y+31),"Réfléchis…",font=get_font(24),fill=_hex_rgb(cfg["muted"],theme["muted"]))
-            if timer is not None and cfg["show_timer"]:
-                draw_inline_timer(draw,theme,950,y+58,timer,timer_fraction,"quiz")
+            try: ans=clean_text(opts["ABCD".index(rc)])
+            except Exception: ans=""
+            draw.text((125,y+int(row_h*.22)),f"R{i+1}",font=get_font(24),fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
+            for j,line in enumerate(wrap_text("✓ "+ans,af,690)[:2]):
+                tw=text_width(draw,line,af); draw.text((540-tw/2,y+int(row_h*.18)+j*int(af.size*1.02)),line,font=af,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
 
-    draw_brand(draw,theme,channel,active_idx/max(1,total))
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+    draw_brand(draw,theme,active_idx/max(1,total))
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0):
@@ -1424,9 +1430,16 @@ def render_layout_editor(module, key_prefix):
         st.caption("Le fond automatique reste local et ne consomme pas de quota Gemini.")
     _save_settings()
 
-tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
+nav=st.session_state.get("module_nav","quiz")
+n1,n2=st.columns(2)
+with n1:
+    if st.button("🧠 QUIZ TIKTOK PRO",key="nav_quiz",use_container_width=True):
+        st.session_state["module_nav"]="quiz"; st.rerun()
+with n2:
+    if st.button("🗣️ VOCABULAIRE PRO",key="nav_vocab",use_container_width=True):
+        st.session_state["module_nav"]="vocab"; st.rerun()
 
-with tab1:
+if nav=="quiz":
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
     r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
     with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
@@ -1703,7 +1716,7 @@ with tab1:
                 except Exception as e:
                     st.error(f"Erreur pendant le montage V7 : {e}")
 
-with tab2:
+else:
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
     a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
     with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
@@ -1737,7 +1750,11 @@ with tab2:
             if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
                 active=0 if preview_state_v=="Mot 1 + minuteur" else 1 if preview_state_v=="Mot 2 + minuteur + traduction 1" else 2
-                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Mot 1 + minuteur" else None,timer_fraction=.72,reveal=False,video_title=th_v)
+                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,
+                    timer=3 if "minuteur" in preview_state_v else None,
+                    timer_fraction=.72,
+                    reveal=("traduction" not in preview_state_v),
+                    video_title=th_v)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]
                 phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
