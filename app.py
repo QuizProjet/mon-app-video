@@ -101,6 +101,18 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-preview-panel {padding:9px 12px !important;}
 .qvp-preview-note {margin-bottom:5px !important;}
 .qvp-actionbar {position:sticky;bottom:8px;z-index:90;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border:1px solid #d9e2ef;border-radius:14px;padding:7px;margin-top:10px;box-shadow:0 8px 22px rgba(15,23,42,.10);}
+
+.qvp-module-nav-title{font-size:1.05rem;font-weight:900;color:#111827;margin:0 0 4px 2px;}
+[data-testid="stRadio"]:has(input[value="🧠 Quizz TikTok Pro"]){margin-bottom:8px;}
+.qvp-module-nav-title + [data-testid="stRadio"] > div{display:flex !important;gap:6px !important;background:rgba(255,255,255,.97);border:1px solid #d9e2ef;border-radius:16px;padding:6px;box-shadow:0 8px 24px rgba(15,23,42,.08);position:sticky;top:4px;z-index:100;}
+.qvp-module-nav-title + [data-testid="stRadio"] label{flex:1 !important;justify-content:center !important;border-radius:11px !important;padding:9px 12px !important;border:1px solid transparent !important;font-weight:850 !important;}
+.qvp-module-nav-title + [data-testid="stRadio"] label:has(input:checked){background:#172033 !important;color:#fff !important;}
+.qvp-module-nav-title + [data-testid="stRadio"] label:has(input:not(:checked)){background:#f3f6fb !important;color:#334155 !important;}
+.qvp-module-nav-title + [data-testid="stRadio"] [data-testid="stMarkdownContainer"]{color:inherit !important;}
+@media (min-width: 900px){
+  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:first-child{min-width:0;}
+  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child{position:sticky !important;top:78px !important;align-self:flex-start !important;height:fit-content !important;}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -347,9 +359,27 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
-    if cfg.get("face_show",True):
+    face_style=str(cfg.get("face_style","Aucun"))
+    if cfg.get("face_show",True) and face_style != "Aucun":
         fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
-        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
+        if face_style == "Visage":
+            draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style="Réflexion",color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
+        elif face_style == "Point d'interrogation":
+            rr=max(18,icon_size)
+            draw.ellipse((fx-rr,fy-rr,fx+rr,fy+rr),fill=(8,14,30),outline="white",width=3)
+            qf=get_font(max(22,int(icon_size*1.25)))
+            q="?"; qw=text_width(draw,q,qf); qh=text_height(qf,q)
+            draw.text((fx-qw/2,fy-qh/2-3),q,font=qf,fill=_hex_rgb(cfg.get("face_color"),theme["accent"]))
+        elif face_style == "Badge quiz":
+            rr=max(18,icon_size)
+            draw.rounded_rectangle((fx-rr,fy-rr,fx+rr,fy+rr),radius=max(8,int(rr*.28)),fill=_hex_rgb(cfg.get("face_color"),theme["accent"]),outline="white",width=2)
+            qf=get_font(max(18,int(icon_size*1.0)))
+            q="Q"; qw=text_width(draw,q,qf); qh=text_height(qf,q)
+            draw.text((fx-qw/2,fy-qh/2-2),q,font=qf,fill=(8,14,30))
+        elif face_style == "Éclair":
+            draw_lightning_icon(draw,theme,fx,fy,max(18,icon_size))
+        else:
+            draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style="Simple",color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
     sf=get_font(int(cfg.get("score_size",31))); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
@@ -358,31 +388,44 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    """Minuteur entièrement personnalisable depuis l'éditeur."""
+    """Minuteur TikTok configurable : anneau, barre, pill, points ou minimal."""
     cfg=_layout("quiz")
     color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
-    if timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    cx=int(cfg.get("timer_x",540)); cy=int(cfg.get("timer_y",1045)); r=max(18,int(cfg.get("timer_size",58))); pr=int(3+10*clamp(pulse))
-    style=str(cfg.get("timer_style","Cercle")); text_size=max(18,int(cfg.get("timer_text_size",55)))
-    if style=="Cercle":
-        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=color,width=3)
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
-        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*clamp(fraction)),fill=color,width=max(4,int(r*.16)))
-    elif style=="Carré":
-        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=4)
-        draw.rectangle((cx-r+6,cy+r-10-int((2*r-16)*clamp(fraction)),cx+r-6,cy+r-6),fill=color)
+    if timer<=1:
+        color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
+    cx=int(cfg.get("timer_x",540)); cy=int(cfg.get("timer_y",1045)); r=max(18,int(cfg.get("timer_size",58))); pr=int(2+7*clamp(pulse))
+    style=str(cfg.get("timer_style","Anneau")); text_size=max(18,int(cfg.get("timer_text_size",55)))
+    frac=clamp(fraction)
+    dark=(7,12,26)
+    if style=="Anneau":
+        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=color,width=2)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=dark,outline=(255,255,255),width=3)
+        draw.arc((cx-r+7,cy-r+7,cx+r-7,cy+r-7),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.15)))
+    elif style=="Barre":
+        w=max(150,int(r*3.7)); h=max(14,int(r*.32)); x1=cx-w//2; y1=cy-h//2
+        draw.rounded_rectangle((x1,y1,x1+w,y1+h),radius=h//2,fill=dark,outline=(255,255,255),width=2)
+        draw.rounded_rectangle((x1+4,y1+4,x1+4+int((w-8)*frac),y1+h-4),radius=max(3,h//2-3),fill=color)
     elif style=="Pill":
-        w=int(r*2.7); h=int(r*1.15)
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=4)
-        draw.rounded_rectangle((cx-w+6,cy+h-10,cx-w+6+int((2*w-12)*clamp(fraction)),cy+h-6),radius=4,fill=color)
+        w=max(90,int(r*2.0)); h=max(28,int(r*.75))
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=dark,outline=color,width=3)
+        draw.rounded_rectangle((cx-w+5,cy+h-9,cx-w+5+int((2*w-10)*frac),cy+h-5),radius=3,fill=color)
+    elif style=="Points":
+        gap=max(10,int(r*.42)); dot=max(7,int(r*.12))
+        for i in range(3):
+            active=i < max(1,int(math.ceil(frac*3)))
+            c=color if active else (85,95,115)
+            xx=cx+(i-1)*gap
+            draw.ellipse((xx-dot,cy-dot,xx+dot,cy+dot),fill=c)
     else:
-        draw.line((cx-r,cy,cx+r,cy),fill=color,width=max(2,int(r*.08)))
+        w=max(120,int(r*2.8)); draw.line((cx-w//2,cy,cx+w//2,cy),fill=(85,95,115),width=max(3,int(r*.07)))
+        draw.line((cx-w//2,cy,cx-w//2+int(w*frac),cy),fill=color,width=max(5,int(r*.10)))
     ts=str(timer); tf=get_font(text_size); th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
     if cfg.get("timer_show_label",True):
         lbl=clean_text(cfg.get("timer_label","RÉFLÉCHIS")); lf=get_font(int(cfg.get("timer_label_size",23))); lw=text_width(draw,lbl,lf)
-        ly=cy+r+18
+        ly=cy+r+18 if style in ("Anneau","Points") else cy+r*.7+20
         draw.text(((WIDTH-lw)/2,ly),lbl,font=lf,fill=_hex_rgb(cfg.get("timer_label_color"),color))
+
 
 def _hex_rgb(value, fallback=(255,255,255)):
     try:
@@ -434,8 +477,8 @@ def _layout(module="quiz"):
         "show_title":True,"title_y":42,"title_size":46,
         "question_y":205,"question_size":47,"question_box_radius":28,
         "answer_y":405,"answer_h":91,"answer_gap":12,"answer_size":30,"answer_radius":20,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Anneau","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":True,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -525,21 +568,25 @@ def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
     color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer <= 1:
         color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    r=max(18,int(cfg.get("timer_size",58)*0.62))
-    style=str(cfg.get("timer_style","Cercle"))
-    if style=="Carré":
-        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=3)
-        draw.rectangle((cx-r+5,cy+r-7-int((2*r-14)*clamp(fraction)),cx+r-5,cy+r-5),fill=color)
+    r=max(18,int(cfg.get("timer_size",58)*0.62)); style=str(cfg.get("timer_style","Anneau")); frac=clamp(fraction)
+    if style=="Barre":
+        w=max(95,int(r*2.6)); h=max(10,int(r*.25)); x1=cx-w//2; y1=cy-h//2
+        draw.rounded_rectangle((x1,y1,x1+w,y1+h),radius=h//2,fill=(7,12,26),outline=color,width=2)
+        draw.rounded_rectangle((x1+3,y1+3,x1+3+int((w-6)*frac),y1+h-3),radius=max(2,h//2-2),fill=color)
     elif style=="Pill":
-        w=int(r*1.35); h=int(r*.65)
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=3)
-        draw.rounded_rectangle((cx-w+5,cy+h-7,cx-w+5+int((2*w-10)*clamp(fraction)),cy+h-4),radius=3,fill=color)
+        w=max(50,int(r*1.35)); h=max(18,int(r*.55))
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=2)
+    elif style=="Points":
+        gap=max(8,int(r*.38)); dot=max(5,int(r*.11))
+        for i in range(3):
+            xx=cx+(i-1)*gap; c=color if i < max(1,int(math.ceil(frac*3))) else (85,95,115)
+            draw.ellipse((xx-dot,cy-dot,xx+dot,cy+dot),fill=c)
+    elif style=="Minimal":
+        w=max(80,int(r*2.2)); draw.line((cx-w//2,cy,cx+w//2,cy),fill=color,width=max(3,int(r*.07)))
     else:
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline=color,width=3)
-        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*clamp(fraction)),fill=color,width=5)
-    tf=get_font(max(24,int(cfg.get("timer_text_size",55)*.72)))
-    ts=str(timer)
-    th=text_height(tf,ts)
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.14)))
+    tf=get_font(max(24,int(cfg.get("timer_text_size",55)*.72))); ts=str(timer); th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-2),ts,font=tf,fill=color)
 
 
@@ -1287,8 +1334,8 @@ def render_layout_editor(module, key_prefix):
             if is_quiz:
                 st.markdown("**🙂 Émotion à côté du titre**")
                 st.checkbox("Afficher l'émotion",True,key=p+"face_show")
-                st.selectbox("Style de l'émotion",["Réflexion","Sourire","Surpris","Clin d'œil","Simple"],key=p+"face_style")
-                st.slider("Taille de l'émotion",18,70,30,key=p+"face_size")
+                st.selectbox("Style de l'élément",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style")
+                st.slider("Taille de l'élément",18,70,30,key=p+"face_size")
                 st.slider("Décalage horizontal",-80,80,0,key=p+"face_x")
                 st.slider("Décalage vertical",-50,50,0,key=p+"face_y")
                 st.color_picker("Couleur de l'émotion","#FFCD40",key=p+"face_color")
@@ -1330,9 +1377,9 @@ def render_layout_editor(module, key_prefix):
         with a1:
             st.slider("Position verticale",800,1250,1045,key=p+"timer_y")
             st.slider("Position horizontale",250,830,540,key=p+"timer_x")
-            st.slider("Taille du cercle / bloc",30,120,58,key=p+"timer_size")
+            st.slider("Taille",30,120,58,key=p+"timer_size")
             st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
-            st.selectbox("Forme",["Cercle","Carré","Pill","Minimal"],key=p+"timer_style")
+            st.selectbox("Style du chronomètre",["Anneau","Barre","Pill","Points","Minimal"],key=p+"timer_style")
         with a2:
             st.checkbox("Afficher le texte sous le timer",True,key=p+"timer_show_label")
             st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
@@ -1361,9 +1408,10 @@ def render_layout_editor(module, key_prefix):
     st.markdown('</div>', unsafe_allow_html=True)
     _save_settings()
 
-tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
+st.markdown('<div class="qvp-module-nav-title">🎬 QuizVideo Pro</div>', unsafe_allow_html=True)
+app_module=st.radio("Application",["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"],horizontal=True,key="qvp_app_module",label_visibility="collapsed")
 
-with tab1:
+if app_module=="🧠 Quizz TikTok Pro":
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 QUIZVIDEO PRO</div><h1>Quiz TikTok Pro</h1><p>Crée • personnalise • génère tes Shorts 9:16</p></div><div class="qvp-hero-pill">15 questions max</div></div>',unsafe_allow_html=True)
     r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
     with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
@@ -1633,7 +1681,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
             except Exception as e:
                 st.error(f"Erreur pendant le montage V7 : {e}")
 
-with tab2:
+elif app_module=="🗣️ Vocabulaire Pro":
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ QUIZVIDEO PRO</div><h1>Vocabulaire Pro</h1><p>Crée • personnalise • génère tes vidéos vocabulaire 9:16</p></div><div class="qvp-hero-pill">15 mots max</div></div>',unsafe_allow_html=True)
     a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
     with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
