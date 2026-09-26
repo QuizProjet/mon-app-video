@@ -565,37 +565,46 @@ def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
 
 
 def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0, video_title="Voyage"):
-    """Vocabulaire Style 2 : la liste se construit progressivement sans effacer les mots précédents."""
+    """Style 2 validé : une seule page cumulative.
+    Mot à gauche -> temps de réflexion au centre -> traduction en face après révélation.
+    Les lignes terminées restent visibles et les mots futurs restent cachés.
+    Les réglages de l'éditeur pilotent aussi ce mode.
+    """
     cfg=_layout("vocab"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
-    img=add_top_glow(base,theme,1.0); draw=ImageDraw.Draw(img)
-    total=len(items)
-    rounded_text(draw,(55,35,1025,100),f"VOCABULAIRE • {min(active_idx+1,total)}/{total}",get_font(32),_hex_rgb(cfg.get("text"),(255,255,255)),_hex_rgb(cfg.get("primary"),theme["accent"]),2,22)
-    top=125; row_h=105; gap=7; left=42; right=1038
-    qf=get_font(34); af=get_font(30); small=get_font(22)
-    visible_items=items[:min(active_idx+1,15)]
+    img=add_top_glow(base,theme,1.0+0.18*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
+    total=max(1,len(items)); visible_items=items[:min(active_idx+1,total)]
+    if cfg.get("show_title",True):
+        title_y=int(cfg.get("title_y",70)); title_size=int(cfg.get("title_size",32))
+        draw.text((55,title_y),clean_text(video_title or "Vocabulaire"),font=get_font(title_size),fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+    score_y=int(cfg.get("score_y",112)); score_size=int(cfg.get("score_size",31)); score=f"{min(active_idx+1,total)}/{total}"
+    draw.rounded_rectangle((WIDTH-150,score_y-8,WIDTH-55,score_y+score_size+10),radius=int(cfg.get("score_radius",22)),fill=_hex_rgb(cfg.get("score_bg"),(7,13,28)),outline=_hex_rgb(cfg.get("score_color"),theme["accent"]),width=2)
+    draw.text((WIDTH-135,score_y),score,font=get_font(score_size),fill=_hex_rgb(cfg.get("score_color"),theme["accent"]))
+    top=int(cfg.get("answer_y",760)); row_h=max(70,int(cfg.get("answer_h",91))); gap=max(2,int(cfg.get("answer_gap",12)))
+    left=42; right=1038; word_size=int(cfg.get("question_size",88)); trans_size=int(cfg.get("answer_size",58)); radius=int(cfg.get("answer_radius",20))
+    wf=get_font(word_size); tf=get_font(trans_size); small=get_font(22)
+    if len(visible_items)>1:
+        max_bottom=1770; needed=top+len(visible_items)*row_h+(len(visible_items)-1)*gap
+        if needed>max_bottom:
+            row_h=max(58,int((max_bottom-top-(len(visible_items)-1)*gap)/len(visible_items)))
+            wf=get_font(max(30,min(word_size,int(row_h*.52)))); tf=get_font(max(24,min(trans_size,int(row_h*.40))))
     for i,item in enumerate(visible_items):
-        y=top+i*(row_h+gap)
-        if y>1800: break
-        active=(i==active_idx); answered=(i<active_idx) or (i==active_idx and reveal)
-        fill=_hex_rgb(cfg.get("answer2" if i%2 else "answer"),theme["card2"])
-        outline=_hex_rgb(cfg.get("primary"),theme["accent"]) if active else (80,100,130)
-        if answered: fill=_hex_rgb(cfg.get("correct"),theme["success"]); outline=theme["success"]
-        draw.rounded_rectangle((left,y,right,y+row_h),radius=18,fill=fill,outline=outline,width=3 if active else 1)
-        draw.text((65,y+12),f"{i+1}",font=small,fill="white")
-        fr=clean_text(item.get("fr", "")); tr=clean_text(item.get("trad", ""))
-        draw.text((125,y+13),fr,font=qf,fill="white")
+        y=top+i*(row_h+gap); active=(i==active_idx); answered=(i<active_idx) or (i==active_idx and reveal)
+        fill=_hex_rgb(cfg.get("answer2" if i%2 else "answer"),theme["card2"]); outline=_hex_rgb(cfg.get("primary"),theme["accent"]) if active else (80,100,130)
+        draw.rounded_rectangle((left,y,right,y+row_h),radius=radius,fill=fill,outline=outline,width=3 if active else 1)
+        draw.text((62,y+int(row_h*.18)),str(i+1),font=small,fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
+        fr=clean_text(item.get("fr", "")); tr=clean_text(item.get("trad", "")); wy=y+int(row_h*.18)
+        for line in wrap_text(fr,wf,390)[:2]:
+            draw.text((125,wy),line,font=wf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); wy+=int(wf.size*1.02)
+        if active and cfg.get("show_timer",True) and timer is not None:
+            draw_inline_timer(draw,theme,565,y+row_h//2,timer,timer_fraction,"vocab")
+        elif active and not answered:
+            draw.text((545,y+int(row_h*.28)),"…",font=get_font(max(28,int(row_h*.38))),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
         if answered:
-            ans=wrap_text("✓ "+tr,af,380)[:2]
-            ay=y+18
-            for line in ans:
-                draw.text((650,ay),line,font=af,fill="white"); ay+=32
-        elif active:
-            draw.text((720,y+25),"…",font=get_font(38),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
-            if timer is not None and cfg.get("show_timer",True):
-                draw_inline_timer(draw,theme,955,y+52,timer,timer_fraction,"vocab")
+            for j,line in enumerate(wrap_text("✓ "+tr,tf,380)[:2]):
+                draw.text((650,y+int(row_h*.17)+j*int(tf.size*1.02)),line,font=tf,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
     draw_brand(draw,theme,channel,active_idx/max(1,total))
     draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
     return img
@@ -1464,7 +1473,15 @@ with tab1:
             st.image(preview, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
-    st.markdown('''<div class="qvp-actionbar"><b>🎲 Variation</b> &nbsp;&nbsp; <b>💾 Enregistrer</b> &nbsp;&nbsp; <b>🎬 Générer</b></div>''', unsafe_allow_html=True)
+    aq1,aq2,aq3=st.columns([1,1,1])
+    with aq1:
+        if st.button("🎲 Variation",key="studio_variation_q",use_container_width=True):
+            st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
+    with aq2:
+        if st.button("💾 Enregistrer",key="studio_save_q",use_container_width=True):
+            _save_settings(); st.success("Style enregistré.")
+    with aq3:
+        st.caption("🎬 Générer ci-dessous")
     with st.expander("🎯 Contenu — Questions / réponses", expanded=False):
         mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
         if mode_q=="🤖 IA Gemini":
@@ -1712,14 +1729,14 @@ with tab2:
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
         if style_v.startswith("Style 2"):
-            preview_state_v=st.radio("Aperçu",["Mot 1 + minuteur","Mot 2 + traduction 1","Mot 3 + traductions 1–2"],horizontal=True,key="preview_state_v")
+            preview_state_v=st.radio("Aperçu",["Mot 1 + minuteur","Mot 2 + minuteur + traduction 1","Mot 3 + minuteur + traductions 1–2"],horizontal=True,key="preview_state_v")
         else:
             preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
             if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
-                active=0 if preview_state_v=="Mot 1 + minuteur" else 1 if preview_state_v=="Mot 2 + traduction 1" else 2
+                active=0 if preview_state_v=="Mot 1 + minuteur" else 1 if preview_state_v=="Mot 2 + minuteur + traduction 1" else 2
                 preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Mot 1 + minuteur" else None,timer_fraction=.72,reveal=False,video_title=th_v)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]
@@ -1728,6 +1745,16 @@ with tab2:
             st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
+    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
+    av1,av2,av3=st.columns([1,1,1])
+    with av1:
+        if st.button("🎲 Variation",key="studio_variation_v",use_container_width=True):
+            st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
+    with av2:
+        if st.button("💾 Enregistrer",key="studio_save_v",use_container_width=True):
+            _save_settings(); st.success("Style enregistré.")
+    with av3:
+        st.caption("🎬 Générer ci-dessous")
     with st.expander("🎯 Contenu — Mots / traductions", expanded=False):
         vb1,vb2=st.columns(2)
         with vb1:
