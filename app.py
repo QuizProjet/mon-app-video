@@ -101,18 +101,6 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-preview-panel {padding:9px 12px !important;}
 .qvp-preview-note {margin-bottom:5px !important;}
 .qvp-actionbar {position:sticky;bottom:8px;z-index:90;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border:1px solid #d9e2ef;border-radius:14px;padding:7px;margin-top:10px;box-shadow:0 8px 22px rgba(15,23,42,.10);}
-
-.qvp-module-nav-title{font-size:1.05rem;font-weight:900;color:#111827;margin:0 0 4px 2px;}
-[data-testid="stRadio"]:has(input[value="🧠 Quizz TikTok Pro"]){margin-bottom:8px;}
-.qvp-module-nav-title + [data-testid="stRadio"] > div{display:flex !important;gap:6px !important;background:rgba(255,255,255,.97);border:1px solid #d9e2ef;border-radius:16px;padding:6px;box-shadow:0 8px 24px rgba(15,23,42,.08);position:sticky;top:4px;z-index:100;}
-.qvp-module-nav-title + [data-testid="stRadio"] label{flex:1 !important;justify-content:center !important;border-radius:11px !important;padding:9px 12px !important;border:1px solid transparent !important;font-weight:850 !important;}
-.qvp-module-nav-title + [data-testid="stRadio"] label:has(input:checked){background:#172033 !important;color:#fff !important;}
-.qvp-module-nav-title + [data-testid="stRadio"] label:has(input:not(:checked)){background:#f3f6fb !important;color:#334155 !important;}
-.qvp-module-nav-title + [data-testid="stRadio"] [data-testid="stMarkdownContainer"]{color:inherit !important;}
-@media (min-width: 900px){
-  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:first-child{min-width:0;}
-  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child{position:sticky !important;top:78px !important;align-self:flex-start !important;height:fit-content !important;}
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -359,27 +347,9 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
-    face_style=str(cfg.get("face_style","Aucun"))
-    if cfg.get("face_show",True) and face_style != "Aucun":
+    if cfg.get("face_show",True):
         fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
-        if face_style == "Visage":
-            draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style="Réflexion",color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
-        elif face_style == "Point d'interrogation":
-            rr=max(18,icon_size)
-            draw.ellipse((fx-rr,fy-rr,fx+rr,fy+rr),fill=(8,14,30),outline="white",width=3)
-            qf=get_font(max(22,int(icon_size*1.25)))
-            q="?"; qw=text_width(draw,q,qf); qh=text_height(qf,q)
-            draw.text((fx-qw/2,fy-qh/2-3),q,font=qf,fill=_hex_rgb(cfg.get("face_color"),theme["accent"]))
-        elif face_style == "Badge quiz":
-            rr=max(18,icon_size)
-            draw.rounded_rectangle((fx-rr,fy-rr,fx+rr,fy+rr),radius=max(8,int(rr*.28)),fill=_hex_rgb(cfg.get("face_color"),theme["accent"]),outline="white",width=2)
-            qf=get_font(max(18,int(icon_size*1.0)))
-            q="Q"; qw=text_width(draw,q,qf); qh=text_height(qf,q)
-            draw.text((fx-qw/2,fy-qh/2-2),q,font=qf,fill=(8,14,30))
-        elif face_style == "Éclair":
-            draw_lightning_icon(draw,theme,fx,fy,max(18,icon_size))
-        else:
-            draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style="Simple",color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
+        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
     sf=get_font(int(cfg.get("score_size",31))); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
@@ -388,44 +358,38 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    """Minuteur TikTok configurable : anneau, barre, pill, points ou minimal."""
+    """Minuteur entièrement personnalisable depuis l'éditeur."""
     cfg=_layout("quiz")
     color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
-    if timer<=1:
-        color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    cx=int(cfg.get("timer_x",540)); cy=int(cfg.get("timer_y",1045)); r=max(18,int(cfg.get("timer_size",58))); pr=int(2+7*clamp(pulse))
-    style=str(cfg.get("timer_style","Anneau")); text_size=max(18,int(cfg.get("timer_text_size",55)))
-    frac=clamp(fraction)
-    dark=(7,12,26)
-    if style=="Anneau":
-        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=color,width=2)
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=dark,outline=(255,255,255),width=3)
-        draw.arc((cx-r+7,cy-r+7,cx+r-7,cy+r-7),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.15)))
-    elif style=="Barre":
-        w=max(150,int(r*3.7)); h=max(14,int(r*.32)); x1=cx-w//2; y1=cy-h//2
-        draw.rounded_rectangle((x1,y1,x1+w,y1+h),radius=h//2,fill=dark,outline=(255,255,255),width=2)
-        draw.rounded_rectangle((x1+4,y1+4,x1+4+int((w-8)*frac),y1+h-4),radius=max(3,h//2-3),fill=color)
+    if timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
+    cx=int(cfg.get("timer_x",540)); cy=int(cfg.get("timer_y",1045)); r=max(18,int(cfg.get("timer_size",58))); pr=int(3+10*clamp(pulse))
+    style=str(cfg.get("timer_style","Cercle")); text_size=max(18,int(cfg.get("timer_text_size",55)))
+    if style in ("Cercle","Anneau"):
+        draw.ellipse((cx-r-pr,cy-r-pr,cx+r+pr,cy+r+pr),outline=color,width=3)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline="white",width=4)
+        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*clamp(fraction)),fill=color,width=max(4,int(r*.16)))
+    elif style in ("Carré","Barre"):
+        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=4)
+        draw.rectangle((cx-r+6,cy+r-10-int((2*r-16)*clamp(fraction)),cx+r-6,cy+r-6),fill=color)
     elif style=="Pill":
-        w=max(90,int(r*2.0)); h=max(28,int(r*.75))
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=dark,outline=color,width=3)
-        draw.rounded_rectangle((cx-w+5,cy+h-9,cx-w+5+int((2*w-10)*frac),cy+h-5),radius=3,fill=color)
+        w=int(r*2.7); h=int(r*1.15)
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=4)
+        draw.rounded_rectangle((cx-w+6,cy+h-10,cx-w+6+int((2*w-12)*clamp(fraction)),cy+h-6),radius=4,fill=color)
     elif style=="Points":
-        gap=max(10,int(r*.42)); dot=max(7,int(r*.12))
-        for i in range(3):
-            active=i < max(1,int(math.ceil(frac*3)))
-            c=color if active else (85,95,115)
-            xx=cx+(i-1)*gap
-            draw.ellipse((xx-dot,cy-dot,xx+dot,cy+dot),fill=c)
+        for n in range(7):
+            x=cx-r+int((2*r)*n/6)
+            rr=max(3,int(r*.07))
+            draw.ellipse((x-rr,cy-rr,x+rr,cy+rr),fill=color if n<=int(6*clamp(fraction)) else (90,100,120))
+    elif style=="Minimal":
+        draw.line((cx-r,cy,cx-r+int(2*r*clamp(fraction)),cy),fill=color,width=max(3,int(r*.10)))
     else:
-        w=max(120,int(r*2.8)); draw.line((cx-w//2,cy,cx+w//2,cy),fill=(85,95,115),width=max(3,int(r*.07)))
-        draw.line((cx-w//2,cy,cx-w//2+int(w*frac),cy),fill=color,width=max(5,int(r*.10)))
+        draw.line((cx-r,cy,cx+r,cy),fill=color,width=max(2,int(r*.08)))
     ts=str(timer); tf=get_font(text_size); th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
     if cfg.get("timer_show_label",True):
         lbl=clean_text(cfg.get("timer_label","RÉFLÉCHIS")); lf=get_font(int(cfg.get("timer_label_size",23))); lw=text_width(draw,lbl,lf)
-        ly=cy+r+18 if style in ("Anneau","Points") else cy+r*.7+20
+        ly=cy+r+18
         draw.text(((WIDTH-lw)/2,ly),lbl,font=lf,fill=_hex_rgb(cfg.get("timer_label_color"),color))
-
 
 def _hex_rgb(value, fallback=(255,255,255)):
     try:
@@ -477,8 +441,8 @@ def _layout(module="quiz"):
         "show_title":True,"title_y":42,"title_size":46,
         "question_y":205,"question_size":47,"question_box_radius":28,
         "answer_y":405,"answer_h":91,"answer_gap":12,"answer_size":30,"answer_radius":20,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Anneau","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":True,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -501,11 +465,12 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
     f=get_font(cfg["question_size"]); lines=wrap_text(question,f,900)[:3]; hi=_highlight_words(question); yy=int(cfg["question_y"])
     box_top=yy-18; box_bottom=yy+len(lines)*int(cfg["question_size"]*1.18)+12
     radius=int(cfg["question_box_radius"])
-    draw.rounded_rectangle((58,box_top,1022,box_bottom),radius=radius,fill=(6,12,28,218),outline=_hex_rgb(cfg["primary"],theme["accent"]),width=2)
+    box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
+    draw.rounded_rectangle((left,box_top,right,box_bottom),radius=radius,fill=(6,12,28,218),outline=_hex_rgb(cfg["primary"],theme["accent"]),width=2)
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
-        x=(WIDTH-totalw)/2+int(5*math.sin(phase*math.pi*2*cfg["motion_strength"]))
+        x=center_x-totalw/2+int(5*math.sin(phase*math.pi*2*cfg["motion_strength"]))
         for w,ww in zip(words,widths):
             key=w.strip(".,?!:;()[]«»\"'").lower(); fill=_hex_rgb(cfg["primary"],theme["accent"]) if key in hi else _hex_rgb(cfg["text"],(255,255,255))
             draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
@@ -568,25 +533,21 @@ def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
     color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer <= 1:
         color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    r=max(18,int(cfg.get("timer_size",58)*0.62)); style=str(cfg.get("timer_style","Anneau")); frac=clamp(fraction)
-    if style=="Barre":
-        w=max(95,int(r*2.6)); h=max(10,int(r*.25)); x1=cx-w//2; y1=cy-h//2
-        draw.rounded_rectangle((x1,y1,x1+w,y1+h),radius=h//2,fill=(7,12,26),outline=color,width=2)
-        draw.rounded_rectangle((x1+3,y1+3,x1+3+int((w-6)*frac),y1+h-3),radius=max(2,h//2-2),fill=color)
+    r=max(18,int(cfg.get("timer_size",58)*0.62))
+    style=str(cfg.get("timer_style","Cercle"))
+    if style=="Carré":
+        draw.rounded_rectangle((cx-r,cy-r,cx+r,cy+r),radius=max(8,int(r*.22)),fill=(7,12,26),outline=color,width=3)
+        draw.rectangle((cx-r+5,cy+r-7-int((2*r-14)*clamp(fraction)),cx+r-5,cy+r-5),fill=color)
     elif style=="Pill":
-        w=max(50,int(r*1.35)); h=max(18,int(r*.55))
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=2)
-    elif style=="Points":
-        gap=max(8,int(r*.38)); dot=max(5,int(r*.11))
-        for i in range(3):
-            xx=cx+(i-1)*gap; c=color if i < max(1,int(math.ceil(frac*3))) else (85,95,115)
-            draw.ellipse((xx-dot,cy-dot,xx+dot,cy+dot),fill=c)
-    elif style=="Minimal":
-        w=max(80,int(r*2.2)); draw.line((cx-w//2,cy,cx+w//2,cy),fill=color,width=max(3,int(r*.07)))
+        w=int(r*1.35); h=int(r*.65)
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=(7,12,26),outline=color,width=3)
+        draw.rounded_rectangle((cx-w+5,cy+h-7,cx-w+5+int((2*w-10)*clamp(fraction)),cy+h-4),radius=3,fill=color)
     else:
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(7,12,26),outline=color,width=3)
-        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.14)))
-    tf=get_font(max(24,int(cfg.get("timer_text_size",55)*.72))); ts=str(timer); th=text_height(tf,ts)
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*clamp(fraction)),fill=color,width=5)
+    tf=get_font(max(24,int(cfg.get("timer_text_size",55)*.72)))
+    ts=str(timer)
+    th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-2),ts,font=tf,fill=color)
 
 
@@ -1312,125 +1273,123 @@ Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div
 """, unsafe_allow_html=True)
 
 
+def _ss_default(key, value):
+    """Initialise une valeur de widget une seule fois pour éviter les conflits Streamlit."""
+    if key not in st.session_state:
+        st.session_state[key]=value
+
 def render_layout_editor(module, key_prefix):
-    """Éditeur compact : contrôles regroupés en onglets pour éviter de faire défiler la page."""
+    """Studio compact : une seule famille de réglages est visible à la fois."""
     is_quiz=module=="quiz"; p=key_prefix
-    # Valeurs par défaut persistantes : on initialise Session State une seule fois,
-    # puis les widgets utilisent uniquement leur clé (sans valeur par défaut concurrente).
-    _editor_defaults={
+    defaults={
         "show_title":True,"title_y":42 if is_quiz else 70,"title_size":46 if is_quiz else 32,
-        "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
         "question_y":205 if is_quiz else 500,"question_size":47 if is_quiz else 88,
-        "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
         "answer_y":405 if is_quiz else 760,"answer_h":91,"answer_gap":12,"answer_size":30 if is_quiz else 58,"answer_radius":20,
         "show_explanation":True,"explanation_y":1135,"explanation_h":380,
+        "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
+        "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
         "show_timer":True,"timer_y":1045,"timer_x":540,"timer_size":58,"timer_text_size":55,"timer_style":"Anneau",
         "timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
         "bg_opacity":18,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
     }
-    for _k,_v in _editor_defaults.items():
-        _full=p+_k
-        if _full not in st.session_state:
-            st.session_state[_full]=_v
-    st.markdown('<div class="qvp-editor-tabs">', unsafe_allow_html=True)
-    t0,t1,t2,t3,t4,t5=st.tabs(["🧩 Structure","📐 Position & taille","🎞️ Animation","🎨 Couleurs","⏱️ Minuteur","🌄 Fond"])
-    with t0:
-        st.markdown("**Structure actuelle**")
+    for k,v in defaults.items(): _ss_default(p+k,v)
+
+    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR</div>',unsafe_allow_html=True)
+    tabs=st.tabs(["🧩 Structure","📐 Position & taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🌄 Fond"])
+    with tabs[0]:
         if is_quiz:
-            st.info("Style 1 : Question → 4 réponses → minuteur → bonne réponse en vert → explication.\n\nStyle 2 : Q1 → minuteur → R1 → Q2 → minuteur → R2… Les précédentes restent visibles jusqu'à Q15.")
+            st.info("**Style 1** — Question → 4 réponses → minuteur → bonne réponse verte → explication.\n\n**Style 2** — Q1 → minuteur → R1 → Q2 → minuteur → R2… cumulatif jusqu’à 15 questions.")
         else:
-            st.info("Style 1 : Mot → minuteur → traduction.\n\nStyle 2 : Mot 1 → minuteur → traduction 1 → Mot 2 → traduction 2… cumulatif jusqu'à 15 mots.")
-        st.caption("Le choix de la structure se trouve dans la barre de commande du module. Les réglages ci-dessous contrôlent uniquement le rendu visuel.")
-    with t1:
-        st.caption("Modifie un réglage : l’aperçu fixe à droite se met à jour automatiquement.")
+            st.info("**Style 1** — Mot → minuteur → traduction.\n\n**Style 2 — Cumulatif** — Mot 1 → minuteur → traduction 1 → Mot 2 → minuteur → traduction 2… jusqu’à 15 mots, les précédents restent visibles.")
+    with tabs[1]:
         c1,c2=st.columns(2)
         with c1:
+            st.markdown("**Question / mot**")
+            _ss_default(p+"question_x",540)
+            st.slider("Position X",0,1080,st.session_state[p+"question_x"],key=p+"question_x")
+            st.slider("Position Y",120,850,st.session_state[p+"question_y"],key=p+"question_y")
+            st.slider("Taille",28,100,st.session_state[p+"question_size"],key=p+"question_size")
+            if is_quiz:
+                st.slider("Largeur",500,1000,964,key=p+"question_width")
+                st.slider("Hauteur / rayon",10,60,28,key=p+"question_box_radius")
+            st.markdown("**Titre**")
             st.checkbox("Afficher le titre",key=p+"show_title")
-            st.slider("Position du titre",25,180,42 if is_quiz else 70,key=p+"title_y")
-            st.slider("Taille du titre",24,72,46 if is_quiz else 32,key=p+"title_size")
+            st.slider("Position Y du titre",25,180,st.session_state[p+"title_y"],key=p+"title_y")
+            st.slider("Taille du titre",24,72,st.session_state[p+"title_size"],key=p+"title_size")
             if is_quiz:
-                st.markdown("**🙂 Émotion à côté du titre**")
-                st.checkbox("Afficher l'émotion",key=p+"face_show")
-                st.selectbox("Style de l'élément",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style")
-                st.slider("Taille de l'élément",18,70,30,key=p+"face_size")
-                st.slider("Décalage horizontal",-80,80,0,key=p+"face_x")
-                st.slider("Décalage vertical",-50,50,0,key=p+"face_y")
-                st.color_picker("Couleur de l'émotion","#FFCD40",key=p+"face_color")
-            st.slider("Position question / mot",120,850,205 if is_quiz else 500,key=p+"question_y")
-            st.slider("Taille question / mot",28,100,47 if is_quiz else 88,key=p+"question_size")
-            if is_quiz:
-                st.markdown("**🔢 Compteur 1/8**")
-                st.slider("Position verticale",70,220,112,key=p+"score_y")
-                st.slider("Taille du compteur",20,70,31,key=p+"score_size")
-                st.slider("Arrondi du compteur",5,45,22,key=p+"score_radius")
-                st.color_picker("Couleur du 1/8","#FFCD40",key=p+"score_color")
-                st.color_picker("Fond du 1/8","#070D1C",key=p+"score_bg")
+                st.markdown("**Compteur**")
+                st.slider("Position Y",70,220,st.session_state[p+"score_y"],key=p+"score_y")
+                st.slider("Taille",20,70,st.session_state[p+"score_size"],key=p+"score_size")
+                st.slider("Arrondi",5,45,st.session_state[p+"score_radius"],key=p+"score_radius")
         with c2:
+            st.markdown("**Réponses / traduction**")
             if is_quiz:
-                st.slider("Position des réponses",300,900,405,key=p+"answer_y")
-                st.slider("Hauteur des réponses",55,130,91,key=p+"answer_h")
-                st.slider("Espacement A/B/C/D",4,30,12,key=p+"answer_gap")
-                st.slider("Taille du texte des réponses",20,52,30,key=p+"answer_size")
-                st.slider("Arrondi des cartes",5,40,20,key=p+"answer_radius")
+                st.slider("Position Y",300,900,st.session_state[p+"answer_y"],key=p+"answer_y")
+                st.slider("Taille du texte",20,52,st.session_state[p+"answer_size"],key=p+"answer_size")
+                st.slider("Espacement",4,30,st.session_state[p+"answer_gap"],key=p+"answer_gap")
+                st.slider("Hauteur",55,130,st.session_state[p+"answer_h"],key=p+"answer_h")
             else:
-                st.slider("Position de la traduction",650,1100,760,key=p+"answer_y")
-                st.slider("Taille de la traduction",28,90,58,key=p+"answer_size")
-                st.slider("Arrondi de la carte",5,40,20,key=p+"answer_radius")
+                st.slider("Position Y",650,1100,st.session_state[p+"answer_y"],key=p+"answer_y")
+                st.slider("Taille",28,90,st.session_state[p+"answer_size"],key=p+"answer_size")
+            st.slider("Arrondi",5,40,st.session_state[p+"answer_radius"],key=p+"answer_radius")
+            st.markdown("**Explication**")
             st.checkbox("Afficher l'explication",key=p+"show_explanation")
-            st.slider("Position de l'explication",950,1400,1135,key=p+"explanation_y")
-            st.slider("Hauteur de l'explication",220,520,380,key=p+"explanation_h")
-    with t2:
-        a1,a2=st.columns(2)
-        with a1:
-            st.selectbox("Style",["Glissement","Pop","Aucune"],key=p+"animation")
-            st.slider("Vitesse",0.5,2.0,1.0,0.05,key=p+"animation_speed")
-            st.slider("Entrée des éléments",0.0,2.0,1.0,0.05,key=p+"animation_strength")
-        with a2:
-            st.slider("Mouvement général",0.0,2.0,1.0,0.05,key=p+"motion_strength")
-            st.caption("Les animations restent synchronisées avec la durée de la voix lors du rendu final.")
-    with t4:
+            st.slider("Position Y",950,1400,st.session_state[p+"explanation_y"],key=p+"explanation_y")
+            st.slider("Hauteur",220,520,st.session_state[p+"explanation_h"],key=p+"explanation_h")
+    with tabs[2]:
+        c1,c2=st.columns(2)
+        with c1:
+            st.color_picker("Accent / titre",key=p+"primary")
+            st.color_picker("Réponses",key=p+"answer")
+            if is_quiz: st.color_picker("Deuxième couleur réponses",key=p+"answer2")
+        with c2:
+            st.color_picker("Bonne réponse",key=p+"correct")
+            st.color_picker("Texte",key=p+"text")
+            st.color_picker("Texte secondaire",key=p+"muted")
+            if is_quiz:
+                st.markdown("**Émotion**")
+                st.selectbox("Style",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style")
+                st.checkbox("Afficher",key=p+"face_show")
+                st.slider("Taille",18,70,st.session_state[p+"face_size"],key=p+"face_size")
+    with tabs[3]:
+        c1,c2=st.columns(2)
+        with c1:
+            st.selectbox("Animation",["Glissement","Pop","Aucune"],key=p+"animation")
+            st.slider("Vitesse",0.5,2.0,st.session_state[p+"animation_speed"],0.05,key=p+"animation_speed")
+        with c2:
+            st.slider("Entrée des éléments",0.0,2.0,st.session_state[p+"animation_strength"],0.05,key=p+"animation_strength")
+            st.slider("Mouvement général",0.0,2.0,st.session_state[p+"motion_strength"],0.05,key=p+"motion_strength")
+        st.caption("Les animations sont ensuite synchronisées sur la durée réelle des voix au rendu.")
+    with tabs[4]:
         st.checkbox("Afficher le compte à rebours",key=p+"show_timer")
-        a1,a2=st.columns(2)
-        with a1:
-            st.slider("Position verticale",800,1250,1045,key=p+"timer_y")
-            st.slider("Position horizontale",250,830,540,key=p+"timer_x")
-            st.slider("Taille",30,120,58,key=p+"timer_size")
-            st.slider("Taille du chiffre",20,100,55,key=p+"timer_text_size")
+        c1,c2=st.columns(2)
+        with c1:
+            st.slider("Position X",250,830,st.session_state[p+"timer_x"],key=p+"timer_x")
+            st.slider("Position Y",800,1250,st.session_state[p+"timer_y"],key=p+"timer_y")
+            st.slider("Taille",30,120,st.session_state[p+"timer_size"],key=p+"timer_size")
+            st.slider("Taille du chiffre",20,100,st.session_state[p+"timer_text_size"],key=p+"timer_text_size")
+        with c2:
             st.selectbox("Style du chronomètre",["Anneau","Barre","Pill","Points","Minimal"],key=p+"timer_style")
-        with a2:
-            st.checkbox("Afficher le texte sous le timer",key=p+"timer_show_label")
-            st.text_input("Texte du timer","RÉFLÉCHIS",key=p+"timer_label")
-            st.slider("Taille du texte",14,42,23,key=p+"timer_label_size")
-            st.color_picker("Couleur du timer","#FFCD40",key=p+"timer_color")
-            st.color_picker("Couleur du texte","#FFCD40",key=p+"timer_label_color")
-    with t3:
+            st.checkbox("Afficher le texte",key=p+"timer_show_label")
+            st.text_input("Texte",key=p+"timer_label")
+            st.slider("Taille du texte",14,42,st.session_state[p+"timer_label_size"],key=p+"timer_label_size")
+            st.color_picker("Couleur",key=p+"timer_color")
+    with tabs[5]:
         c1,c2=st.columns(2)
         with c1:
-            st.color_picker("Accent / titre", "#FFCD40", key=p+"primary")
-            st.color_picker("Réponses", "#11305B", key=p+"answer")
-            if is_quiz: st.color_picker("Deuxième couleur réponses", "#143765", key=p+"answer2")
+            st.slider("Assombrissement",0,80,st.session_state[p+"bg_opacity"],key=p+"bg_opacity")
+            st.slider("Zoom",1.00,1.25,st.session_state[p+"bg_zoom"],0.01,key=p+"bg_zoom")
         with c2:
-            st.color_picker("Bonne réponse", "#2EDA7B", key=p+"correct")
-            st.color_picker("Texte", "#FFFFFF", key=p+"text")
-            st.color_picker("Texte secondaire", "#A5B5D0", key=p+"muted")
-    with t5:
-        c1,c2=st.columns(2)
-        with c1:
-            st.slider("Assombrissement",0,80,18,key=p+"bg_opacity")
-            st.slider("Zoom",1.00,1.25,1.02,0.01,key=p+"bg_zoom")
-        with c2:
-            st.slider("Déplacement horizontal",-120,120,0,key=p+"bg_x")
-            st.slider("Déplacement vertical",-120,120,0,key=p+"bg_y")
-        st.info("✨ Le fond automatique est choisi selon le sujet de chaque question. Ces réglages modifient son cadrage sans consommer Gemini.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.slider("Déplacement X",-120,120,st.session_state[p+"bg_x"],key=p+"bg_x")
+            st.slider("Déplacement Y",-120,120,st.session_state[p+"bg_y"],key=p+"bg_y")
+        st.caption("Le fond automatique reste local et ne consomme pas de quota Gemini.")
     _save_settings()
 
-st.markdown('<div class="qvp-module-nav-title">🎬 QuizVideo Pro</div>', unsafe_allow_html=True)
-app_module=st.radio("Application",["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"],horizontal=True,key="qvp_app_module",label_visibility="collapsed")
+tab1,tab2=st.tabs(["🧠 Quizz TikTok Pro","🗣️ Vocabulaire Pro"])
 
-if app_module=="🧠 Quizz TikTok Pro":
+with tab1:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🎬 QUIZVIDEO PRO</div><h1>Quiz TikTok Pro</h1><p>Crée • personnalise • génère tes Shorts 9:16</p></div><div class="qvp-hero-pill">15 questions max</div></div>',unsafe_allow_html=True)
     r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
     with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
@@ -1441,8 +1400,8 @@ if app_module=="🧠 Quizz TikTok Pro":
     with r5: channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
     with r6: hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
     with r7: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
-    with r8: style_q=st.radio("Structure",["Style 1","Style 2"],horizontal=True,key="styleq_compact")
-    style_q_full="Style 1 — 4 réponses + révélation" if style_q=="Style 1" else "Style 2 — questions/réponses cumulatives"
+    with r8: style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],horizontal=True,key="styleq_compact")
+    style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     st.caption("Style 1 : 4 réponses → minuteur → bonne réponse verte → explication.  |  Style 2 : Q1 → minuteur → R1 → Q2 → R2… jusqu'à 15.")
     bg_mode_q=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_q_compact")
     uploaded_bg_q=None
@@ -1479,228 +1438,228 @@ if app_module=="🧠 Quizz TikTok Pro":
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     st.markdown('''<div class="qvp-actionbar"><b>🎲 Variation</b> &nbsp;&nbsp; <b>💾 Enregistrer</b> &nbsp;&nbsp; <b>🎬 Générer</b></div>''', unsafe_allow_html=True)
-    mode_q=st.radio("Source des questions",["🤖 IA Gemini","📄 Importer un CSV"],horizontal=True,key="mq")
+    with st.expander("🎯 Contenu — Questions / réponses", expanded=False):
 
-    if mode_q=="🤖 IA Gemini":
-        st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
-        gen_key=_quiz_generation_key(nb_q,th_q)
-        cached_key=st.session_state.get("q_ai_key")
-        if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
-            st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
-        bq1,bq2=st.columns(2)
-        with bq1:
-            if st.button("♻️ Charger / générer ce quiz",key="genq",use_container_width=True):
-                if cached_key==gen_key and st.session_state.get("q_ai_cache"):
-                    st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
-                    st.session_state.q_source=f"IA • {th_q} • cache"
-                    st.success("✅ Quiz déjà généré : réutilisation du cache, 0 nouvelle requête Gemini.")
-                elif not api_key:
-                    st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                else:
-                    try:
-                        prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
-Varie les connaissances testées et évite toute répétition entre les questions.
-Chaque objet doit respecter EXACTEMENT cette structure :
-{{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
-IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
-reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
-Les 4 options doivent être plausibles et une seule correcte.
-Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
-                        res_text,_=gemini_generate_text(prompt)
-                        data=normalize_questions(parse_json(res_text))
-                        if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
-                        st.session_state.q_data=data[:nb_q]
-                        st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
-                        st.session_state.q_ai_key=gen_key
-                        st.session_state.q_source=f"IA • {th_q}"
-                        st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
-                    except Exception as e: st.error(f"Erreur Gemini : {e}")
-        with bq2:
-            if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
-                if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                else:
-                    try:
-                        prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en français sur « {th_q} ».
-Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
-Une seule bonne réponse. Retourne uniquement le JSON.'''
-                        res_text,_=gemini_generate_text(prompt)
-                        data=normalize_questions(parse_json(res_text))
-                        if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
-                        st.session_state.q_data=data[:nb_q]
-                        st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
-                        st.session_state.q_ai_key=gen_key
-                        st.session_state.q_source=f"IA • {th_q}"
-                        st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
-                    except Exception as e: st.error(f"Erreur Gemini : {e}")
-    else:
-        st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>', unsafe_allow_html=True)
-        st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
-        csv_file=st.file_uploader("Choisir ton fichier CSV",type=["csv"],key="quizcsv")
-        if csv_file is not None:
-            try:
-                imported=parse_quiz_csv(csv_file); st.session_state.q_data=imported; st.session_state.q_source="CSV manuel"
-                st.success(f"✅ {len(imported)} questions importées.")
-                st.dataframe([{"#":i+1,"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"]} for i,q in enumerate(imported)], use_container_width=True, hide_index=True)
-            except Exception as e: st.error(f"CSV invalide : {e}")
+        if mode_q=="🤖 IA Gemini":
+            st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
+            gen_key=_quiz_generation_key(nb_q,th_q)
+            cached_key=st.session_state.get("q_ai_key")
+            if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
+                st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
+            bq1,bq2=st.columns(2)
+            with bq1:
+                if st.button("♻️ Charger / générer ce quiz",key="genq",use_container_width=True):
+                    if cached_key==gen_key and st.session_state.get("q_ai_cache"):
+                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
+                        st.session_state.q_source=f"IA • {th_q} • cache"
+                        st.success("✅ Quiz déjà généré : réutilisation du cache, 0 nouvelle requête Gemini.")
+                    elif not api_key:
+                        st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
+    Varie les connaissances testées et évite toute répétition entre les questions.
+    Chaque objet doit respecter EXACTEMENT cette structure :
+    {{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
+    IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
+    reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
+    Les 4 options doivent être plausibles et une seule correcte.
+    Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=normalize_questions(parse_json(res_text))
+                            if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                            st.session_state.q_data=data[:nb_q]
+                            st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                            st.session_state.q_ai_key=gen_key
+                            st.session_state.q_source=f"IA • {th_q}"
+                            st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+            with bq2:
+                if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
+                    if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en français sur « {th_q} ».
+    Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
+    Une seule bonne réponse. Retourne uniquement le JSON.'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=normalize_questions(parse_json(res_text))
+                            if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                            st.session_state.q_data=data[:nb_q]
+                            st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                            st.session_state.q_ai_key=gen_key
+                            st.session_state.q_source=f"IA • {th_q}"
+                            st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+        else:
+            st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>', unsafe_allow_html=True)
+            st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
+            csv_file=st.file_uploader("Choisir ton fichier CSV",type=["csv"],key="quizcsv")
+            if csv_file is not None:
+                try:
+                    imported=parse_quiz_csv(csv_file); st.session_state.q_data=imported; st.session_state.q_source="CSV manuel"
+                    st.success(f"✅ {len(imported)} questions importées.")
+                    st.dataframe([{"#":i+1,"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"]} for i,q in enumerate(imported)], use_container_width=True, hide_index=True)
+                except Exception as e: st.error(f"CSV invalide : {e}")
 
-    if st.session_state.get("q_data"):
-        st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-        st.markdown("### ✏️ Modifier ou ajouter des questions — sans quota Gemini")
-        quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
-        edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={
-            "Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),
-            "Question":st.column_config.TextColumn("Question",width="large"),
-            "Explication":st.column_config.TextColumn("Explication",width="large")
-        },hide_index=True)
-        be1,be2=st.columns(2)
-        with be1:
-            if st.button("💾 Enregistrer les modifications",key="saveqedit",use_container_width=True):
-                saved=_save_quiz_editor(edited)
-                if saved:
-                    st.session_state.q_data=saved
-                    st.session_state.q_source="Questions modifiées manuellement"
-                    st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
-                else: st.error("Aucune question valide à enregistrer.")
-        with be2:
-            if st.button("↩️ Restaurer le dernier lot IA",key="restoreq",use_container_width=True):
-                if st.session_state.get("q_ai_cache"):
-                    st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
-                    st.session_state.q_source=f"IA • {th_q} • restauré"
-                    st.success("✅ Lot IA restauré, 0 quota consommé.")
-                else: st.info("Aucun lot IA en cache.")
-        act1,act2,act3=st.columns(3)
-        with act1:
-            if st.button("🎲 Variation",key="variation_q",use_container_width=True):
-                st.session_state["q_variation_seed"]=random.randint(1,999999); st.session_state["q_variation_notice"]=True
-                st.rerun()
-        with act2:
-            if st.button("💾 Enregistrer",key="save_style_q",use_container_width=True):
-                _save_settings(); st.success("Style enregistré.")
-        with act3:
-            st.caption("⬇️ Générer ci-dessous")
-        if st.session_state.get("q_variation_notice"):
-            st.info("🎲 Variation active : utilise le fond, les animations et les réglages actuels pour une nouvelle variante.")
-            st.session_state["q_variation_notice"]=False
-        if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq"):
-            try:
-                with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
-                    with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
-                        clips=[]; total=len(st.session_state.q_data)
+        if st.session_state.get("q_data"):
+            st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
+            st.markdown("### ✏️ Modifier ou ajouter des questions — sans quota Gemini")
+            quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
+            edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={
+                "Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),
+                "Question":st.column_config.TextColumn("Question",width="large"),
+                "Explication":st.column_config.TextColumn("Explication",width="large")
+            },hide_index=True)
+            be1,be2=st.columns(2)
+            with be1:
+                if st.button("💾 Enregistrer les modifications",key="saveqedit",use_container_width=True):
+                    saved=_save_quiz_editor(edited)
+                    if saved:
+                        st.session_state.q_data=saved
+                        st.session_state.q_source="Questions modifiées manuellement"
+                        st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
+                    else: st.error("Aucune question valide à enregistrer.")
+            with be2:
+                if st.button("↩️ Restaurer le dernier lot IA",key="restoreq",use_container_width=True):
+                    if st.session_state.get("q_ai_cache"):
+                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
+                        st.session_state.q_source=f"IA • {th_q} • restauré"
+                        st.success("✅ Lot IA restauré, 0 quota consommé.")
+                    else: st.info("Aucun lot IA en cache.")
+            act1,act2,act3=st.columns(3)
+            with act1:
+                if st.button("🎲 Variation",key="variation_q",use_container_width=True):
+                    st.session_state["q_variation_seed"]=random.randint(1,999999); st.session_state["q_variation_notice"]=True
+                    st.rerun()
+            with act2:
+                if st.button("💾 Enregistrer",key="save_style_q",use_container_width=True):
+                    _save_settings(); st.success("Style enregistré.")
+            with act3:
+                st.caption("⬇️ Générer ci-dessous")
+            if st.session_state.get("q_variation_notice"):
+                st.info("🎲 Variation active : utilise le fond, les animations et les réglages actuels pour une nouvelle variante.")
+                st.session_state["q_variation_notice"]=False
+            if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq"):
+                try:
+                    with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
+                        with tempfile.TemporaryDirectory() as tmp:
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
+                            clips=[]; total=len(st.session_state.q_data)
 
-                        if style_q_full.startswith("Style 2"):
-                            # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
-                            # Les 15 questions restent toutes visibles dans le même écran.
-                            items=st.session_state.q_data[:15]
-                            total=len(items)
-                            for idx,q in enumerate(items):
-                                bg_question=bg_q
-                                corr="ABCD".index(q["reponse_correcte"])
-                                answer_text=clean_text(q["options"][corr])
-                                qa_raw=os.path.join(tmp,f"s2_q_{idx}.mp3")
-                                ans_raw=os.path.join(tmp,f"s2_a_{idx}.mp3")
-                                synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
-                                synthesize_audio(answer_text,voice_q,ans_raw,tts_rate)
-                                qdur=audio_duration(qa_raw)
-                                adur=audio_duration(ans_raw)
-                                # La question apparaît d'abord, puis le minuteur, puis sa réponse.
-                                frames=[]
-                                q_steps=max(8,int(qdur*12))
-                                for j in range(q_steps):
-                                    t=j/max(1,q_steps-1)
-                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
-                                cdur=3.12; cd_steps=94
-                                for j in range(cd_steps):
-                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
-                                    if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
-                                    elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
-                                    else: sec=1; frac=1-((elapsed-2.08)/1.04)
-                                    timer=0 if elapsed>=3.0 else sec
-                                    timer_frac=0.0 if elapsed>=3.0 else frac
-                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
-                                a_steps=max(8,int(adur*12))
-                                for j in range(a_steps):
-                                    t=j/max(1,a_steps-1)
-                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
-                                audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
-                                concat_audio_files([qa_raw,countdown_sfx,ans_raw],audio)
-                                out=os.path.join(tmp,f"s2_{idx}.mp4")
-                                make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
-                                clips.append(out)
+                            if style_q_full.startswith("Style 2"):
+                                # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
+                                # Les 15 questions restent toutes visibles dans le même écran.
+                                items=st.session_state.q_data[:15]
+                                total=len(items)
+                                for idx,q in enumerate(items):
+                                    bg_question=bg_q
+                                    corr="ABCD".index(q["reponse_correcte"])
+                                    answer_text=clean_text(q["options"][corr])
+                                    qa_raw=os.path.join(tmp,f"s2_q_{idx}.mp3")
+                                    ans_raw=os.path.join(tmp,f"s2_a_{idx}.mp3")
+                                    synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                    synthesize_audio(answer_text,voice_q,ans_raw,tts_rate)
+                                    qdur=audio_duration(qa_raw)
+                                    adur=audio_duration(ans_raw)
+                                    # La question apparaît d'abord, puis le minuteur, puis sa réponse.
+                                    frames=[]
+                                    q_steps=max(8,int(qdur*12))
+                                    for j in range(q_steps):
+                                        t=j/max(1,q_steps-1)
+                                        frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
+                                    cdur=3.12; cd_steps=94
+                                    for j in range(cd_steps):
+                                        t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                        if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
+                                        elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
+                                        else: sec=1; frac=1-((elapsed-2.08)/1.04)
+                                        timer=0 if elapsed>=3.0 else sec
+                                        timer_frac=0.0 if elapsed>=3.0 else frac
+                                        frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
+                                    a_steps=max(8,int(adur*12))
+                                    for j in range(a_steps):
+                                        t=j/max(1,a_steps-1)
+                                        frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
+                                    audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
+                                    concat_audio_files([qa_raw,countdown_sfx,ans_raw],audio)
+                                    out=os.path.join(tmp,f"s2_{idx}.mp4")
+                                    make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
+                                    clips.append(out)
 
-                            # Explications seulement après les 15 questions.
-                            for idx,q in enumerate(items):
-                                corr="ABCD".index(q["reponse_correcte"])
-                                answer_text=clean_text(q["options"][corr])
-                                exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {answer_text}."
-                                ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
-                                synthesize_audio(exp_text,voice_q,ea,tts_rate)
-                                edur=audio_duration(ea)
-                                exp_frames=max(8,int(edur*12))
-                                eframes=[]
-                                for j in range(exp_frames):
-                                    t=j/max(1,exp_frames-1)
-                                    eframes.append((draw_explanation_scene(q["question"],answer_text,exp_text,theme_q,channel_q,bg_q,progress=t,q_num=idx+1,total=total,video_title=th_q),edur/exp_frames))
-                                eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
-                                make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
-                                clips.append(eo)
-                        else:
-                            # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
-                            for idx,q in enumerate(st.session_state.q_data):
-                                corr="ABCD".index(q["reponse_correcte"])
-                                bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
-                                qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
-                                synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
-                                qdur=audio_duration(qa_raw)
-                                exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
-                                ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
-                                synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
-                                edur=audio_duration(ea_raw)
-                                exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
-                                mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
-                                full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
-                                frames=[]
-                                q_steps=max(8,int(qdur*12))
-                                for j in range(q_steps):
-                                    t=j/max(1,q_steps-1)
-                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
-                                cdur=3.12; cd_steps=94
-                                for j in range(cd_steps):
-                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
-                                    if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
-                                    elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
-                                    else: sec=1; frac=1-((elapsed-2.08)/1.04)
-                                    timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
-                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
-                                ex_steps=max(8,int(edur*12))
-                                for j in range(ex_steps):
-                                    t=j/max(1,ex_steps-1)
-                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
-                                out=os.path.join(tmp,f"qfull_{idx}.mp4")
-                                make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
-                                clips.append(out)
+                                # Explications seulement après les 15 questions.
+                                for idx,q in enumerate(items):
+                                    corr="ABCD".index(q["reponse_correcte"])
+                                    answer_text=clean_text(q["options"][corr])
+                                    exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {answer_text}."
+                                    ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
+                                    synthesize_audio(exp_text,voice_q,ea,tts_rate)
+                                    edur=audio_duration(ea)
+                                    exp_frames=max(8,int(edur*12))
+                                    eframes=[]
+                                    for j in range(exp_frames):
+                                        t=j/max(1,exp_frames-1)
+                                        eframes.append((draw_explanation_scene(q["question"],answer_text,exp_text,theme_q,channel_q,bg_q,progress=t,q_num=idx+1,total=total,video_title=th_q),edur/exp_frames))
+                                    eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
+                                    make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
+                                    clips.append(eo)
+                            else:
+                                # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
+                                for idx,q in enumerate(st.session_state.q_data):
+                                    corr="ABCD".index(q["reponse_correcte"])
+                                    bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
+                                    qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
+                                    synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                    qdur=audio_duration(qa_raw)
+                                    exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
+                                    ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
+                                    synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
+                                    edur=audio_duration(ea_raw)
+                                    exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
+                                    mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
+                                    full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
+                                    concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
+                                    frames=[]
+                                    q_steps=max(8,int(qdur*12))
+                                    for j in range(q_steps):
+                                        t=j/max(1,q_steps-1)
+                                        frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
+                                    cdur=3.12; cd_steps=94
+                                    for j in range(cd_steps):
+                                        t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                        if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
+                                        elif elapsed < 2.08: sec=2; frac=1-((elapsed-1.04)/1.04)
+                                        else: sec=1; frac=1-((elapsed-2.08)/1.04)
+                                        timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
+                                        frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
+                                    ex_steps=max(8,int(edur*12))
+                                    for j in range(ex_steps):
+                                        t=j/max(1,ex_steps-1)
+                                        frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
+                                    out=os.path.join(tmp,f"qfull_{idx}.mp4")
+                                    make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
+                                    clips.append(out)
 
-                        # CTA très court seulement après le quiz.
-                        if clean_text(outro_q):
-                            oa=os.path.join(tmp,"outro.m4a")
-                            synthesize_audio(outro_q,voice_q,oa,tts_rate)
-                            od=audio_duration(oa)
-                            if od>0.15:
-                                of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/6)
-                                                for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
-                                oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                            # CTA très court seulement après le quiz.
+                            if clean_text(outro_q):
+                                oa=os.path.join(tmp,"outro.m4a")
+                                synthesize_audio(outro_q,voice_q,oa,tts_rate)
+                                od=audio_duration(oa)
+                                if od>0.15:
+                                    of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/6)
+                                                    for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
+                                    oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
-                        final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
-                        concat_videos(clips,final,tmp)
-                        with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Quiz terminé avec ta mise en page.")
-                        st.video(data)
-                        st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
-            except Exception as e:
-                st.error(f"Erreur pendant le montage V7 : {e}")
+                            final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
+                            concat_videos(clips,final,tmp)
+                            with open(final,"rb") as f: data=f.read()
+                            st.success("✅ Short Quiz terminé avec ta mise en page.")
+                            st.video(data)
+                            st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
+                except Exception as e:
+                    st.error(f"Erreur pendant le montage V7 : {e}")
 
-elif app_module=="🗣️ Vocabulaire Pro":
+with tab2:
     st.markdown('<div class="qvp-hero"><div><div class="qvp-kicker">🗣️ QUIZVIDEO PRO</div><h1>Vocabulaire Pro</h1><p>Crée • personnalise • génère tes vidéos vocabulaire 9:16</p></div><div class="qvp-hero-pill">15 mots max</div></div>',unsafe_allow_html=True)
     a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
     with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
@@ -1711,7 +1670,7 @@ elif app_module=="🗣️ Vocabulaire Pro":
     with a5: channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
     with a6: hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
     with a7: outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
-    with a8: style_v=st.radio("Structure",["Style 1","Style 2"],horizontal=True,key="stylev_compact")
+    with a8: style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],horizontal=True,key="stylev_compact")
     voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
     voice_tr=VOICES_MAP[langue_v][voice_tr_name]
     bg_mode_v=st.radio("Fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key="bg_mode_v_compact")
@@ -1728,7 +1687,7 @@ elif app_module=="🗣️ Vocabulaire Pro":
         preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
         try:
             sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
-            if style_v=="Style 2":
+            if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
                 active=0 if preview_state_v=="Mot" else 1 if preview_state_v=="Compte à rebours" else 2
                 preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if preview_state_v=="Compte à rebours" else None,timer_fraction=.72,reveal=(preview_state_v=="Traduction"),video_title=th_v)
@@ -1739,112 +1698,112 @@ elif app_module=="🗣️ Vocabulaire Pro":
             st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
-    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
-    vb1,vb2=st.columns(2)
-    with vb1:
-        if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
-            if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
-                st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
-                st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
-            elif not api_key:
-                st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-            else:
-                try:
-                    prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
-                    res_text,_=gemini_generate_text(prompt)
-                    data=parse_json(res_text)[:nb_v]
-                    if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                    st.session_state.v_data=data
-                    st.session_state.v_ai_cache=[dict(x) for x in data]
-                    st.session_state.v_ai_key=vg_key
-                    st.success("✅ Vocabulaire généré et mis en cache.")
-                except Exception as e: st.error(f"Erreur Gemini : {e}")
-    with vb2:
-        if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
-            if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-            else:
-                try:
-                    prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
-                    res_text,_=gemini_generate_text(prompt)
-                    data=parse_json(res_text)[:nb_v]
-                    if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                    st.session_state.v_data=data
-                    st.session_state.v_ai_cache=[dict(x) for x in data]
-                    st.session_state.v_ai_key=vg_key
-                    st.success("✅ Nouveau lot vocabulaire généré.")
-                except Exception as e: st.error(f"Erreur Gemini : {e}")
-    if st.session_state.get("v_data"):
-        st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
-        st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
-        vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
-        edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={
-            "Français":st.column_config.TextColumn("Français",width="medium"),
-            "Traduction":st.column_config.TextColumn("Traduction",width="medium")
-        },hide_index=True)
-        ve1,ve2=st.columns(2)
-        with ve1:
-            if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
-                saved=_save_vocab_editor(edited_v)
-                if saved:
-                    st.session_state.v_data=saved
-                    st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
-                else: st.error("Aucun mot valide à enregistrer.")
-        with ve2:
-            if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
-                if st.session_state.get("v_ai_cache"):
+    with st.expander("🎯 Contenu — Mots / traductions", expanded=False):
+        vb1,vb2=st.columns(2)
+        with vb1:
+            if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
+                if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
                     st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
-                    st.success("✅ Lot IA restauré, 0 quota consommé.")
-                else: st.info("Aucun lot IA en cache.")
-        act1,act2,act3=st.columns(3)
-        with act1:
-            if st.button("🎲 Variation",key="variation_v",use_container_width=True):
-                st.session_state["v_variation_seed"]=random.randint(1,999999); st.success("🎲 Variation visuelle prête.")
-        with act2:
-            if st.button("💾 Enregistrer",key="save_style_v",use_container_width=True):
-                _save_settings(); st.success("Style enregistré.")
-        with act3:
-            st.caption("⬇️ Générer ci-dessous")
-        if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
-            try:
-                with st.spinner("Création du Short vocabulaire V4..."):
-                    with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
-                        ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
-                        hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
-                        ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
-                        for idx,item in enumerate(items):
-                            fa=os.path.join(tmp,f"fr_{idx}.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
-                            if style_v=="Style 2":
-                                ff=save_frames([(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=p,video_title=th_v),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
-                                fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
-                                cframes=[]
-                                for sec in (3,2,1):
-                                    for step in range(10): cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=1-step/10,reveal=False,motion=step/10,video_title=th_v),.1))
-                                co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
-                                ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                tf=[(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=p,video_title=th_v),max(.04,td/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]]
-                                tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
-                            else:
-                                ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
-                                fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
-                                cframes=[]
-                                for sec in (3,2,1):
-                                    for step in range(10): cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/10,1.0),.1))
-                                co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
-                                ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                tf=[]
-                                if tw:
-                                    for wi,w in enumerate(tw):
-                                        end=tw[wi+1]['start'] if wi+1<len(tw) else td
-                                        if end>w['start']: tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),end-w['start']))
-                                if not tf: tf=[(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td)]
-                                tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
-                        oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
-                        oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                        final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
-                        with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Vocabulaire V4 terminé.")
-                        st.video(data)
-                        st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
-            except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+                    st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
+                elif not api_key:
+                    st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=parse_json(res_text)[:nb_v]
+                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                        st.session_state.v_data=data
+                        st.session_state.v_ai_cache=[dict(x) for x in data]
+                        st.session_state.v_ai_key=vg_key
+                        st.success("✅ Vocabulaire généré et mis en cache.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        with vb2:
+            if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
+                if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=parse_json(res_text)[:nb_v]
+                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                        st.session_state.v_data=data
+                        st.session_state.v_ai_cache=[dict(x) for x in data]
+                        st.session_state.v_ai_key=vg_key
+                        st.success("✅ Nouveau lot vocabulaire généré.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        if st.session_state.get("v_data"):
+            st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
+            st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
+            vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
+            edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={
+                "Français":st.column_config.TextColumn("Français",width="medium"),
+                "Traduction":st.column_config.TextColumn("Traduction",width="medium")
+            },hide_index=True)
+            ve1,ve2=st.columns(2)
+            with ve1:
+                if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
+                    saved=_save_vocab_editor(edited_v)
+                    if saved:
+                        st.session_state.v_data=saved
+                        st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
+                    else: st.error("Aucun mot valide à enregistrer.")
+            with ve2:
+                if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
+                    if st.session_state.get("v_ai_cache"):
+                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
+                        st.success("✅ Lot IA restauré, 0 quota consommé.")
+                    else: st.info("Aucun lot IA en cache.")
+            act1,act2,act3=st.columns(3)
+            with act1:
+                if st.button("🎲 Variation",key="variation_v",use_container_width=True):
+                    st.session_state["v_variation_seed"]=random.randint(1,999999); st.success("🎲 Variation visuelle prête.")
+            with act2:
+                if st.button("💾 Enregistrer",key="save_style_v",use_container_width=True):
+                    _save_settings(); st.success("Style enregistré.")
+            with act3:
+                st.caption("⬇️ Générer ci-dessous")
+            if st.button("🎬 Générer la vidéo Vocabulaire V4",key="makev"):
+                try:
+                    with st.spinner("Création du Short vocabulaire V4..."):
+                        with tempfile.TemporaryDirectory() as tmp:
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
+                            ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
+                            hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
+                            ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
+                            for idx,item in enumerate(items):
+                                fa=os.path.join(tmp,f"fr_{idx}.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
+                                if style_v.startswith("Style 2"):
+                                    ff=save_frames([(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=p,video_title=th_v),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                                    fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                                    cframes=[]
+                                    for sec in (3,2,1):
+                                        for step in range(10): cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=1-step/10,reveal=False,motion=step/10,video_title=th_v),.1))
+                                    co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                                    ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                                    tf=[(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=p,video_title=th_v),max(.04,td/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]]
+                                    tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
+                                else:
+                                    ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                                    fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
+                                    cframes=[]
+                                    for sec in (3,2,1):
+                                        for step in range(10): cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,1-step/10,1.0),.1))
+                                    co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
+                                    ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                                    tf=[]
+                                    if tw:
+                                        for wi,w in enumerate(tw):
+                                            end=tw[wi+1]['start'] if wi+1<len(tw) else td
+                                            if end>w['start']: tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),end-w['start']))
+                                    if not tf: tf=[(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td)]
+                                    tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
+                            oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
+                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
+                            oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                            final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
+                            with open(final,"rb") as f: data=f.read()
+                            st.success("✅ Short Vocabulaire V4 terminé.")
+                            st.video(data)
+                            st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+                except Exception as e: st.error(f"Erreur pendant le montage : {e}")
