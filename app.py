@@ -364,7 +364,7 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     if title.lower().startswith("quiz "):
         title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    cfg=_layout("quiz")
+    cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     tf=get_font(int(cfg.get("title_size",46)),ff)
     label=f"QUIZ {title.upper()}"
@@ -418,7 +418,7 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
         lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or color)
 
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    cfg=_layout("quiz"); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
+    cfg=_layout("quiz", "1"); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
     _draw_timer_visual(draw,color,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",1045)),max(24,int(cfg.get("timer_size",58))),timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",55))),clean_text(cfg.get("timer_label")) if cfg.get("timer_show_label",True) else None,int(cfg.get("timer_label_size",23)),_hex_rgb(cfg.get("timer_label_color"),color),pulse)
 
@@ -466,9 +466,14 @@ def _save_settings():
 
 _load_saved_settings()
 
-def _layout(module="quiz"):
-    """Réglages visuels pilotés entièrement par l'interface et persistants."""
-    prefix="v_" if module=="vocab" else "q_"
+def _layout(module="quiz", style=None):
+    """Réglages visuels persistants, séparés par éditeur/style."""
+    if module == "vocab":
+        prefix = "v2_" if str(style or "1").lower() in ("2", "style2", "cumulative") else "v1_"
+        legacy_prefix = "v_"
+    else:
+        prefix = "q2_" if str(style or "1").lower() in ("2", "style2", "cumulative") else "q1_"
+        legacy_prefix = "q_"
     defaults={
         "font_family":"DejaVu Sans",
         "show_title":True,"title_y":42,"title_size":46,
@@ -497,7 +502,10 @@ def _layout(module="quiz"):
         })
     out={}
     for k,v in defaults.items():
-        out[k]=st.session_state.get(prefix+k,v)
+        key=prefix+k
+        if key not in st.session_state and legacy_prefix+k in st.session_state:
+            st.session_state[key]=st.session_state[legacy_prefix+k]
+        out[k]=st.session_state.get(key,v)
     return out
 
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
@@ -570,8 +578,8 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0):
     for line in lines[:max_visible]:
         tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=int(cfg["explanation_size"]*1.35)
 
-def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz"):
-    cfg=_layout(module); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
+def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
+    cfg=_layout(module, style); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
     _draw_timer_visual(draw,color,int(cx),int(cy),max(22,int(cfg.get("timer_size",58))),timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",55))),None,23,color,0.1)
 
@@ -583,7 +591,7 @@ def _animated_progress(value, style):
     return ease_out(v)
 
 def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0, video_title="Voyage"):
-    cfg=_layout("vocab"); theme=THEMES[theme_name]
+    cfg=_layout("vocab", "2"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
@@ -622,13 +630,13 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
             for line in lines2:
                 draw.text((x+split+20,ty2),"✓ "+line,font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"])); ty2+=text_height(ts,line)+2
         elif active_row and timer is not None and cfg.get("show_timer",True):
-            draw_inline_timer(draw,theme,x+split+(w-split)//2,ry+rh//2,timer,timer_fraction,"vocab")
+            draw_inline_timer(draw,theme,x+split+(w-split)//2,ry+rh//2,timer,timer_fraction,"vocab","2")
     draw_brand(draw,theme,channel,active_idx/max(1,total)); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
     return img
 
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale"):
     """Quiz Style 2 : une seule page. Titre fixe, question active en haut, historique des réponses dessous."""
-    cfg=_layout("quiz"); theme=THEMES[theme_name]
+    cfg=_layout("quiz", "2"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
@@ -646,7 +654,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     for line in lines:
         tw=text_width(draw,line,qf); draw.text((qx-tw/2+dx,qy),line,font=qf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); qy+=int(qf.size*1.12)
     if timer is not None and cfg.get("show_timer",True):
-        draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",430)),timer,timer_fraction,"quiz")
+        draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",430)),timer,timer_fraction,"quiz","2")
     # Historique : seulement les réponses déjà révélées.
     hist=[]
     for i in range(active_idx): hist.append((i,items[i]))
@@ -666,7 +674,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0):
-    cfg=_layout("quiz")
+    cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     # Assombrissement réglable : le fond reste visible mais le texte reste lisible.
@@ -696,9 +704,9 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     draw_brand(draw,theme,channel,(q_num-1)/max(1,total)); draw.text((55,1788),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
     return img
 
-def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz"):
+def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1"):
     theme=THEMES[theme_name]
-    ff=_layout(module).get("font_family","DejaVu Sans")
+    ff=_layout(module, style).get("font_family","DejaVu Sans")
     p=ease_back(progress)
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.2*p)
     draw=ImageDraw.Draw(img)
@@ -723,7 +731,7 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz"):
 
 def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1,video_title="Culture Générale"):
     theme=THEMES[theme_name]
-    ff=_layout("quiz").get("font_family","DejaVu Sans")
+    ff=_layout("quiz", "1").get("font_family","DejaVu Sans")
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.0+0.3*pulse)
     draw=ImageDraw.Draw(img)
     draw_header(draw,theme,q_num,total,video_title)
@@ -771,7 +779,7 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
 
 
 def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot",timer=None,timer_fraction=1.0,entrance=1.0):
-    cfg=_layout("vocab"); theme=THEMES[theme_name]; ff=cfg.get("font_family","DejaVu Sans")
+    cfg=_layout("vocab", "1"); theme=THEMES[theme_name]; ff=cfg.get("font_family","DejaVu Sans")
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
@@ -789,7 +797,7 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
         ft=get_font(int(cfg.get("answer_size",42)),ff); lines=wrap_text(tr,ft,int(cfg.get("translation_width",850))); yy=int(cfg.get("translation_y",760)); tx=int(cfg.get("translation_x",540))
         for line in lines:
             draw.text((tx-text_width(draw,line,ft)/2,yy),line,font=ft,fill=_hex_rgb(cfg.get("correct"),theme["success"])); yy+=text_height(ft,line)+8
-    if phase=="countdown" and timer is not None and cfg.get("show_timer"): draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",760)),timer,timer_fraction,"vocab")
+    if phase=="countdown" and timer is not None and cfg.get("show_timer"): draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",760)),timer,timer_fraction,"vocab","1")
     draw_brand(draw,theme,channel,idx/max(1,len(items))); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
     return img
 
@@ -1317,9 +1325,10 @@ def _ss_default(key, value):
     if key not in st.session_state:
         st.session_state[key]=value
 
-def render_layout_editor(module, key_prefix):
-    """Studio compact : une seule famille de réglages visible à la fois."""
-    is_quiz=module=="quiz"; p=key_prefix
+def render_layout_editor(module, style="1"):
+    """Studio compact : un éditeur indépendant par style."""
+    is_quiz=module=="quiz"
+    p=("q2_" if is_quiz and str(style)=="2" else "q1_" if is_quiz else "v2_" if str(style)=="2" else "v1_")
     defaults={
         "font_family":"DejaVu Sans","show_title":True,"title_y":42 if is_quiz else 70,"title_size":46 if is_quiz else 34,
         "question_x":540,"question_y":180 if is_quiz else 500,"question_size":47 if is_quiz else 58,"question_width":900,
@@ -1419,11 +1428,11 @@ if nav=="quiz":
     with r7: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
     with r8: style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],horizontal=True,key="styleq_compact")
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
-    st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : Q1 + minuteur → R1 → Q2 + minuteur → R2… cumulatif.")
+    st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
     left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
         with st.container(height=390, border=True):
-            render_layout_editor("quiz","q_")
+            render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
     bg_mode_q=st.session_state.get("q_bg_mode","✨ Automatique")
     uploaded_bg_q=st.session_state.get("q_bg_upload")
     bg_mode_clean_q="Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun"
@@ -1588,7 +1597,7 @@ if nav=="quiz":
                                     adur=audio_duration(ans_raw)
                                     # La question apparaît d'abord, puis le minuteur, puis sa réponse.
                                     frames=[]
-                                    q_steps=max(8,int(qdur*12))
+                                    q_steps=max(5,min(48,int(qdur*6)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
@@ -1601,7 +1610,7 @@ if nav=="quiz":
                                         timer=0 if elapsed>=3.0 else sec
                                         timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
-                                    a_steps=max(8,int(adur*12))
+                                    a_steps=max(5,min(48,int(adur*6)))
                                     for j in range(a_steps):
                                         t=j/max(1,a_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
@@ -1610,6 +1619,8 @@ if nav=="quiz":
                                     out=os.path.join(tmp,f"s2_{idx}.mp4")
                                     make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
                                     clips.append(out)
+                                    del frames
+                                    gc.collect()
 
                                 # Explications seulement après les 15 questions.
                                 for idx,q in enumerate(items):
@@ -1619,7 +1630,7 @@ if nav=="quiz":
                                     ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
                                     synthesize_audio(exp_text,voice_q,ea,tts_rate)
                                     edur=audio_duration(ea)
-                                    exp_frames=max(8,int(edur*12))
+                                    exp_frames=max(5,min(48,int(edur*6)))
                                     eframes=[]
                                     for j in range(exp_frames):
                                         t=j/max(1,exp_frames-1)
@@ -1627,6 +1638,8 @@ if nav=="quiz":
                                     eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
                                     make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
                                     clips.append(eo)
+                                    del eframes
+                                    gc.collect()
                             else:
                                 # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
                                 for idx,q in enumerate(st.session_state.q_data):
@@ -1644,7 +1657,7 @@ if nav=="quiz":
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
                                     frames=[]
-                                    q_steps=max(8,int(qdur*12))
+                                    q_steps=max(5,min(48,int(qdur*6)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
@@ -1701,7 +1714,7 @@ else:
     left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
         with st.container(height=390, border=True):
-            render_layout_editor("vocab","v_")
+            render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
     bg_mode_v=st.session_state.get("v_bg_mode","✨ Automatique")
     uploaded_bg_v=st.session_state.get("v_bg_upload")
     bg_mode_clean_v="Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun"
@@ -1810,22 +1823,22 @@ else:
                         with tempfile.TemporaryDirectory() as tmp:
                             tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
                             ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
-                            hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p,module="vocab"),max(.04,hd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vh")
+                            hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,hd/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vh")
                             ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
                             for idx,item in enumerate(items):
                                 fa=os.path.join(tmp,f"fr_{idx}.mp3"); synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
                                 if style_v.startswith("Style 2"):
-                                    ff=save_frames([(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=p,video_title=th_v),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                                    ff=save_frames([(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=p,video_title=th_v),max(.04,fd/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,f"vf_{idx}")
                                     fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
                                     cframes=[]
                                     for sec in (3,2,1):
                                         for step in range(10): cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=1-step/10,reveal=False,motion=step/10,video_title=th_v),.1))
                                     co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.9); clips.append(co)
                                     ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                    tf=[(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=p,video_title=th_v),max(.04,td/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]]
+                                    tf=[(draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=p,video_title=th_v),max(.04,td/7)) for p in [.08,.28,.50,.72,.90,1.0]]
                                     tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
                                 else:
-                                    ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,f"vf_{idx}")
+                                    ff=save_frames([(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=p),max(.04,fd/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,f"vf_{idx}")
                                     fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(ff,fa,fo,tmp); clips.append(fo)
                                     cframes=[]
                                     for sec in (3,2,1):
@@ -1839,12 +1852,15 @@ else:
                                             if end>w['start']: tf.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),end-w['start']))
                                     if not tf: tf=[(draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0),td)]
                                     tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),ta,tro,tmp); clips.append(tro)
+                                gc.collect()
                             oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab"),max(.04,od/7)) for p in [.05,.18,.35,.55,.75,.92,1.0]],tmp,"vo")
+                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                             oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                             final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
                             with open(final,"rb") as f: data=f.read()
                             st.success("✅ Short Vocabulaire Pro terminé.")
                             st.video(data)
                             st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+                except MemoryError:
+                    gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
                 except Exception as e: st.error(f"Erreur pendant le montage : {e}")
