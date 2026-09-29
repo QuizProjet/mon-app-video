@@ -114,6 +114,35 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-preview-note{font-size:.68rem !important;margin-bottom:4px !important}
 .qvp-actionbar{padding:5px 8px !important;margin-top:5px !important}
 
+
+/* ===== QuizVideo Pro Studio V10 — refonte visuelle ===== */
+.qvp-studio-header{padding:10px 14px!important;margin:0 0 8px!important;border:1px solid #d8e2ef!important;border-radius:14px!important;background:linear-gradient(90deg,#fff,#f6f9fd)!important;box-shadow:0 5px 18px rgba(15,23,42,.06)!important;font-size:1rem!important}
+.qvp-studio-header b{font-size:1.02rem!important}
+.qvp-studio-header span{padding:5px 11px!important;font-size:.76rem!important;letter-spacing:.02em}
+.qvp-studio-header small{font-size:.72rem!important}
+/* Champs principaux plus lisibles */
+[data-testid="stMain"] label{font-weight:650!important;color:#334155!important}
+[data-testid="stMain"] input,[data-testid="stMain"] textarea,[data-testid="stMain"] [data-baseweb="select"]>div{border-radius:10px!important}
+/* Editeur : contraste, espacement et onglets */
+.qvp-editor-title{font-size:1rem!important;font-weight:850!important;color:#172033!important;margin:2px 0 8px!important}
+[data-testid="stVerticalBlock"]:has(.qvp-editor-title){background:#fff!important}
+[data-testid="stTabs"] [role="tablist"]{scrollbar-width:thin!important}
+[data-testid="stTabs"] button{transition:all .15s ease!important}
+/* Aperçu plus présent */
+.qvp-preview-panel{border:1px solid #cfdbea!important;background:linear-gradient(180deg,#ffffff,#f8fbff)!important;box-shadow:0 10px 28px rgba(15,23,42,.09)!important}
+.qvp-preview-title{font-size:.98rem!important;color:#172033!important}
+.qvp-preview-note{font-size:.72rem!important;color:#64748b!important}
+/* Image de preview : bordure premium */
+[data-testid="stImage"] img{border-radius:12px!important;border:1px solid #cbd5e1!important;box-shadow:0 12px 30px rgba(15,23,42,.13)!important}
+/* Actions */
+.qvp-actionbar{box-shadow:0 10px 25px rgba(15,23,42,.12)!important}
+/* Les zones principales doivent rester compactes à 100% de zoom */
+[data-testid="stMain"] [data-testid="stHorizontalBlock"]{align-items:flex-start!important}
+/* Slider plus lisible */
+[data-testid="stSlider"] [role="slider"]{transform:scale(1.05)!important}
+/* Bouton principal de génération */
+button[kind="primary"]{font-weight:850!important}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -369,14 +398,11 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     tf=get_font(int(cfg.get("title_size",46)),ff)
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
-    icon_size=int(cfg.get("face_size",30)); total_w=tw+max(46,icon_size+28)
+    total_w=tw
     x=max(42,(WIDTH-total_w)/2)
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
-    if cfg.get("face_show",True):
-        fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
-        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
@@ -385,34 +411,55 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
-    frac=clamp(fraction); style=str(style or "Anneau progressif")
+    """Chronomètres Studio Pro : six styles cohérents et réellement rendus en vidéo."""
+    frac=clamp(fraction); style=str(style or "Double cercle")
     bg=(7,12,26)
-    if style=="Anneau progressif":
+    white=(245,248,252)
+    if style=="Double cercle":
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=max(3,int(r*.07)))
+        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=white,width=max(2,int(r*.045)))
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.09)))
+    elif style=="Montre":
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=white,width=max(2,int(r*.045)))
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.08)))
+        # aiguilles
+        angle=math.radians(-90+360*(1-frac)); hx=cx+int(math.cos(angle)*r*.48); hy=cy+int(math.sin(angle)*r*.48)
+        draw.line((cx,cy,hx,hy),fill=color,width=max(3,int(r*.06)))
+        draw.line((cx,cy,cx-int(r*.28),cy-int(r*.18)),fill=white,width=max(2,int(r*.045)))
+        draw.ellipse((cx-5,cy-5,cx+5,cy+5),fill=color)
+        for a in range(0,360,45):
+            rr=math.radians(a); x1=cx+int(math.cos(rr)*r*.84); y1=cy+int(math.sin(rr)*r*.84)
+            x2=cx+int(math.cos(rr)*r*.93); y2=cy+int(math.sin(rr)*r*.93)
+            draw.line((x1,y1,x2,y2),fill=white,width=2)
+    elif style=="Gouttes d’eau":
+        # anneau + petites gouttes qui se remplissent autour du cercle
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(100,120,145),width=3)
+        n=10
+        active=int(math.ceil(frac*n))
+        for i in range(n):
+            a=math.radians(-90+i*(360/n)); gx=cx+int(math.cos(a)*r*.83); gy=cy+int(math.sin(a)*r*.83); rr=max(5,int(r*.08))
+            fill=color if i<active else (75,86,105)
+            draw.ellipse((gx-rr,gy-rr,gx+rr,gy+rr),fill=fill)
+    elif style=="Sablier":
+        w=max(28,int(r*.75)); h=max(42,int(r*1.35)); x0=cx-w; x1=cx+w; y0=cy-h; y1=cy+h
+        draw.line((x0,y0,x1,y0),fill=white,width=4); draw.line((x0,y1,x1,y1),fill=white,width=4)
+        draw.line((x0,y0,x1,y1),fill=white,width=3); draw.line((x1,y0,x0,y1),fill=white,width=3)
+        sand_h=int((y1-y0)*.36*frac)
+        if sand_h>0:
+            draw.polygon([(cx-10,y1-8),(cx+10,y1-8),(cx+int(18*frac),y1-sand_h),(cx-int(18*frac),y1-sand_h)],fill=color)
+        draw.line((cx,cy-int(h*.1),cx,cy+int(h*.1)),fill=color,width=3)
+    elif style=="Anneau progressif":
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(255,255,255),width=3)
         draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
-    elif style=="Double cercle":
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=4)
-        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=(255,255,255),width=3)
-        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=5)
-    elif style=="Barre segmentée":
-        segs=10; total_w=max(120,int(r*3.2)); gap=5; sw=max(8,(total_w-gap*(segs-1))//segs); x0=cx-total_w//2
-        for i in range(segs):
-            x=x0+i*(sw+gap); active=i < int(math.ceil(frac*segs))
-            draw.rounded_rectangle((x,cy-7,x+sw,cy+7),radius=7,fill=color if active else (70,78,95))
-    elif style=="Chiffre géant":
-        pulse_r=int(8+10*clamp(pulse)); draw.ellipse((cx-r-pulse_r,cy-r-pulse_r,cx+r+pulse_r,cy+r+pulse_r),outline=(*color,120),width=3)
-    elif style=="Capsule dynamique":
-        w=int(r*2.8); h=int(r*.72)
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=bg,outline=color,width=3)
-        fill_w=int((2*w-12)*frac)
-        if fill_w>0: draw.rounded_rectangle((cx-w+6,cy+h-12,cx-w+6+fill_w,cy+h-5),radius=4,fill=color)
-    elif style=="Pulse":
-        rr=r+int(12*abs(math.sin((1-frac)*math.pi*2)))
-        draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),outline=color,width=5)
+    elif style=="Numérique":
+        w=max(130,int(r*3.1)); h=max(62,int(r*1.05));
+        draw.rounded_rectangle((cx-w//2,cy-h//2,cx+w//2,cy+h//2),radius=int(h*.28),fill=bg,outline=color,width=max(3,int(r*.06)))
+        draw.rounded_rectangle((cx-w//2+8,cy-h//2+8,cx-w//2+8+int((w-16)*frac),cy-h//2+13),radius=3,fill=color)
     else:
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=color,width=3)
     tf=get_font(text_size)
-    ts=str(timer); th=text_height(tf,ts)
+    ts=str(timer if timer is not None else "")
+    th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
     if label:
         lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or color)
@@ -490,8 +537,8 @@ def _layout(module="quiz", style=None):
         "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":650,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Anneau progressif","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -1313,7 +1360,7 @@ def selected_video_background(theme_name,topic,mode,uploaded=None):
     return None
 
 # ============================================================
-# INTERFACE — DESIGN PREMIUM
+# INTERFACE — DESIGN PREMIUM / STUDIO V10
 # ============================================================
 st.sidebar.markdown("""
 <div class="qvp-side-brand">
@@ -1354,7 +1401,7 @@ def render_layout_editor(module, style="1"):
         "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
         "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
         "animation":"Glissement vertical","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
-        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Anneau progressif",
+        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Double cercle",
         "timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
         "border_color":"#D2DFF5","border_width":2,"border_radius":20,
@@ -1363,7 +1410,7 @@ def render_layout_editor(module, style="1"):
         "table_x":70,"table_y":430,"table_width":940,"table_row_h":82,"table_gap":8,"table_split":540,"table_radius":16,"vocab_fr_size":42,"vocab_tr_size":38,"vocab_header_size":28
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
-    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR <span style="font-size:.72rem;font-weight:600;color:#64748b">Réglages indépendants de ce style</span></div>',unsafe_allow_html=True)
     tabs=st.tabs(["🧩 Structure","📐 Position & taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🌄 Fond"])
     with tabs[0]:
         st.selectbox("Police — utilisée pour toutes les vidéos",FONT_CHOICES,key=p+"font_family")
@@ -1405,8 +1452,6 @@ def render_layout_editor(module, style="1"):
         with bc1: st.color_picker("Couleur des bordures",key=p+"border_color")
         with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
         with bc3: st.slider("Arrondi",0,45,key=p+"border_radius")
-        if is_quiz:
-            st.markdown("**Émotion**"); st.selectbox("Style",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style"); st.checkbox("Afficher",key=p+"face_show"); st.slider("Taille",18,70,key=p+"face_size")
     with tabs[3]:
         st.selectbox("Animation",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
@@ -1419,7 +1464,7 @@ def render_layout_editor(module, style="1"):
         with c1:
             st.slider("Position X",0,1080,key=p+"timer_x"); st.slider("Position Y",250,1400,key=p+"timer_y"); st.slider("Taille",28,130,key=p+"timer_size"); st.slider("Taille du chiffre",20,110,key=p+"timer_text_size")
         with c2:
-            st.selectbox("Style du chronomètre",["Anneau progressif","Double cercle","Barre segmentée","Chiffre géant","Capsule dynamique","Pulse"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
+            st.selectbox("Style du chronomètre",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
     with tabs[5]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé": st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -1454,7 +1499,7 @@ if nav=="quiz":
     st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
     left_q, right_q = st.columns([0.95, 1.05], gap="medium")
     with left_q:
-        with st.container(height=390, border=True):
+        with st.container(border=True):
             render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
     bg_mode_q=st.session_state.get("q_bg_mode","✨ Automatique")
     uploaded_bg_q=st.session_state.get("q_bg_upload")
@@ -1462,6 +1507,7 @@ if nav=="quiz":
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
     with right_q:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
+        st.caption("🎯 Modifie à gauche → le rendu 9:16 se met à jour ici.")
         if style_q_full.startswith("Style 2"):
             preview_state_q=st.radio("Aperçu",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
@@ -1596,7 +1642,7 @@ if nav=="quiz":
             if st.session_state.get("q_variation_notice"):
                 st.info("🎲 Variation active : utilise le fond, les animations et les réglages actuels pour une nouvelle variante.")
                 st.session_state["q_variation_notice"]=False
-            if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq"):
+            if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq",type="primary",use_container_width=True):
                 try:
                     with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                         with tempfile.TemporaryDirectory() as tmp:
@@ -1620,11 +1666,11 @@ if nav=="quiz":
                                     adur=audio_duration(ans_raw)
                                     # La question apparaît d'abord, puis le minuteur, puis sa réponse.
                                     frames=[]
-                                    q_steps=max(5,min(48,int(qdur*6)))
+                                    q_steps=max(4,min(30,int(qdur*5)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=94
+                                    cdur=3.12; cd_steps=32
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1633,7 +1679,7 @@ if nav=="quiz":
                                         timer=0 if elapsed>=3.0 else sec
                                         timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
-                                    a_steps=max(5,min(48,int(adur*6)))
+                                    a_steps=max(4,min(30,int(adur*5)))
                                     for j in range(a_steps):
                                         t=j/max(1,a_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
@@ -1653,7 +1699,7 @@ if nav=="quiz":
                                     ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
                                     synthesize_audio(exp_text,voice_q,ea,tts_rate)
                                     edur=audio_duration(ea)
-                                    exp_frames=max(5,min(48,int(edur*6)))
+                                    exp_frames=max(4,min(30,int(edur*5)))
                                     eframes=[]
                                     for j in range(exp_frames):
                                         t=j/max(1,exp_frames-1)
@@ -1680,11 +1726,11 @@ if nav=="quiz":
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
                                     frames=[]
-                                    q_steps=max(5,min(48,int(qdur*6)))
+                                    q_steps=max(4,min(30,int(qdur*5)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=94
+                                    cdur=3.12; cd_steps=32
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1692,7 +1738,7 @@ if nav=="quiz":
                                         else: sec=1; frac=1-((elapsed-2.08)/1.04)
                                         timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
-                                    ex_steps=max(8,int(edur*12))
+                                    ex_steps=max(6,min(36,int(edur*8)))
                                     for j in range(ex_steps):
                                         t=j/max(1,ex_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
@@ -1736,7 +1782,7 @@ else:
     st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : tableau progressif : français à gauche → réflexion → traduction à droite → ligne suivante, jusqu’à 15 lignes sur la même page.")
     left_v, right_v = st.columns([0.95, 1.05], gap="medium")
     with left_v:
-        with st.container(height=390, border=True):
+        with st.container(border=True):
             render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
     bg_mode_v=st.session_state.get("v_bg_mode","✨ Automatique")
     uploaded_bg_v=st.session_state.get("v_bg_upload")
@@ -1744,6 +1790,7 @@ else:
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with right_v:
         st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
+        st.caption("🎯 Modifie à gauche → le rendu 9:16 se met à jour ici.")
         if style_v.startswith("Style 2"):
             preview_state_v=st.radio("Aperçu",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
         else:
@@ -1840,7 +1887,7 @@ else:
                     _save_settings(); st.success("Style enregistré.")
             with act3:
                 st.caption("⬇️ Générer ci-dessous")
-            if st.button("🎬 Générer la vidéo Vocabulaire Pro",key="makev"):
+            if st.button("🎬 Générer la vidéo Vocabulaire Pro",key="makev",type="primary",use_container_width=True):
                 try:
                     with st.spinner("Création du Short Vocabulaire Pro..."):
                         with tempfile.TemporaryDirectory() as tmp:
