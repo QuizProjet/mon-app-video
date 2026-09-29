@@ -15,6 +15,7 @@ import hashlib
 import wave
 import struct
 import subprocess
+import base64
 import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -176,6 +177,23 @@ button[kind="primary"]{font-weight:850!important}
 @media (min-width: 1100px){
   .qvp-main-layout{display:block;}
 }
+
+/* V12 — aperçu réduit + édition directe par clic */
+.qvp-main-layout{gap:18px!important}
+.qvp-preview-stage{display:flex!important;justify-content:center!important;}
+.qvp-preview-stage [data-testid="stImage"]{width:100%!important;max-width:360px!important;}
+.qvp-preview-stage img{max-width:360px!important;height:auto!important;}
+.qvp-click-preview{position:relative;background-size:100% 100%;background-repeat:no-repeat;border-radius:16px;box-shadow:0 18px 38px rgba(15,23,42,.18);border:1px solid #cbd5e1;overflow:hidden;margin:8px auto 10px;}
+.qvp-hotspot{position:absolute;display:flex;align-items:flex-start;justify-content:flex-start;text-decoration:none!important;border:1px dashed rgba(255,255,255,.25);background:rgba(0,0,0,.02);border-radius:7px;transition:.15s ease;}
+.qvp-hotspot span{font-size:8px;line-height:1;padding:3px 5px;border-radius:0 0 5px 0;background:rgba(15,23,42,.76);color:white;opacity:.55;font-weight:750;}
+.qvp-hotspot:hover,.qvp-hotspot.selected{border:2px solid #ffcd40;background:rgba(255,205,64,.08);box-shadow:0 0 0 2px rgba(255,205,64,.18) inset;z-index:4;}
+.qvp-hotspot.selected span{opacity:1;background:#ffcd40;color:#111827;}
+.qvp-interactive-note{font-size:.72rem;color:#64748b;text-align:center;margin:-2px auto 7px;}
+.qvp-selected-card{border:1px solid #d8e2ee;border-radius:12px;padding:8px 10px;background:#f8fbff;margin:5px 0 8px;}
+.qvp-selected-title{font-size:.74rem;font-weight:850;color:#334155;margin-bottom:6px;text-align:center;}
+.qvp-movegrid [data-testid="stButton"] button{min-height:32px!important;padding:3px 5px!important;font-size:.78rem!important;border-radius:9px!important;}
+.qvp-anim-caption{text-align:center;font-size:.7rem;color:#64748b;margin:3px 0 5px;}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -626,10 +644,10 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
     for i,opt in enumerate(options[:4]):
         if anim=="Aucune": local=1.0
         else: local=ease_out(clamp((entrance-i*0.07*speed)/(0.48/max(.25,speed))))
-        offset=int((1-local)*52*strength) if anim=="Glissement" else 0
+        offset=int((1-local)*52*strength) if anim in ("Glissement","Glissement vertical") else 0
         extra=int(7*ease_back(clamp(reveal_progress))) if correct_idx is not None and i==correct_idx else 0
         xpad=0
-        if anim=="Glissement": xpad=int((1-local)*40*strength)
+        if anim in ("Glissement","Glissement vertical"): xpad=int((1-local)*40*strength)
         elif anim=="Pop": extra += int((1-local)*10*strength)
         y=start_y+i*(card_h+gap)+offset+int(2*math.sin((phase+i*.13)*math.pi*2*cfg["motion_strength"]))
         correct=(correct_idx is not None and i==correct_idx)
@@ -1401,8 +1419,158 @@ def selected_video_background(theme_name,topic,mode,uploaded=None):
         return generate_theme_background(theme_name,variant_topic)
     return None
 
+
 # ============================================================
-# INTERFACE — DESIGN PREMIUM / STUDIO V10
+# APERÇU INTERACTIF — V12
+# ============================================================
+def _qvp_prefix(module, style):
+    if module == "vocab":
+        return "v2_" if str(style) == "2" else "v1_"
+    return "q2_" if str(style) == "2" else "q1_"
+
+
+def _qvp_selected_element(module, style):
+    allowed = {
+        ("quiz", "1"): {"title","question","answers","timer","explanation"},
+        ("quiz", "2"): {"title","question","timer","history"},
+        ("vocab", "1"): {"title","word","translation","timer"},
+        ("vocab", "2"): {"title","table","timer"},
+    }.get((module, str(style)), {"question"})
+    try:
+        value = str(st.query_params.get("qvp_element", ""))
+    except Exception:
+        value = ""
+    return value if value in allowed else ("question" if module == "quiz" else "word")
+
+
+def _qvp_set_selected(element):
+    try:
+        st.query_params["qvp_element"] = element
+    except Exception:
+        pass
+
+
+def _qvp_clear_selected():
+    try:
+        st.query_params.clear()
+    except Exception:
+        pass
+
+
+def _qvp_adjust(module, style, element, dx=0, dy=0, dsize=0):
+    """Déplace directement l'élément sélectionné. Les valeurs modifiées sont celles du rendu réel."""
+    p = _qvp_prefix(module, style)
+    ss = st.session_state
+    def add(key, delta, lo=None, hi=None):
+        val = float(ss.get(p+key, 0)) + float(delta)
+        if lo is not None: val = max(lo, val)
+        if hi is not None: val = min(hi, val)
+        if isinstance(ss.get(p+key, 0), int): val = int(round(val))
+        ss[p+key] = val
+    if element == "title":
+        add("title_x", dx, 0, 1080); add("title_y", dy, 20, 320); add("title_size", dsize, 20, 90)
+    elif element in ("question","word"):
+        add("question_x", dx, 0, 1080); add("question_y", dy, 60, 1050); add("question_size", dsize, 20, 110)
+    elif element == "answers":
+        add("answer_x", dx, 20, 220); add("answer_y", dy, 280, 1100); add("answer_size", dsize, 18, 66)
+    elif element == "timer":
+        add("timer_x", dx, 0, 1080); add("timer_y", dy, 200, 1500); add("timer_size", dsize, 24, 150)
+    elif element == "explanation":
+        add("explanation_y", dy, 850, 1500); add("explanation_size", dsize, 22, 60)
+    elif element == "history":
+        add("history_x", dx, 0, 250); add("history_y", dy, 350, 1350); add("history_size", dsize, 18, 54)
+    elif element == "translation":
+        add("translation_x", dx, 150, 930); add("translation_y", dy, 500, 1300); add("answer_size", dsize, 18, 66)
+    elif element == "table":
+        add("table_x", dx, 10, 180); add("table_y", dy, 250, 750); add("vocab_fr_size", dsize, 22, 64); add("vocab_tr_size", dsize, 20, 60)
+    _save_settings()
+
+
+def _qvp_element_boxes(module, style, cfg):
+    """Zones cliquables approximatives en coordonnées vidéo 1080x1920."""
+    boxes=[]
+    def add(name,label,x,y,w,h): boxes.append((name,label,float(x),float(y),float(w),float(h)))
+    add("title","Titre",cfg.get("title_x",540),cfg.get("title_y",70),900,105)
+    if module=="quiz" and str(style)=="1":
+        add("question","Question",cfg.get("question_x",540),cfg.get("question_y",180),cfg.get("question_width",900),210)
+        add("answers","Réponses",cfg.get("answer_x",80)+cfg.get("answer_width",920)/2,cfg.get("answer_y",650)+180,cfg.get("answer_width",920),4*(cfg.get("answer_h",78)+cfg.get("answer_gap",12)))
+        add("timer","Minuteur",cfg.get("timer_x",540),cfg.get("timer_y",1015),220,220)
+        add("explanation","Explication",540,cfg.get("explanation_y",1135)+cfg.get("explanation_h",380)/2,964,cfg.get("explanation_h",380))
+    elif module=="quiz" and str(style)=="2":
+        add("question","Question active",cfg.get("question_x",540),cfg.get("question_y",150),cfg.get("question_width",920),230)
+        add("timer","Minuteur",cfg.get("timer_x",540),cfg.get("timer_y",430),220,180)
+        add("history","Historique",cfg.get("history_x",80)+cfg.get("history_width",920)/2,cfg.get("history_y",690)+280,cfg.get("history_width",920),600)
+    elif module=="vocab" and str(style)=="1":
+        add("word","Mot / phrase",cfg.get("question_x",540),cfg.get("question_y",500),850,150)
+        add("timer","Minuteur",cfg.get("timer_x",810),cfg.get("timer_y",760),200,170)
+        add("translation","Traduction",cfg.get("translation_x",540),cfg.get("translation_y",760),cfg.get("translation_width",850),190)
+    elif module=="vocab" and str(style)=="2":
+        add("table","Tableau cumulatif",cfg.get("table_x",70)+cfg.get("table_width",940)/2,cfg.get("table_y",430)+430,cfg.get("table_width",940),850)
+        add("timer","Minuteur",cfg.get("table_x",70)+cfg.get("table_split",540)+(cfg.get("table_width",940)-cfg.get("table_split",540))/2,cfg.get("table_y",430)+cfg.get("table_row_h",82)/2,200,150)
+    return boxes
+
+
+def _qvp_image_data_uri(image):
+    buf=io.BytesIO()
+    image.save(buf,format="JPEG",quality=84,optimize=True)
+    return "data:image/jpeg;base64,"+base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def render_clickable_preview(image, module, style, cfg, selected):
+    """Aperçu 9:16 réduit avec zones réellement cliquables qui sélectionnent l'élément."""
+    max_w=360
+    max_h=int(max_w*16/9)
+    thumb=image.copy().resize((max_w,max_h),Image.Resampling.LANCZOS)
+    uri=_qvp_image_data_uri(thumb)
+    html=[f'<div class="qvp-click-preview" style="width:{max_w}px;height:{max_h}px;background-image:url({uri});">']
+    for name,label,x,y,w,h in _qvp_element_boxes(module,style,cfg):
+        left=max(0,min(max_w-2,(x-w/2)/1080*max_w)); top=max(0,min(max_h-2,(y-h/2)/1920*max_h))
+        ww=max(10,min(max_w-left,(w/1080)*max_w)); hh=max(10,min(max_h-top,(h/1920)*max_h))
+        cls="qvp-hotspot selected" if name==selected else "qvp-hotspot"
+        html.append(f'<a class="{cls}" style="left:{left:.1f}px;top:{top:.1f}px;width:{ww:.1f}px;height:{hh:.1f}px" href="?qvp_element={name}" aria-label="Modifier {label}"><span>{label}</span></a>')
+    html.append('</div>')
+    st.markdown("".join(html), unsafe_allow_html=True)
+
+
+def _qvp_animation_frames(module, style, theme_name, channel, bg, state, title, language="Anglais"):
+    """Petite animation de démonstration, volontairement courte pour rester fluide."""
+    frames=[]
+    if module=="quiz":
+        demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
+        if str(style)=="2":
+            for i in range(12):
+                t=i/11
+                frames.append(draw_style2_frame(demo,1 if state=="Q2 + R1" else 0,theme_name,channel,bg,timer=max(1,3-int(t*3)),timer_fraction=1-t,answer_reveal=(state=="Q2 + R1" and t>.72),motion=t,video_title=title))
+        else:
+            for i in range(12):
+                t=i/11
+                frames.append(draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_name,1,15,channel,bg,entrance=t,timer=3 if t<.9 else None,timer_fraction=max(.0,1-t),pulse=.45+.45*math.sin(t*math.pi*4),motion=t,video_title=title))
+            frames.extend([draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_name,1,15,channel,bg,entrance=1.0,correct_idx=0,reveal_progress=t,motion=1+t,video_title=title,explanation="Paris est la capitale de la France.",explanation_progress=t) for t in (.15,.35,.55,.75,1.0)])
+    else:
+        demo=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
+        if str(style)=="2":
+            for i in range(12):
+                t=i/11
+                frames.append(draw_vocab_cumulative_frame(demo,2 if "Ligne 3" in state else 1 if "Ligne 2" in state else 0,theme_name,channel,bg,timer=3 if t<.78 else None,timer_fraction=1-t,reveal=(t>.72 and "réflexion" not in state),motion=t,video_title=title))
+        else:
+            for i in range(12):
+                t=i/11
+                phase="countdown" if t<.78 else "translation"
+                frames.append(draw_vocab_frame(demo,0,language,theme_name,channel,bg,phase,3,max(0,1-t),1.0 if t>.15 else t))
+    return frames
+
+
+def play_preview_animation(module, style, theme_name, channel, bg, state, title, language="Anglais"):
+    placeholder=st.empty()
+    frames=_qvp_animation_frames(module,style,theme_name,channel,bg,state,title,language)
+    total=len(frames)
+    for i,frame in enumerate(frames):
+        placeholder.image(frame.resize((300,533),Image.Resampling.LANCZOS),width=300)
+        time.sleep(0.08)
+    placeholder.empty()
+
+# ============================================================
+# INTERFACE — DESIGN PREMIUM / STUDIO V12 INTERACTIF
 # ============================================================
 st.sidebar.markdown("""
 <div class="qvp-side-brand">
@@ -1436,7 +1604,7 @@ def render_layout_editor(module, style="1"):
     style = str(style)
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
     defaults = {
-        "font_family":"DejaVu Sans", "show_title":True, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
+        "font_family":"DejaVu Sans", "show_title":True, "title_x":540, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
         "question_x":540, "question_y":150 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
         "answer_y":620 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":88, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
@@ -1543,7 +1711,7 @@ def render_layout_editor(module, style="1"):
         with bc3: st.slider("Arrondi",0,48,key=p+"border_radius")
 
     with tabs[4]:
-        st.selectbox("Animation principale",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
+        st.selectbox("Animation principale",["Glissement","Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
         with c1: st.slider("Vitesse",0.5,2.0,key=p+"animation_speed")
         with c2: st.slider("Amplitude",0.0,2.0,key=p+"animation_strength")
@@ -1594,7 +1762,7 @@ with n2:
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif</small></div>',unsafe_allow_html=True)
     c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
     with c_content:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
@@ -1615,40 +1783,67 @@ if nav=="quiz":
         st.markdown('</div>',unsafe_allow_html=True)
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
-    left_q, right_q = st.columns([0.82, 1.18], gap="large")
+    left_q, right_q = st.columns([1.18, 0.82], gap="medium")
     with left_q:
         with st.container(border=True):
             render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
-    bg_mode_q=st.session_state.get("q_bg_mode","✨ Automatique")
-    uploaded_bg_q=st.session_state.get("q_bg_upload")
-    bg_mode_clean_q="Généré automatiquement" if bg_mode_q.startswith("✨") else "Image personnalisée" if bg_mode_q.startswith("🖼️") else "Aucun"
+    quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
+    qprefix=_qvp_prefix("quiz", quiz_style_id)
+    bg_mode_q=st.session_state.get(qprefix+"bg_mode", "✨ Automatique")
+    uploaded_bg_q=st.session_state.get(qprefix+"bg_upload")
+    bg_mode_clean_q="Généré automatiquement" if str(bg_mode_q).startswith("✨") else "Image personnalisée" if str(bg_mode_q).startswith("🖼️") else "Aucun"
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
     with right_q:
-        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        st.caption("🎯 Modifie à gauche → le rendu 9:16 se met à jour ici.")
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">Clique directement sur une zone de la vidéo pour la sélectionner.</div></div></div>', unsafe_allow_html=True)
         if style_q_full.startswith("Style 2"):
-            preview_state_q=st.radio("Aperçu",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
+            preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
-            preview_state_q=st.radio("État à prévisualiser",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
+            preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
+        selected_q=_qvp_selected_element("quiz", quiz_style_id)
         try:
+            cfg_q=_layout("quiz",quiz_style_id)
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
             if style_q_full.startswith("Style 2"):
                 demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
-                if preview_state_q=="Q1 + minuteur":
-                    preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
-                elif preview_state_q=="Q2 + R1":
-                    preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
-                else:
-                    preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
-            elif preview_state_q=="Question + réponses":
-                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.35,video_title=th_q)
-            elif preview_state_q=="Compte à rebours":
-                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
-            else:
-                preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
-            st.markdown('<div class="qvp-preview-stage">',unsafe_allow_html=True)
-            st.image(preview, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
-            st.markdown('</div>',unsafe_allow_html=True)
+                if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
+                elif preview_state_q=="Q2 + R1": preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
+                else: preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
+            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.35,video_title=th_q)
+            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
+            else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
+            render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
+            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_q}</b> · les positions se modifient immédiatement.</div>',unsafe_allow_html=True)
+            # Commandes directes, sans doublonner les sliders de l'éditeur.
+            st.markdown('<div class="qvp-selected-card"><div class="qvp-selected-title">Ajuster la mise en page</div></div>',unsafe_allow_html=True)
+            m1,m2,m3,m4,m5=st.columns(5,gap="small")
+            with m1:
+                if st.button("←",key="mvq_l",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dx=-20); st.rerun()
+            with m2:
+                if st.button("↑",key="mvq_u",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dy=-20); st.rerun()
+            with m3:
+                if st.button("●",key="mvq_c",use_container_width=True):
+                    p=_qvp_prefix("quiz",quiz_style_id); center={"title":"title_x","question":"question_x","answers":"answer_x","timer":"timer_x","explanation":None,"history":"history_x"}.get(selected_q)
+                    if center: st.session_state[p+center]=540 if selected_q not in ("answers","history") else (80 if selected_q=="answers" else 80)
+                    if selected_q=="explanation": st.session_state[p+"explanation_y"]=1135
+                    _save_settings(); st.rerun()
+            with m4:
+                if st.button("↓",key="mvq_d",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dy=20); st.rerun()
+            with m5:
+                if st.button("→",key="mvq_r",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dx=20); st.rerun()
+            s1,s2,s3=st.columns(3,gap="small")
+            with s1:
+                if st.button("A −",key="szq_m",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dsize=-2); st.rerun()
+            with s2:
+                if st.button("Taille actuelle",key="szq_now",use_container_width=True): pass
+            with s3:
+                if st.button("A +",key="szq_p",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dsize=2); st.rerun()
+            b1,b2=st.columns(2,gap="small")
+            with b1:
+                if st.button("▶️ Voir l’animation",key="animq",use_container_width=True):
+                    play_preview_animation("quiz",quiz_style_id,theme_q,channel_q,sample_bg,preview_state_q,th_q)
+            with b2:
+                if st.button("✕ Désélectionner",key="clearq",use_container_width=True):
+                    _qvp_clear_selected(); st.rerun()
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     # Barre d'actions principale : toujours visible en bas de la zone de travail.
@@ -1877,7 +2072,7 @@ if nav=="quiz":
                     st.error(f"Erreur pendant le montage QuizVideo Pro : {e}")
 
 else:
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif</small></div>',unsafe_allow_html=True)
     c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
     with c_content:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
@@ -1899,38 +2094,64 @@ else:
         outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
         st.markdown('</div>',unsafe_allow_html=True)
     st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : tableau progressif : français à gauche → réflexion → traduction à droite → ligne suivante, jusqu’à 15 lignes sur la même page.")
-    left_v, right_v = st.columns([0.82, 1.18], gap="large")
+    left_v, right_v = st.columns([1.18, 0.82], gap="medium")
     with left_v:
         with st.container(border=True):
             render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
-    bg_mode_v=st.session_state.get("v_bg_mode","✨ Automatique")
-    uploaded_bg_v=st.session_state.get("v_bg_upload")
-    bg_mode_clean_v="Généré automatiquement" if bg_mode_v.startswith("✨") else "Image personnalisée" if bg_mode_v.startswith("🖼️") else "Aucun"
+    vocab_style_id="2" if style_v.startswith("Style 2") else "1"
+    vprefix=_qvp_prefix("vocab", vocab_style_id)
+    bg_mode_v=st.session_state.get(vprefix+"bg_mode", "✨ Automatique")
+    uploaded_bg_v=st.session_state.get(vprefix+"bg_upload")
+    bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with right_v:
-        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ Aperçu fixe — Vocabulaire</div><div class="qvp-preview-note">Il reste visible pendant que tu modifies les réglages.</div></div></div>', unsafe_allow_html=True)
-        st.caption("🎯 Modifie à gauche → le rendu 9:16 se met à jour ici.")
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF — VOCABULAIRE</div><div class="qvp-preview-note">Clique directement sur le mot, la traduction, le minuteur ou le tableau.</div></div></div>', unsafe_allow_html=True)
         if style_v.startswith("Style 2"):
-            preview_state_v=st.radio("Aperçu",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
+            preview_state_v=st.radio("État",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
         else:
-            preview_state_v=st.radio("Aperçu",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
+            preview_state_v=st.radio("État",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
+        selected_v=_qvp_selected_element("vocab",vocab_style_id)
         try:
-            sample_bg_v = bg_v if isinstance(bg_v, Image.Image) else selected_video_background(theme_v, th_v, bg_mode_clean_v, uploaded_bg_v)
+            cfg_v=_layout("vocab",vocab_style_id)
+            sample_bg_v=bg_v if isinstance(bg_v,Image.Image) else selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
             if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
                 active=0 if preview_state_v=="Ligne 1 + réflexion" else 1 if preview_state_v=="Ligne 2 + réflexion + traduction 1" else 2
-                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,
-                    timer=3 if "réflexion" in preview_state_v else None,
-                    timer_fraction=.72,
-                    reveal=("traduction" in preview_state_v),
-                    video_title=th_v)
+                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v)
             else:
-                sample_items=[{"fr":"Bonjour","trad":"Hello"}]
-                phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
-                preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,0.75,1.0)
-            st.markdown('<div class="qvp-preview-stage">',unsafe_allow_html=True)
-            st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
-            st.markdown('</div>',unsafe_allow_html=True)
+                sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
+            render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
+            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_v}</b> · les changements sont visibles immédiatement.</div>',unsafe_allow_html=True)
+            m1,m2,m3,m4,m5=st.columns(5,gap="small")
+            with m1:
+                if st.button("←",key="mvv_l",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=-20); st.rerun()
+            with m2:
+                if st.button("↑",key="mvv_u",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=-20); st.rerun()
+            with m3:
+                if st.button("●",key="mvv_c",use_container_width=True):
+                    p=_qvp_prefix("vocab",vocab_style_id)
+                    center={"title":"title_x","word":"question_x","translation":"translation_x"}.get(selected_v)
+                    if center: st.session_state[p+center]=540
+                    if selected_v=="timer": st.session_state[p+"timer_x"]=810 if vocab_style_id=="1" else 650
+                    if selected_v=="table": st.session_state[p+"table_x"]=70
+                    _save_settings(); st.rerun()
+            with m4:
+                if st.button("↓",key="mvv_d",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=20); st.rerun()
+            with m5:
+                if st.button("→",key="mvv_r",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=20); st.rerun()
+            s1,s2,s3=st.columns(3,gap="small")
+            with s1:
+                if st.button("A −",key="szv_m",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=-2); st.rerun()
+            with s2:
+                st.caption("Ajustement rapide")
+            with s3:
+                if st.button("A +",key="szv_p",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=2); st.rerun()
+            b1,b2=st.columns(2,gap="small")
+            with b1:
+                if st.button("▶️ Voir l’animation",key="animv",use_container_width=True):
+                    play_preview_animation("vocab",vocab_style_id,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v)
+            with b2:
+                if st.button("✕ Désélectionner",key="clearv",use_container_width=True): _qvp_clear_selected(); st.rerun()
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
