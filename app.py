@@ -115,7 +115,7 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-actionbar{padding:5px 8px !important;margin-top:5px !important}
 
 
-/* ===== QuizVideo Pro Studio V10 — refonte visuelle ===== */
+/* ===== QuizVideo Pro Studio V11 — refonte visuelle complète ===== */
 .qvp-studio-header{padding:10px 14px!important;margin:0 0 8px!important;border:1px solid #d8e2ef!important;border-radius:14px!important;background:linear-gradient(90deg,#fff,#f6f9fd)!important;box-shadow:0 5px 18px rgba(15,23,42,.06)!important;font-size:1rem!important}
 .qvp-studio-header b{font-size:1.02rem!important}
 .qvp-studio-header span{padding:5px 11px!important;font-size:.76rem!important;letter-spacing:.02em}
@@ -143,6 +143,39 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 /* Bouton principal de génération */
 button[kind="primary"]{font-weight:850!important}
 
+
+/* V11 : interface Studio plus lisible et hiérarchisée */
+.qvp-studio-shell{max-width:1500px;margin:0 auto;}
+.qvp-studio-header{padding:11px 16px!important;margin:0 0 10px!important;border:1px solid #d5dfeb!important;border-radius:16px!important;background:linear-gradient(100deg,#ffffff,#f5f8fc)!important;box-shadow:0 7px 22px rgba(15,23,42,.07)!important;font-size:1.02rem!important;}
+.qvp-studio-header b{font-size:1.08rem!important;color:#0f172a!important;}
+.qvp-studio-header span{padding:6px 12px!important;font-size:.78rem!important;}
+.qvp-studio-header small{font-size:.74rem!important;}
+.qvp-section-card{border:1px solid #d9e3ef;border-radius:14px;padding:10px 12px;background:linear-gradient(180deg,#ffffff,#f8fbff);box-shadow:0 4px 16px rgba(15,23,42,.045);}
+.qvp-section-title{font-size:.75rem;letter-spacing:.06em;font-weight:850;color:#64748b;margin-bottom:7px;}
+.qvp-editor-wrap{border:1px solid #d4deea;border-radius:16px;background:#fff;padding:8px 10px;box-shadow:0 7px 24px rgba(15,23,42,.06);}
+.qvp-editor-title{font-size:1.04rem!important;font-weight:900!important;color:#111827!important;margin:2px 0 8px!important;}
+.qvp-editor-subtitle{font-size:.72rem;color:#64748b;margin:-4px 0 8px;}
+.qvp-editor-wrap [data-testid="stTabs"] [role="tablist"]{gap:4px!important;overflow-x:auto!important;padding-bottom:2px;}
+.qvp-editor-wrap [data-testid="stTabs"] button{font-size:.76rem!important;font-weight:750!important;min-height:34px!important;padding:5px 9px!important;border-radius:9px 9px 0 0!important;}
+.qvp-editor-wrap [data-testid="stTabs"] [aria-selected="true"]{background:#eef4fb!important;color:#0f172a!important;}
+.qvp-editor-wrap label{font-size:.78rem!important;font-weight:700!important;color:#334155!important;}
+.qvp-editor-wrap [data-testid="stSlider"]{padding-top:1px!important;padding-bottom:1px!important;}
+.qvp-editor-wrap [data-testid="stHorizontalBlock"]{gap:.55rem!important;}
+.qvp-preview-sticky{position:sticky;top:10px;z-index:25;}
+.qvp-preview-panel{border:1px solid #c9d6e6!important;background:linear-gradient(180deg,#ffffff,#f5f9fd)!important;box-shadow:0 12px 30px rgba(15,23,42,.10)!important;border-radius:16px!important;padding:10px 12px!important;}
+.qvp-preview-title{font-size:1rem!important;font-weight:850!important;color:#0f172a!important;margin-bottom:2px!important;}
+.qvp-preview-note{font-size:.72rem!important;color:#64748b!important;margin-bottom:4px!important;}
+.qvp-preview-stage{display:flex;justify-content:center;align-items:flex-start;padding:6px 0 2px;}
+.qvp-preview-stage [data-testid="stImage"]{width:min(100%,520px)!important;margin:0 auto!important;}
+.qvp-preview-stage img{border-radius:16px!important;border:1px solid #cbd5e1!important;box-shadow:0 16px 36px rgba(15,23,42,.15)!important;}
+.qvp-actionbar-v11{position:sticky;bottom:10px;z-index:60;margin-top:12px;padding:8px;background:rgba(248,250,252,.94);backdrop-filter:blur(12px);border:1px solid #cdd8e5;border-radius:16px;box-shadow:0 14px 30px rgba(15,23,42,.14);}
+.qvp-actionbar-v11 .qvp-action-label{font-size:.68rem;color:#64748b;font-weight:750;text-align:center;margin:0 0 4px;}
+.qvp-actionbar-v11 button{min-height:42px!important;font-weight:820!important;}
+.qvp-content-box{border:1px solid #d9e3ef;border-radius:14px;padding:4px 10px;background:#fff;}
+.qvp-content-box summary{font-weight:850!important;color:#0f172a!important;}
+@media (min-width: 1100px){
+  .qvp-main-layout{display:block;}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -533,12 +566,12 @@ def _layout(module="quiz", style=None):
         legacy_prefix = "q_"
     defaults={
         "font_family":"DejaVu Sans",
-        "show_title":True,"title_y":42,"title_size":46,
+        "show_title":True,"title_x":540,"title_y":42,"title_size":46,
         "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":650,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -602,6 +635,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         correct=(correct_idx is not None and i==correct_idx)
         if correct:
             fill=_hex_rgb(cfg["correct"],theme["success"]); outline=_hex_rgb(cfg.get("correct"),theme["success"]); width=max(2,int(cfg.get("border_width",2))+1)
+            # Accent discret pour la bonne réponse : halo local
         else:
             fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
@@ -658,7 +692,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     ff=cfg.get("font_family","DejaVu Sans")
     if cfg.get("show_title",True):
         title=clean_text(video_title or "Vocabulaire"); tf=get_font(int(cfg.get("title_size",34)),ff)
-        tw=text_width(draw,title,tf); draw.text(((WIDTH-tw)//2,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+        tw=text_width(draw,title,tf); tx=int(cfg.get("title_x",540))-tw/2; draw.text((tx,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
     # Tableau : les lignes apparaissent une par une, la traduction reste affichée.
     x=int(cfg.get("table_x",70)); y0=int(cfg.get("table_y",430)); w=int(cfg.get("table_width",940)); rh=int(cfg.get("table_row_h",82)); gap=int(cfg.get("table_gap",8)); split=int(cfg.get("table_split",540)); radius=int(cfg.get("table_radius",16))
     # En-tête discret
@@ -670,7 +704,9 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
         item=items[i]; ry=y0+i*(rh+gap); active_row=(i==active_idx)
         fill=_hex_rgb(cfg.get("answer2" if active_row else "answer"),theme["card"])
         outline=_hex_rgb(cfg.get("border_color"),theme["accent"] if active_row else theme["muted"])
-        draw.rounded_rectangle((x,ry,x+w,ry+rh),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2))))
+        if active_row:
+            shadow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); sd=ImageDraw.Draw(shadow); sd.rounded_rectangle((x+4,ry+5,x+w+4,ry+rh+5),radius=int(cfg.get("border_radius",radius)),fill=(0,0,0,70)); shadow=shadow.filter(ImageFilter.GaussianBlur(8)); img=Image.alpha_composite(img.convert("RGBA"),shadow).convert("RGB"); draw=ImageDraw.Draw(img)
+        draw.rounded_rectangle((x,ry,x+w,ry+rh),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2)) + (1 if active_row else 0)))
         draw.line((x+split,ry+10,x+split,ry+rh-10),fill=outline,width=2)
         fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")) if (i<active_idx or reveal) else ""
         if active_row and cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*clamp(motion)))]
@@ -702,15 +738,19 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]; ff=cfg.get("font_family","DejaVu Sans")
     if cfg.get("show_title",True):
         title=clean_text(video_title or "Culture Générale"); tf=get_font(int(cfg.get("title_size",46)),ff); tw=text_width(draw,title,tf)
-        draw.text(((WIDTH-tw)//2,int(cfg.get("title_y",42))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
-    # Question active : position X/Y entièrement modifiable.
+        tx=int(cfg.get("title_x",540))-tw/2
+        draw.text((tx,int(cfg.get("title_y",42))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+    # Question active : zone principale, toujours au même emplacement.
     q=clean_text(active.get("question",""));
     if cfg.get("animation")=="Machine à écrire": q=q[:max(1,int(len(q)*clamp(motion)))]
-    qf=get_font(int(cfg.get("question_size",47)),ff); qx=int(cfg.get("question_x",540)); qy=int(cfg.get("question_y",180)); maxw=int(cfg.get("question_width",900))
+    qf=get_font(int(cfg.get("question_size",50)),ff); qx=int(cfg.get("question_x",540)); qy=int(cfg.get("question_y",150)); maxw=int(cfg.get("question_width",920))
     prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*100) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
     lines=wrap_text(q,qf,maxw)[:3]
+    line_h=int(qf.size*1.12); box_h=max(110, len(lines)*line_h+54); box_w=min(1000,max(560,maxw+40)); bx1=max(30,qx-box_w//2); bx2=min(WIDTH-30,qx+box_w//2); by1=max(100,qy-28); by2=min(980,by1+box_h)
+    draw.rounded_rectangle((bx1,by1,bx2,by2),radius=int(cfg.get("border_radius",22)),fill=(5,14,31),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("primary"),theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
+    q_draw_y=by1+22
     for line in lines:
-        tw=text_width(draw,line,qf); draw.text((qx-tw/2+dx,qy),line,font=qf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); qy+=int(qf.size*1.12)
+        tw=text_width(draw,line,qf); draw.text((qx-tw/2+dx,q_draw_y),line,font=qf,fill=_hex_rgb(cfg.get("text"),(255,255,255))); q_draw_y+=line_h
     if timer is not None and cfg.get("show_timer",True):
         draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",430)),timer,timer_fraction,"quiz","2")
     # Historique : seulement les réponses déjà révélées.
@@ -718,9 +758,11 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     for i in range(active_idx): hist.append((i,items[i]))
     if answer_reveal: hist.append((active_idx,active))
     if hist:
-        hx=int(cfg.get("history_x",80)); hy=int(cfg.get("history_y",650)); hw=int(cfg.get("history_width",920)); rh=int(cfg.get("history_row_h",78)); hg=int(cfg.get("history_gap",12)); hfs=get_font(int(cfg.get("history_size",30)),ff)
+        hx=int(cfg.get("history_x",80)); hy=int(cfg.get("history_y",690)); hw=int(cfg.get("history_width",920)); rh=int(cfg.get("history_row_h",74)); hg=int(cfg.get("history_gap",10)); hfs=get_font(int(cfg.get("history_size",29)),ff)
+        label_f=get_font(max(18,int(hfs.size*.68)),ff); draw.text((hx,hy-34),"HISTORIQUE",font=label_f,fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+        hy=hy+2
         for pos,(i,item) in enumerate(hist[-12:]):
-            ry=hy+pos*(rh+hg); draw.rounded_rectangle((hx,ry,hx+hw,ry+rh),radius=int(cfg.get("border_radius",cfg.get("answer_radius",20))),fill=_hex_rgb(cfg.get("answer"),theme["card2"]),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("correct"),theme["success"])),width=max(1,int(cfg.get("border_width",2))))
+            ry=hy+pos*(rh+hg); base=_hex_rgb(cfg.get("answer"),theme["card2"]); muted=(int(base[0]*.78),int(base[1]*.78),int(base[2]*.78)); draw.rounded_rectangle((hx,ry,hx+hw,ry+rh),radius=int(cfg.get("border_radius",20)),fill=muted,outline=_hex_rgb(cfg.get("border_color"),(140,155,180)),width=max(1,int(cfg.get("border_width",2))))
             opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
             try: ans=clean_text(opts["ABCD".index(rc)])
             except Exception: ans=""
@@ -1389,115 +1431,191 @@ def _ss_default(key, value):
     st.session_state[key]=value
 
 def render_layout_editor(module, style="1"):
-    """Studio compact : un éditeur indépendant par style."""
-    is_quiz=module=="quiz"
-    p=("q2_" if is_quiz and str(style)=="2" else "q1_" if is_quiz else "v2_" if str(style)=="2" else "v1_")
-    defaults={
-        "font_family":"DejaVu Sans","show_title":True,"title_y":42 if is_quiz else 70,"title_size":46 if is_quiz else 34,
-        "question_x":540,"question_y":180 if is_quiz else 500,"question_size":47 if is_quiz else 58,"question_width":900,
-        "answer_y":650 if is_quiz else 760,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30 if is_quiz else 42,"answer_radius":20,
-        "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_size":30,
-        "show_explanation":True,"explanation_y":1135,"explanation_h":380,
-        "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
-        "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
-        "animation":"Glissement vertical","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
-        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Double cercle",
-        "timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
-        "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
-        "border_color":"#D2DFF5","border_width":2,"border_radius":20,
-        "bg_opacity":18,"bg_zoom":1.02,"bg_x":0,"bg_y":0,"bg_mode":"✨ Automatique",
-        "translation_x":540,"translation_y":760,"translation_width":850,
-        "table_x":70,"table_y":430,"table_width":940,"table_row_h":82,"table_gap":8,"table_split":540,"table_radius":16,"vocab_fr_size":42,"vocab_tr_size":38,"vocab_header_size":28
+    """Éditeur Studio V11 : indépendant pour chacun des 4 styles."""
+    is_quiz = module == "quiz"
+    style = str(style)
+    p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
+    defaults = {
+        "font_family":"DejaVu Sans", "show_title":True, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
+        "question_x":540, "question_y":150 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
+        "answer_y":620 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":88, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
+        "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
+        "show_explanation":True, "explanation_y":1135, "explanation_h":380, "explanation_size":31,
+        "score_y":112, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
+        "show_timer":True, "timer_y":1015 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":62, "timer_text_size":58, "timer_style":"Double cercle",
+        "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
+        "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
+        "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
+        "bg_opacity":18, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
+        "translation_x":540, "translation_y":760, "translation_width":850,
+        "table_x":70, "table_y":420, "table_width":940, "table_row_h":88, "table_gap":8, "table_split":540, "table_radius":18,
+        "vocab_fr_size":44, "vocab_tr_size":40, "vocab_header_size":29,
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
-    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR <span style="font-size:.72rem;font-weight:600;color:#64748b">Réglages indépendants de ce style</span></div>',unsafe_allow_html=True)
-    tabs=st.tabs(["🧩 Structure","📐 Position & taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🌄 Fond"])
+
+    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="qvp-editor-subtitle">Les réglages sont indépendants pour ce style et sont conservés lorsque tu changes de module.</div>', unsafe_allow_html=True)
+    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond"])
+
     with tabs[0]:
-        st.selectbox("Police — utilisée pour toutes les vidéos",FONT_CHOICES,key=p+"font_family")
-        st.caption("Cette police est appliquée à l’aperçu et au rendu vidéo de CE style uniquement.")
         if is_quiz:
-            st.info("**Style 1** — Question → 4 réponses → minuteur → bonne réponse verte → explication.\n\n**Style 2** — titre fixe → question active en haut → réflexion → réponse révélée dans l'historique → question suivante au même emplacement.")
+            st.info("**Style 1** : question + 4 réponses → réflexion → révélation verte + explication.\n\n**Style 2** : titre fixe + une seule question active → réflexion → réponse ajoutée à l'historique → question suivante au même emplacement.")
         else:
-            st.info("**Style 1** — Mot → minuteur → traduction.\n\n**Style 2** — tableau progressif : mot/phrase en français à gauche → réflexion → traduction devant à droite → mot suivant sous le précédent, jusqu'à 15 lignes sur la même page.")
+            st.info("**Style 1** : mot/phrase → réflexion → traduction.\n\n**Style 2** : tableau cumulatif : français à gauche → minuteur dans la cellule traduction → traduction → nouvelle ligne sous la précédente, jusqu'à 15 lignes.")
+        st.checkbox("Afficher le titre", key=p+"show_title")
+        st.checkbox("Afficher l'explication" if is_quiz else "Afficher le titre", key=p+"show_explanation", disabled=not is_quiz) if is_quiz else None
+
     with tabs[1]:
-        c1,c2=st.columns(2)
+        c1,c2 = st.columns(2)
         with c1:
-            st.markdown("**Question / mot actif**")
-            st.slider("Position X",0,1080,key=p+"question_x")
-            st.slider("Position Y",80,900,key=p+"question_y")
-            st.slider("Taille",22,110,key=p+"question_size")
-            if is_quiz: st.slider("Largeur",500,1000,key=p+"question_width")
-            st.markdown("**Titre**"); st.checkbox("Afficher le titre",key=p+"show_title"); st.slider("Position Y du titre",20,220,key=p+"title_y"); st.slider("Taille du titre",22,80,key=p+"title_size")
-            if is_quiz:
-                st.markdown("**Historique des réponses — Style 2**")
-                st.slider("Position X",0,180,key=p+"history_x"); st.slider("Position Y",500,1200,key=p+"history_y"); st.slider("Largeur",600,1000,key=p+"history_width"); st.slider("Hauteur ligne",55,110,key=p+"history_row_h"); st.slider("Espacement",2,24,key=p+"history_gap"); st.slider("Taille du texte",20,52,key=p+"history_size")
-            else:
-                st.markdown("**Tableau Vocabulaire Style 2**")
-                st.slider("Position X",20,160,key=p+"table_x"); st.slider("Position Y",300,650,key=p+"table_y"); st.slider("Largeur",700,1000,key=p+"table_width"); st.slider("Hauteur ligne",55,105,key=p+"table_row_h"); st.slider("Espacement lignes",2,18,key=p+"table_gap")
+            st.markdown("**Élément actif**")
+            st.slider("Question / mot — X",0,1080,key=p+"question_x")
+            st.slider("Question / mot — Y",60,1000,key=p+"question_y")
+            if is_quiz and style=="2":
+                st.markdown("**Historique — Style 2**")
+                st.slider("Historique — X",0,220,key=p+"history_x")
+                st.slider("Historique — Y",450,1300,key=p+"history_y")
+            if not is_quiz and style=="2":
+                st.markdown("**Tableau — Style 2**")
+                st.slider("Tableau — X",20,160,key=p+"table_x")
+                st.slider("Tableau — Y",280,700,key=p+"table_y")
         with c2:
-            if is_quiz:
-                st.markdown("**Réponses Style 1**"); st.slider("Position Y",300,1000,key=p+"answer_y"); st.slider("Position X",20,180,key=p+"answer_x"); st.slider("Largeur",700,1000,key=p+"answer_width"); st.slider("Taille",20,60,key=p+"answer_size"); st.slider("Hauteur",55,130,key=p+"answer_h"); st.slider("Espacement",4,30,key=p+"answer_gap")
-                st.markdown("**Compteur**"); st.slider("Position Y",70,220,key=p+"score_y"); st.slider("Taille",20,70,key=p+"score_size"); st.slider("Arrondi",5,45,key=p+"score_radius")
-                st.markdown("**Explication**"); st.checkbox("Afficher",key=p+"show_explanation"); st.slider("Position Y",950,1400,key=p+"explanation_y"); st.slider("Hauteur",220,520,key=p+"explanation_h")
-            else:
-                st.slider("Séparation des colonnes",400,650,key=p+"table_split"); st.slider("Arrondi des lignes",4,32,key=p+"table_radius"); st.slider("Taille français",24,58,key=p+"vocab_fr_size"); st.slider("Taille traduction",22,54,key=p+"vocab_tr_size"); st.slider("Taille en-tête",20,36,key=p+"vocab_header_size"); st.slider("Position X traduction — Style 1",200,880,key=p+"translation_x"); st.slider("Position Y traduction — Style 1",650,1200,key=p+"translation_y"); st.slider("Largeur traduction",400,1000,key=p+"translation_width")
+            st.markdown("**Titre**")
+            st.slider("Titre — X",0,1080,value=540,key=p+"title_x") if p+"title_x" not in st.session_state else st.slider("Titre — X",0,1080,key=p+"title_x")
+            st.slider("Titre — Y",20,260,key=p+"title_y")
+            if is_quiz and style=="1":
+                st.markdown("**Réponses — Style 1**")
+                st.slider("Réponses — X",20,180,key=p+"answer_x")
+                st.slider("Réponses — Y",300,1050,key=p+"answer_y")
+            if is_quiz and style=="1":
+                st.markdown("**Explication**")
+                st.slider("Explication — Y",950,1450,key=p+"explanation_y")
+            if not is_quiz and style=="2":
+                st.slider("Séparation des colonnes",400,650,key=p+"table_split")
+
     with tabs[2]:
-        c1,c2=st.columns(2)
+        c1,c2 = st.columns(2)
         with c1:
-            st.color_picker("Accent / titre",key=p+"primary"); st.color_picker("Fond des cartes",key=p+"answer"); st.color_picker("Fond actif / secondaire",key=p+"answer2")
+            st.markdown("**Élément actif**")
+            st.slider("Taille du texte",22,110,key=p+"question_size")
+            st.slider("Largeur",500,1020,key=p+"question_width")
+            if is_quiz and style=="1":
+                st.markdown("**Réponses**")
+                st.slider("Largeur des cartes",700,1000,key=p+"answer_width")
+                st.slider("Hauteur des cartes",55,140,key=p+"answer_h")
         with c2:
-            st.color_picker("Bonne réponse / traduction",key=p+"correct"); st.color_picker("Texte",key=p+"text"); st.color_picker("Texte secondaire",key=p+"muted")
-        st.markdown("**Bordures — tous les éléments du style**")
-        bc1,bc2,bc3=st.columns(3)
-        with bc1: st.color_picker("Couleur des bordures",key=p+"border_color")
-        with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
-        with bc3: st.slider("Arrondi",0,45,key=p+"border_radius")
+            st.markdown("**Titre**")
+            st.slider("Taille du titre",22,86,key=p+"title_size")
+            if is_quiz and style=="1":
+                st.slider("Taille du texte des réponses",20,62,key=p+"answer_size")
+                st.slider("Espacement des réponses",4,32,key=p+"answer_gap")
+                st.slider("Taille du compteur",20,72,key=p+"score_size")
+            elif is_quiz and style=="2":
+                st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
+                st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
+                st.slider("Taille du texte historique",20,52,key=p+"history_size")
+            elif not is_quiz and style=="2":
+                st.slider("Largeur du tableau",700,1000,key=p+"table_width")
+                st.slider("Hauteur d'une ligne",60,115,key=p+"table_row_h")
+                st.slider("Taille français",24,60,key=p+"vocab_fr_size")
+                st.slider("Taille traduction",22,56,key=p+"vocab_tr_size")
+                st.slider("Taille en-tête",20,38,key=p+"vocab_header_size")
+            else:
+                st.slider("X traduction — Style 1",200,880,key=p+"translation_x")
+                st.slider("Y traduction — Style 1",650,1200,key=p+"translation_y")
+                st.slider("Largeur traduction",400,1000,key=p+"translation_width")
+
     with tabs[3]:
-        st.selectbox("Animation",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
-        c1,c2=st.columns(2)
-        with c1: st.slider("Vitesse",0.5,2.0,key=p+"animation_speed"); st.slider("Entrée des éléments",0.0,2.0,key=p+"animation_strength")
-        with c2: st.slider("Mouvement général",0.0,2.0,key=p+"motion_strength")
-        st.caption("Les animations sont synchronisées sur la durée réelle des voix.")
+        c1,c2 = st.columns(2)
+        with c1:
+            st.color_picker("Accent / titre",key=p+"primary")
+            st.color_picker("Cartes principales",key=p+"answer")
+            st.color_picker("Cartes secondaires",key=p+"answer2")
+        with c2:
+            st.color_picker("Bonne réponse / traduction",key=p+"correct")
+            st.color_picker("Texte principal",key=p+"text")
+            st.color_picker("Texte secondaire",key=p+"muted")
+        st.markdown("**Bordures**")
+        bc1,bc2,bc3=st.columns(3)
+        with bc1: st.color_picker("Couleur",key=p+"border_color")
+        with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
+        with bc3: st.slider("Arrondi",0,48,key=p+"border_radius")
+
     with tabs[4]:
+        st.selectbox("Animation principale",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
+        c1,c2=st.columns(2)
+        with c1: st.slider("Vitesse",0.5,2.0,key=p+"animation_speed")
+        with c2: st.slider("Amplitude",0.0,2.0,key=p+"animation_strength")
+        st.slider("Mouvement du fond",0.0,2.0,key=p+"motion_strength")
+        st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
+
+    with tabs[5]:
         st.checkbox("Afficher le compte à rebours",key=p+"show_timer")
         c1,c2=st.columns(2)
         with c1:
-            st.slider("Position X",0,1080,key=p+"timer_x"); st.slider("Position Y",250,1400,key=p+"timer_y"); st.slider("Taille",28,130,key=p+"timer_size"); st.slider("Taille du chiffre",20,110,key=p+"timer_text_size")
+            st.slider("Position X",0,1080,key=p+"timer_x")
+            st.slider("Position Y",250,1450,key=p+"timer_y")
+            st.slider("Taille",28,140,key=p+"timer_size")
         with c2:
-            st.selectbox("Style du chronomètre",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
-    with tabs[5]:
+            st.selectbox("Style",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style")
+            st.slider("Taille du chiffre",20,112,key=p+"timer_text_size")
+            st.checkbox("Afficher le libellé",key=p+"timer_show_label")
+            st.text_input("Libellé",key=p+"timer_label")
+            st.color_picker("Couleur du minuteur",key=p+"timer_color")
+
+    with tabs[6]:
+        st.selectbox("Police du style",FONT_CHOICES,key=p+"font_family")
+        st.caption("✅ Cette police est utilisée par l’aperçu et le rendu vidéo de CE style uniquement.")
+        st.info("Choisis une police une seule fois pour ce style. Les réglages des autres styles restent indépendants.")
+
+    with tabs[7]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
-        if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé": st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
+        if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
+            st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
         c1,c2=st.columns(2)
-        with c1: st.slider("Assombrissement",0,80,key=p+"bg_opacity"); st.slider("Zoom",1.00,1.25,key=p+"bg_zoom",step=.01)
-        with c2: st.slider("Déplacement X",-120,120,key=p+"bg_x"); st.slider("Déplacement Y",-120,120,key=p+"bg_y")
-        st.caption("Le fond automatique est local et ne consomme pas de quota Gemini.")
+        with c1:
+            st.slider("Assombrissement",0,80,key=p+"bg_opacity")
+            st.slider("Zoom",1.00,1.25,key=p+"bg_zoom",step=.01)
+        with c2:
+            st.slider("Déplacement X",-120,120,key=p+"bg_x")
+            st.slider("Déplacement Y",-120,120,key=p+"bg_y")
+        st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
     _save_settings()
 
+
 nav=st.session_state.get("module_nav","quiz")
-n1,n2=st.columns(2)
+n1,n2=st.columns(2,gap="small")
 with n1:
-    if st.button("🧠 QUIZ TIKTOK PRO",key="nav_quiz",use_container_width=True):
+    if st.button("🧠  QUIZ TIKTOK PRO",key="nav_quiz",use_container_width=True):
         _save_settings(); st.session_state["module_nav"]="quiz"; st.rerun()
 with n2:
-    if st.button("🗣️ VOCABULAIRE PRO",key="nav_vocab",use_container_width=True):
+    if st.button("🗣️  VOCABULAIRE PRO",key="nav_vocab",use_container_width=True):
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
-    r1,r2,r3,r4=st.columns([1.15,.7,.95,1.15])
-    with r1: th_q=st.text_input("Sujet","Culture Générale",key="thq")
-    with r2: nb_q=st.slider("Questions",1,15,15,key="nbq")
-    with r3: voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
-    with r4: theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
-    r5,r6,r7,r8=st.columns([1.0,1.25,1.55,1.2])
-    with r5: channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
-    with r6: hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
-    with r7: outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
-    with r8: style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],horizontal=True,key="styleq_compact")
+    c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
+    with c_content:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
+        th_q=st.text_input("Sujet","Culture Générale",key="thq")
+        nb_q=st.slider("Questions",1,15,15,key="nbq")
+        voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
+        st.markdown('</div>',unsafe_allow_html=True)
+    with c_style:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">STYLE VIDÉO</div>',unsafe_allow_html=True)
+        theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
+        style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
+        st.markdown('</div>',unsafe_allow_html=True)
+    with c_social:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">RÉSEAUX</div>',unsafe_allow_html=True)
+        channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
+        hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
+        outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
+        st.markdown('</div>',unsafe_allow_html=True)
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
-    left_q, right_q = st.columns([0.95, 1.05], gap="medium")
+    left_q, right_q = st.columns([0.82, 1.18], gap="large")
     with left_q:
         with st.container(border=True):
             render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
@@ -1528,19 +1646,25 @@ if nav=="quiz":
                 preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
             else:
                 preview = draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
+            st.markdown('<div class="qvp-preview-stage">',unsafe_allow_html=True)
             st.image(preview, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
+            st.markdown('</div>',unsafe_allow_html=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
-    aq1,aq2,aq3=st.columns([1,1,1])
+    # Barre d'actions principale : toujours visible en bas de la zone de travail.
+    aq1,aq2,aq3=st.columns([1,1,1.35])
     with aq1:
-        if st.button("🎲 Variation",key="studio_variation_q",use_container_width=True):
+        if st.button("🎲 Nouvelle variation",key="studio_variation_q",use_container_width=True):
             st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
     with aq2:
         if st.button("💾 Enregistrer",key="studio_save_q",use_container_width=True):
-            _save_settings(); st.success("Style enregistré.")
+            _save_settings(); st.success("✅ Style enregistré.")
     with aq3:
-        st.caption("🎬 Générer ci-dessous")
-    with st.expander("🎯 Contenu — Questions / réponses", expanded=False):
+        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
+        generate_label_q="🎬 GÉNÉRER LE SHORT QUIZ"
+        q_generate_btn_clicked = st.button(generate_label_q,key="makeq_top",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
+        st.markdown('</div>',unsafe_allow_html=True)
+    with st.expander("🎯 CONTENU — Questions / réponses", expanded=False):
         mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
         if mode_q=="🤖 IA Gemini":
             st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
@@ -1629,20 +1753,7 @@ if nav=="quiz":
                         st.session_state.q_source=f"IA • {th_q} • restauré"
                         st.success("✅ Lot IA restauré, 0 quota consommé.")
                     else: st.info("Aucun lot IA en cache.")
-            act1,act2,act3=st.columns(3)
-            with act1:
-                if st.button("🎲 Variation",key="variation_q",use_container_width=True):
-                    st.session_state["q_variation_seed"]=random.randint(1,999999); st.session_state["q_variation_notice"]=True
-                    st.rerun()
-            with act2:
-                if st.button("💾 Enregistrer",key="save_style_q",use_container_width=True):
-                    _save_settings(); st.success("Style enregistré.")
-            with act3:
-                st.caption("⬇️ Générer ci-dessous")
-            if st.session_state.get("q_variation_notice"):
-                st.info("🎲 Variation active : utilise le fond, les animations et les réglages actuels pour une nouvelle variante.")
-                st.session_state["q_variation_notice"]=False
-            if st.button("🎬 Générer le Short Quiz — Mise en page personnalisée",key="makeq",type="primary",use_container_width=True):
+            if q_generate_btn_clicked:
                 try:
                     with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                         with tempfile.TemporaryDirectory() as tmp:
@@ -1767,20 +1878,28 @@ if nav=="quiz":
 
 else:
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
-    a1,a2,a3,a4=st.columns([1.15,.7,1.0,1.15])
-    with a1: th_v=st.text_input("Sujet","Voyage",key="thv")
-    with a2: nb_v=st.slider("Mots",1,15,15,key="nbv")
-    with a3: langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
-    with a4: theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
-    a5,a6,a7,a8=st.columns([1.0,1.25,1.4,1.25])
-    with a5: channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
-    with a6: hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
-    with a7: outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
-    with a8: style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],horizontal=True,key="stylev_compact")
-    voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
-    voice_tr=VOICES_MAP[langue_v][voice_tr_name]
+    c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
+    with c_content:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
+        th_v=st.text_input("Sujet","Voyage",key="thv")
+        nb_v=st.slider("Mots",1,15,15,key="nbv")
+        langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
+        voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
+        voice_tr=VOICES_MAP[langue_v][voice_tr_name]
+        st.markdown('</div>',unsafe_allow_html=True)
+    with c_style:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">STYLE VIDÉO</div>',unsafe_allow_html=True)
+        theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
+        style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],key="stylev_compact")
+        st.markdown('</div>',unsafe_allow_html=True)
+    with c_social:
+        st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">RÉSEAUX</div>',unsafe_allow_html=True)
+        channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
+        hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
+        outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
+        st.markdown('</div>',unsafe_allow_html=True)
     st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : tableau progressif : français à gauche → réflexion → traduction à droite → ligne suivante, jusqu’à 15 lignes sur la même page.")
-    left_v, right_v = st.columns([0.95, 1.05], gap="medium")
+    left_v, right_v = st.columns([0.82, 1.18], gap="large")
     with left_v:
         with st.container(border=True):
             render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
@@ -1809,20 +1928,24 @@ else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]
                 phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"
                 preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,0.75,1.0)
+            st.markdown('<div class="qvp-preview-stage">',unsafe_allow_html=True)
             st.image(preview_v, caption="Aperçu 9:16 — les changements sont appliqués ici.", use_container_width=True)
+            st.markdown('</div>',unsafe_allow_html=True)
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
-    av1,av2,av3=st.columns([1,1,1])
+    av1,av2,av3=st.columns([1,1,1.35])
     with av1:
-        if st.button("🎲 Variation",key="studio_variation_v",use_container_width=True):
+        if st.button("🎲 Nouvelle variation",key="studio_variation_v",use_container_width=True):
             st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
     with av2:
         if st.button("💾 Enregistrer",key="studio_save_v",use_container_width=True):
-            _save_settings(); st.success("Style enregistré.")
+            _save_settings(); st.success("✅ Style enregistré.")
     with av3:
-        st.caption("🎬 Générer ci-dessous")
-    with st.expander("🎯 Contenu — Mots / traductions", expanded=False):
+        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
+        v_generate_btn_clicked = st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_top",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
+        st.markdown('</div>',unsafe_allow_html=True)
+    with st.expander("🎯 CONTENU — Mots / traductions", expanded=False):
         vb1,vb2=st.columns(2)
         with vb1:
             if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
@@ -1878,16 +2001,7 @@ else:
                         st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
                         st.success("✅ Lot IA restauré, 0 quota consommé.")
                     else: st.info("Aucun lot IA en cache.")
-            act1,act2,act3=st.columns(3)
-            with act1:
-                if st.button("🎲 Variation",key="variation_v",use_container_width=True):
-                    st.session_state["v_variation_seed"]=random.randint(1,999999); st.success("🎲 Variation visuelle prête.")
-            with act2:
-                if st.button("💾 Enregistrer",key="save_style_v",use_container_width=True):
-                    _save_settings(); st.success("Style enregistré.")
-            with act3:
-                st.caption("⬇️ Générer ci-dessous")
-            if st.button("🎬 Générer la vidéo Vocabulaire Pro",key="makev",type="primary",use_container_width=True):
+            if v_generate_btn_clicked:
                 try:
                     with st.spinner("Création du Short Vocabulaire Pro..."):
                         with tempfile.TemporaryDirectory() as tmp:
@@ -1934,3 +2048,5 @@ else:
                 except MemoryError:
                     gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
                 except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+
+st.markdown('</div>',unsafe_allow_html=True)
