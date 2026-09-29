@@ -972,6 +972,29 @@ def save_frames(frames,tmpdir,prefix):
         p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p); out.append((p,dur))
     return out
 
+class DiskFrameBuffer:
+    """Stocke les images directement sur disque pour éviter une forte consommation RAM.
+    Important pour les quiz de 15 questions, qui peuvent produire des centaines d'images.
+    """
+    def __init__(self,tmpdir,prefix):
+        self.tmpdir=tmpdir; self.prefix=prefix; self.items=[]; self.index=0
+    def append(self,item):
+        img,dur=item
+        path=os.path.join(self.tmpdir,f"{self.prefix}_{self.index:04d}.png")
+        self.index += 1
+        img.save(path,optimize=True)
+        self.items.append((path,float(dur)))
+        try:
+            img.close()
+        except Exception:
+            pass
+    def __len__(self): return len(self.items)
+    def as_list(self): return self.items
+
+def render_steps(duration, minimum=5, maximum=18, density=3.0):
+    """Nombre de frames raisonnable : rendu fluide sans exploser la RAM avec 15 questions."""
+    return max(minimum, min(maximum, int(max(0.1,float(duration))*density)))
+
 def frames_for_audio(audio_path,words,frame_fn,duration=None):
     dur=duration or audio_duration(audio_path)
     if not words: return [(frame_fn(-1,0.0),dur)]
@@ -1641,12 +1664,12 @@ if nav=="quiz":
                                     qdur=audio_duration(qa_raw)
                                     adur=audio_duration(ans_raw)
                                     # La question apparaît d'abord, puis le minuteur, puis sa réponse.
-                                    frames=[]
-                                    q_steps=max(5,min(48,int(qdur*6)))
+                                    frames=DiskFrameBuffer(tmp,f"s2f_{idx}")
+                                    q_steps=render_steps(qdur,5,16,3.0)
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=94
+                                    cdur=3.12; cd_steps=32
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1655,14 +1678,14 @@ if nav=="quiz":
                                         timer=0 if elapsed>=3.0 else sec
                                         timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
-                                    a_steps=max(5,min(48,int(adur*6)))
+                                    a_steps=render_steps(adur,5,16,3.0)
                                     for j in range(a_steps):
                                         t=j/max(1,a_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
                                     audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,ans_raw],audio)
                                     out=os.path.join(tmp,f"s2_{idx}.mp4")
-                                    make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
+                                    make_segment(frames.as_list(),audio,out,tmp,1.0)
                                     clips.append(out)
                                     del frames
                                     gc.collect()
@@ -1675,13 +1698,13 @@ if nav=="quiz":
                                     ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
                                     synthesize_audio(exp_text,voice_q,ea,tts_rate)
                                     edur=audio_duration(ea)
-                                    exp_frames=max(5,min(48,int(edur*6)))
-                                    eframes=[]
+                                    exp_frames=render_steps(edur,5,14,2.5)
+                                    eframes=DiskFrameBuffer(tmp,f"s2ef_{idx}")
                                     for j in range(exp_frames):
                                         t=j/max(1,exp_frames-1)
                                         eframes.append((draw_explanation_scene(q["question"],answer_text,exp_text,theme_q,channel_q,bg_q,progress=t,q_num=idx+1,total=total,video_title=th_q),edur/exp_frames))
                                     eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
-                                    make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
+                                    make_segment(eframes.as_list(),ea,eo,tmp,1.0)
                                     clips.append(eo)
                                     del eframes
                                     gc.collect()
@@ -1701,12 +1724,12 @@ if nav=="quiz":
                                     mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
-                                    frames=[]
-                                    q_steps=max(5,min(48,int(qdur*6)))
+                                    frames=DiskFrameBuffer(tmp,f"qfull_{idx}")
+                                    q_steps=render_steps(qdur,5,16,3.0)
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=94
+                                    cdur=3.12; cd_steps=32
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1714,12 +1737,12 @@ if nav=="quiz":
                                         else: sec=1; frac=1-((elapsed-2.08)/1.04)
                                         timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
-                                    ex_steps=max(8,int(edur*12))
+                                    ex_steps=render_steps(edur,8,18,3.0)
                                     for j in range(ex_steps):
                                         t=j/max(1,ex_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
                                     out=os.path.join(tmp,f"qfull_{idx}.mp4")
-                                    make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
+                                    make_segment(frames.as_list(),full_audio,out,tmp,1.0)
                                     clips.append(out)
 
                             # CTA très court seulement après le quiz.
