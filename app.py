@@ -103,6 +103,7 @@ h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
 .qvp-preview-panel {padding:9px 12px !important;}
 .qvp-preview-note {margin-bottom:5px !important;}
 .qvp-actionbar {position:sticky;bottom:8px;z-index:90;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border:1px solid #d9e2ef;border-radius:14px;padding:7px;margin-top:10px;box-shadow:0 8px 22px rgba(15,23,42,.10);}
+ .qvp-fast-note{color:#52637a;font-size:.72rem;margin:2px 0 5px;}
 
 /* V8.5 Studio : interface compacte, pensée pour 100% de zoom. */
 .qvp-studio-header{display:flex;align-items:center;gap:12px;padding:6px 10px;margin:0 0 6px;border-bottom:1px solid #dbe4f0;font-size:.92rem;color:#172033}
@@ -198,7 +199,11 @@ button[kind="primary"]{font-weight:850!important}
 </style>
 """, unsafe_allow_html=True)
 
-WIDTH, HEIGHT, FPS = 1080, 1920, 30
+WIDTH, HEIGHT, FPS = 1080, 1920, 24
+COUNTDOWN_STEPS = 24
+REVEAL_MAX_STEPS = 12
+VIDEO_PRESET = "superfast"
+VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
@@ -748,21 +753,16 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     img=add_top_glow(base,theme,1.0+0.12*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]
     ff=cfg.get("font_family","DejaVu Sans")
+    table_ff=cfg.get("table_font_family",ff)
     if cfg.get("show_title",True):
         title=clean_text(video_title or "Vocabulaire"); tf=get_font(int(cfg.get("title_size",34)),ff)
         tw=text_width(draw,title,tf); tx=int(cfg.get("title_x",540))-tw/2; draw.text((tx,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
     # Tableau : les lignes apparaissent une par une, la traduction reste affichée.
     x=int(cfg.get("table_x",70)); y0=int(cfg.get("table_y",430)); w=int(cfg.get("table_width",940)); rh=int(cfg.get("table_row_h",82)); gap=int(cfg.get("table_gap",8)); split=int(cfg.get("table_split",540)); radius=int(cfg.get("table_radius",16))
-    # En-tête de tableau professionnel : deux cellules colorées + police distincte.
-    header_h=int(cfg.get("table_header_h",58)); header_y=y0-header_h-12; header_font=cfg.get("table_header_font","DejaVu Serif")
-    hf=get_font(int(cfg.get("vocab_header_size",28)),header_font)
-    left_fill=_hex_rgb(cfg.get("primary"),theme["accent"]); right_fill=_hex_rgb(cfg.get("answer2"),theme["card2"])
-    dark=(24,30,42); light=(255,255,255)
-    draw.rounded_rectangle((x,header_y,x+split,header_y+header_h),radius=14,fill=left_fill,outline=_hex_rgb(cfg.get("border_color"),left_fill),width=max(1,int(cfg.get("border_width",2))))
-    draw.rounded_rectangle((x+split,header_y,x+w,header_y+header_h),radius=14,fill=right_fill,outline=_hex_rgb(cfg.get("border_color"),right_fill),width=max(1,int(cfg.get("border_width",2))))
-    lw=text_width(draw,"FRANÇAIS",hf); rw=text_width(draw,"TRADUCTION",hf)
-    draw.text((x+(split-lw)/2,header_y+(header_h-text_height(hf,"FRANÇAIS"))/2-2),"FRANÇAIS",font=hf,fill=dark)
-    draw.text((x+split+(w-split-rw)/2,header_y+(header_h-text_height(hf,"TRADUCTION"))/2-2),"TRADUCTION",font=hf,fill=light)
+    # Vocabulaire Style 2 — aucun titre de colonne dans la vidéo.
+    # Le tableau commence directement par la première ligne pour un rendu plus
+    # épuré et plus proche d'une vidéo Short. Les lignes restent colorées et
+    # utilisent la police du tableau/projet configurée dans l'éditeur.
     visible=active_idx+1
     for i in range(visible):
         item=items[i]; ry=y0+i*(rh+gap); active_row=(i==active_idx)
@@ -774,7 +774,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
         draw.line((x+split,ry+10,x+split,ry+rh-10),fill=outline,width=2)
         fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")) if (i<active_idx or reveal) else ""
         if active_row and cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*clamp(motion)))]
-        fs=get_font(int(cfg.get("vocab_fr_size",42)),ff); ts=get_font(int(cfg.get("vocab_tr_size",38)),ff)
+        fs=get_font(int(cfg.get("vocab_fr_size",42)),table_ff); ts=get_font(int(cfg.get("vocab_tr_size",38)),table_ff)
         # Animation sur la ligne active
         if active_row:
             prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*80) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
@@ -1190,7 +1190,7 @@ def make_image_video(frames,output,fps=30):
             f.write(f"file '{path.replace(chr(92),'/')}'\n")
             f.write(f"duration {max(0.033,float(duration))}\n")
         if frames: f.write(f"file '{frames[-1][0].replace(chr(92),'/')}'\n")
-    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",list_path,"-vf",f"fps={fps},format=yuv420p","-c:v","libx264","-preset","veryfast","-crf","22",output]
+    cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",list_path,"-vf",f"fps={fps},format=yuv420p","-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),"-movflags","+faststart",output]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return output
 
 def mux_audio(video,audio,output,volume=1.0):
@@ -1224,12 +1224,37 @@ def _normalize_video_to_audio(raw_video,audio_path,output_path):
     return output_path
 
 def make_segment(frames,audio,output,tmpdir,volume=1.0):
-    """Crée un segment dont la vidéo est calée sur la durée réelle de la voix."""
-    raw=os.path.join(tmpdir,os.path.basename(output)+".raw.mp4")
-    normalized=os.path.join(tmpdir,os.path.basename(output)+".norm.mp4")
-    make_image_video(frames,raw,FPS)
-    _normalize_video_to_audio(raw,audio,normalized)
-    return mux_audio(normalized,audio,output,volume)
+    """Encode directement les images + la voix en un seul passage FFmpeg.
+    La durée cible vient de l'audio; une petite réserve de tpad évite toute coupure
+    si le dernier intervalle d'image est légèrement plus court. Cela supprime les
+    deux encodages intermédiaires de l'ancienne version et accélère fortement le rendu.
+    """
+    if not frames:
+        raise ValueError("Aucune image à encoder pour le segment.")
+    target=max(0.05,audio_duration(audio))
+    list_path=os.path.join(tmpdir,os.path.basename(output)+".frames.txt")
+    with open(list_path,"w",encoding="utf-8") as f:
+        for path,duration in frames:
+            f.write(f"file '{path.replace(chr(92),'/')}'\n")
+            f.write(f"duration {max(0.033,float(duration)):.6f}\n")
+        # Le concat demuxer utilise la dernière durée comme intervalle final.
+        f.write(f"file '{frames[-1][0].replace(chr(92),'/')}'\n")
+
+    af=[]
+    if abs(float(volume)-1.0)>1e-6:
+        af=["-af",f"volume={float(volume):.3f}"]
+    vf=f"fps={FPS},tpad=stop_mode=clone:stop_duration=3,format=yuv420p"
+    cmd=[get_ffmpeg(),"-y",
+         "-f","concat","-safe","0","-i",list_path,
+         "-i",audio,
+         "-map","0:v:0","-map","1:a:0",
+         "-vf",vf,
+         "-t",f"{target:.3f}",
+         "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
+         "-c:a","aac","-b:a","160k",*af,
+         "-movflags","+faststart",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return output
 
 def word_timed_frames(audio_path, words, frame_fn, duration=None):
     """Construit des images dont les intervalles suivent les WordBoundaries TTS.
@@ -1273,23 +1298,40 @@ def _repair_final_av_sync(path, tmpdir):
     return path
 
 def concat_videos(clips,output,tmpdir):
-    """Concatène les segments en réencodant le flux final pour éviter les timebases instables.
-    Puis applique un dernier verrou de durée audio/vidéo, indispensable pour 15 éléments."""
+    """Assemble les segments sans réencoder dans le cas normal.
+    Tous les segments sortent avec le même codec, fps et résolution; on évite donc
+    le gros réencodage final. Une réparation complète ne se déclenche qu'en cas de
+    décalage mesurable entre la durée audio et vidéo finales.
+    """
+    clips=[p for p in clips if p and os.path.exists(p)]
+    if not clips: raise ValueError("Aucun segment à concaténer.")
     lst=os.path.join(tmpdir,"concat.txt")
     with open(lst,"w",encoding="utf-8") as f:
         for p in clips: f.write(f"file '{p.replace(chr(92),'/')}'\n")
-    raw=os.path.join(tmpdir,"concat_reencoded.mp4")
-    cmd=[get_ffmpeg(),"-y","-fflags","+genpts","-f","concat","-safe","0","-i",lst,
-         "-map","0:v","-map","0:a","-vf",f"fps={FPS},format=yuv420p","-r",str(FPS),
-         "-c:v","libx264","-preset","veryfast","-crf","22","-c:a","aac","-b:a","160k","-movflags","+faststart",raw]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-    os.replace(raw,output)
-    return _repair_final_av_sync(output,tmpdir)
+    try:
+        cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,
+             "-map","0:v:0","-map","0:a:0","-c","copy","-avoid_negative_ts","make_zero",output]
+        subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    except subprocess.CalledProcessError:
+        # Fallback exceptionnel si FFmpeg refuse le stream-copy (timebase/metadata).
+        raw=os.path.join(tmpdir,"concat_reencoded.mp4")
+        cmd=[get_ffmpeg(),"-y","-fflags","+genpts","-f","concat","-safe","0","-i",lst,
+             "-map","0:v:0","-map","0:a:0","-vf",f"fps={FPS},format=yuv420p","-r",str(FPS),
+             "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
+             "-c:a","aac","-b:a","160k","-movflags","+faststart",raw]
+        subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+        os.replace(raw,output)
+
+    # Contrôle léger: pas de seconde passe si tout est déjà aligné.
+    vd=video_duration(output); ad=audio_duration(output)
+    if vd>0 and abs(vd-ad)>0.08:
+        _repair_final_av_sync(output,tmpdir)
+    return output
 
 def save_frames(frames,tmpdir,prefix):
     out=[]
     for i,(img,dur) in enumerate(frames):
-        p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p); out.append((p,dur))
+        p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p,compress_level=1); out.append((p,dur))
     return out
 
 def frames_for_audio(audio_path,words,frame_fn,duration=None):
@@ -1928,11 +1970,12 @@ def render_layout_editor(module, style="1"):
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
                 st.slider("Taille du texte historique",20,52,key=p+"history_size")
             elif not is_quiz and style=="2":
+                st.caption("Table vidéo sans en-tête : les lignes commencent directement par les mots.")
                 st.slider("Largeur du tableau",700,1000,key=p+"table_width")
                 st.slider("Hauteur d'une ligne",60,115,key=p+"table_row_h")
                 st.slider("Taille français",24,60,key=p+"vocab_fr_size")
                 st.slider("Taille traduction",22,56,key=p+"vocab_tr_size")
-                st.slider("Taille en-tête",20,38,key=p+"vocab_header_size")
+                st.caption("En-tête de colonnes : masqué dans la vidéo")
             else:
                 st.slider("X traduction — Style 1",200,880,key=p+"translation_x")
                 st.slider("Y traduction — Style 1",650,1200,key=p+"translation_y")
@@ -2224,7 +2267,7 @@ if nav=="quiz":
                                     qdur=audio_duration(qa_raw); adur=audio_duration(ans_raw)
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=prog*.7,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
-                                    cdur=3.12; cd_steps=32
+                                    cdur=3.12; cd_steps=COUNTDOWN_STEPS
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
@@ -2238,7 +2281,7 @@ if nav=="quiz":
                                         mix_voice_sfx(ans_raw,pop,pop_raw,0,float(sfx_cfg.get("sfx_volume",0.30)))
                                     else:
                                         pop_raw=ans_raw
-                                    aframes=[]; a_steps=max(4,min(30,int(adur*5)))
+                                    aframes=[]; a_steps=max(3,min(REVEAL_MAX_STEPS,int(adur*3)))
                                     for j in range(a_steps):
                                         t=j/max(1,a_steps-1); aframes.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
                                     frames.extend(aframes)
@@ -2283,7 +2326,7 @@ if nav=="quiz":
                                     concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio)
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
-                                    cdur=3.12; cd_steps=32
+                                    cdur=3.12; cd_steps=COUNTDOWN_STEPS
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
@@ -2483,7 +2526,7 @@ else:
                                     else: word_voice_fx=fa
                                     fo2=os.path.join(tmp,f"fr_{idx}_seg.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo2,tmp); clips.append(fo2)
                                     cframes=[]
-                                    for j in range(32):
+                                    for j in range(COUNTDOWN_STEPS):
                                         t=j/max(1,31); elapsed=t*3.12
                                         if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
                                         elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
@@ -2505,7 +2548,7 @@ else:
                                     else: word_voice_fx=fa
                                     fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
                                     cframes=[]
-                                    for j in range(32):
+                                    for j in range(COUNTDOWN_STEPS):
                                         t=j/max(1,31); elapsed=t*3.12
                                         if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
                                         elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
