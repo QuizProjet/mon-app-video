@@ -369,14 +369,12 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     tf=get_font(int(cfg.get("title_size",46)),ff)
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
-    icon_size=int(cfg.get("face_size",30)); total_w=tw+max(46,icon_size+28)
+    # Aucun visage / emoji de visage : le titre reste propre et professionnel.
+    total_w=tw
     x=max(42,(WIDTH-total_w)/2)
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
-    if cfg.get("face_show",True):
-        fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
-        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
@@ -385,34 +383,49 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
-    frac=clamp(fraction); style=str(style or "Anneau progressif")
+    """Minuteurs professionnels. Le double cercle reste disponible, avec montre, eau, sablier et numérique."""
+    frac=clamp(fraction); style=str(style or "Double cercle")
     bg=(7,12,26)
-    if style=="Anneau progressif":
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(255,255,255),width=3)
-        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
-    elif style=="Double cercle":
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=4)
-        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=(255,255,255),width=3)
-        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=5)
-    elif style=="Barre segmentée":
-        segs=10; total_w=max(120,int(r*3.2)); gap=5; sw=max(8,(total_w-gap*(segs-1))//segs); x0=cx-total_w//2
-        for i in range(segs):
-            x=x0+i*(sw+gap); active=i < int(math.ceil(frac*segs))
-            draw.rounded_rectangle((x,cy-7,x+sw,cy+7),radius=7,fill=color if active else (70,78,95))
-    elif style=="Chiffre géant":
-        pulse_r=int(8+10*clamp(pulse)); draw.ellipse((cx-r-pulse_r,cy-r-pulse_r,cx+r+pulse_r,cy+r+pulse_r),outline=(*color,120),width=3)
-    elif style=="Capsule dynamique":
-        w=int(r*2.8); h=int(r*.72)
-        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=bg,outline=color,width=3)
-        fill_w=int((2*w-12)*frac)
-        if fill_w>0: draw.rounded_rectangle((cx-w+6,cy+h-12,cx-w+6+fill_w,cy+h-5),radius=4,fill=color)
-    elif style=="Pulse":
-        rr=r+int(12*abs(math.sin((1-frac)*math.pi*2)))
-        draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),outline=color,width=5)
+    def ring(rr, outline, width=3):
+        draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill=bg,outline=outline,width=width)
+    if style=="Double cercle":
+        ring(r,color,5); r2=max(8,int(r*.70)); ring(r2,(255,255,255),3)
+        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.13)))
+    elif style=="Montre":
+        ring(r,(255,255,255),4); ring(max(8,int(r*.86)),color,3)
+        # aiguilles + repères
+        for ang in range(0,360,45):
+            a=math.radians(ang-90); x1=cx+int((r-7)*math.cos(a)); y1=cy+int((r-7)*math.sin(a)); x2=cx+int((r-15)*math.cos(a)); y2=cy+int((r-15)*math.sin(a))
+            draw.line((x1,y1,x2,y2),fill=(220,225,235),width=3)
+        a1=math.radians(-90+360*(1-frac)); a2=math.radians(-90+360*(1-frac)*0.72)
+        draw.line((cx,cy,cx+int(r*.48*math.cos(a1)),cy+int(r*.48*math.sin(a1))),fill=color,width=5)
+        draw.line((cx,cy,cx+int(r*.68*math.cos(a2)),cy+int(r*.68*math.sin(a2))),fill=(255,255,255),width=4)
+        draw.ellipse((cx-6,cy-6,cx+6,cy+6),fill=color)
+        draw.arc((cx-r-8,cy-r-8,cx+r+8,cy+r+8),-90,-90+int(360*frac),fill=color,width=4)
+    elif style=="Gouttes d'eau":
+        # Réservoir vertical : le niveau descend pendant la réflexion.
+        w=max(42,int(r*.72)); h=max(90,int(r*2.0)); left=cx-w//2; top=cy-h//2; right=cx+w//2; bottom=cy+h//2
+        draw.rounded_rectangle((left,top,right,bottom),radius=w//2,fill=bg,outline=(235,240,248),width=4)
+        level=bottom-int((h-14)*frac)-7
+        if level<bottom-7:
+            draw.rounded_rectangle((left+7,level,right-7,bottom-7),radius=max(5,w//3),fill=color)
+        draw.ellipse((cx-7,top-16,cx+7,top-2),fill=color)
+        draw.arc((left-8,top-8,right+8,bottom+8),-90,-90+int(360*frac),fill=color,width=3)
+    elif style=="Sablier":
+        w=int(r*.78); h=int(r*1.55); top=cy-h//2; bottom=cy+h//2
+        draw.line((cx-w,top,cx+w,top),fill=(240,243,248),width=5); draw.line((cx-w,bottom,cx+w,bottom),fill=(240,243,248),width=5)
+        draw.polygon([(cx-w,top),(cx+w,top),(cx+8,cy),(cx-w,bottom),(cx+w,bottom),(cx-8,cy)],outline=color,fill=bg)
+        sand_top=max(top+8,cy-int((h*.46)*frac)); sand_bottom=min(bottom-8,cy+int((h*.46)*(1-frac)))
+        draw.polygon([(cx-6,sand_top),(cx+6,sand_top),(cx+12,cy),(cx-12,cy)],fill=color)
+        if frac<1: draw.polygon([(cx-8,cy),(cx+8,cy),(cx+int(10*(1-frac)),sand_bottom),(cx-int(10*(1-frac)),sand_bottom)],fill=color)
+    elif style=="Anneau progressif":
+        ring(r,(255,255,255),3); draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
+    elif style=="Numérique":
+        w=int(r*2.4); h=int(r*1.0); draw.rounded_rectangle((cx-w//2,cy-h//2,cx+w//2,cy+h//2),radius=16,fill=bg,outline=color,width=4)
+        draw.rectangle((cx-w//2+10,cy+h//2-10,cx-w//2+10+int((w-20)*frac),cy+h//2-5),fill=color)
     else:
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=color,width=3)
-    tf=get_font(text_size)
-    ts=str(timer); th=text_height(tf,ts)
+        ring(r,color,4); draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=5)
+    tf=get_font(text_size); ts=str(timer); th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
     if label:
         lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or color)
@@ -435,16 +448,23 @@ def _hex_rgb(value, fallback=(255,255,255)):
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qvp_settings.json")
 
 def _load_saved_settings():
-    if st.session_state.get("_qvp_settings_loaded"):
-        return
+    # Les widgets qui ne sont pas affichés pendant le passage Quiz ↔ Vocabulaire
+    # peuvent être retirés par Streamlit. On recharge donc les réglages sauvegardés
+    # à chaque rerun, mais uniquement pour les clés absentes afin de ne jamais
+    # écraser une modification en cours.
+    sources=[]
+    snap=st.session_state.get("_qvp_saved_settings")
+    if isinstance(snap,dict): sources.append(snap)
     try:
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             saved=json.load(f)
-        for k,v in saved.items():
-            if k not in st.session_state:
-                st.session_state[k]=v
+        if isinstance(saved,dict): sources.append(saved)
     except Exception:
         pass
+    for saved in sources:
+        for k,v in saved.items():
+            if k.startswith(("q1_","q2_","v1_","v2_")) and k not in st.session_state:
+                st.session_state[k]=v
     st.session_state["_qvp_settings_loaded"]=True
 
 def _save_settings():
@@ -453,10 +473,19 @@ def _save_settings():
         if k.startswith(("q_","v_")):
             keys.append(k)
     data={}
+    # Toujours fusionner avec le fichier existant : ainsi, passer Quiz → Vocabulaire
+    # ne peut jamais effacer les réglages Quiz déjà enregistrés.
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            old_saved=json.load(f)
+        if isinstance(old_saved,dict): data.update(old_saved)
+    except Exception:
+        pass
     for k in keys:
         v=st.session_state.get(k)
         if isinstance(v,(str,int,float,bool)):
             data[k]=v
+    st.session_state["_qvp_saved_settings"] = dict(data)
     try:
         tmp=SETTINGS_FILE+".tmp"
         with open(tmp,"w",encoding="utf-8") as f: json.dump(data,f,ensure_ascii=False,indent=2)
@@ -480,8 +509,8 @@ def _layout(module="quiz", style=None):
         "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":650,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Anneau progressif","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -489,6 +518,7 @@ def _layout(module="quiz", style=None):
         "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765",
         "correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
+        "border_color":"#D2DFF5","border_width":2,"border_radius":20,
     }
     if module=="vocab":
         defaults.update({
@@ -509,13 +539,13 @@ def _layout(module="quiz", style=None):
     return out
 
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
-    cfg=_layout("quiz")
+    cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     f=get_font(cfg["question_size"],ff); lines=wrap_text(question,f,int(cfg.get("question_width",900)))[:3]; hi=_highlight_words(question); yy=int(cfg["question_y"])
     box_top=yy-18; box_bottom=yy+len(lines)*int(cfg["question_size"]*1.18)+12
     radius=int(cfg["question_box_radius"])
     box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
-    draw.rounded_rectangle((left,box_top,right,box_bottom),radius=radius,fill=(6,12,28,218),outline=_hex_rgb(cfg["primary"],theme["accent"]),width=2)
+    draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=(6,12,28,218),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
@@ -528,7 +558,7 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0):
     return box_bottom
 
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
-    cfg=_layout("quiz"); ff=cfg.get("font_family","DejaVu Sans")
+    cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
     card_h=int(cfg["answer_h"]); gap=int(cfg["answer_gap"]); start_y=int(cfg["answer_y"]); f_opt=get_font(cfg["answer_size"],ff)
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
@@ -543,12 +573,12 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         y=start_y+i*(card_h+gap)+offset+int(2*math.sin((phase+i*.13)*math.pi*2*cfg["motion_strength"]))
         correct=(correct_idx is not None and i==correct_idx)
         if correct:
-            fill=_hex_rgb(cfg["correct"],theme["success"]); outline=(255,255,255); width=4
+            fill=_hex_rgb(cfg["correct"],theme["success"]); outline=_hex_rgb(cfg.get("correct"),theme["success"]); width=max(2,int(cfg.get("border_width",2))+1)
         else:
-            fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=(210,225,250); width=2
+            fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
-        draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg["answer_radius"]),fill=fill,outline=outline,width=width)
+        draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=fill,outline=outline,width=width)
         badge_size=max(44,int(cfg["answer_size"]*1.75)); bw=badge_size; bh=badge_size; bx=82+xpad; by=int(y+(card_h-bh)/2)
         badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
         draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
@@ -565,9 +595,9 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0):
-    cfg=_layout("quiz"); y1=int(cfg["explanation_y"]); y2=min(1710,y1+int(cfg["explanation_h"])); p=ease_out(progress)
+    cfg=_layout("quiz", "1"); y1=int(cfg["explanation_y"]); y2=min(1710,y1+int(cfg["explanation_h"])); p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
-    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg["explanation_radius"]),fill=(6,13,28),outline=primary,width=2)
+    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=(6,13,28),outline=_hex_rgb(cfg.get("border_color"),primary),width=max(1,int(cfg.get("border_width",2))))
     draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=primary)
     cx,cy=98,y1+57
     draw.ellipse((cx-16,cy-22,cx+16,cy+10),outline=primary,width=3)
@@ -611,8 +641,8 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     for i in range(visible):
         item=items[i]; ry=y0+i*(rh+gap); active_row=(i==active_idx)
         fill=_hex_rgb(cfg.get("answer2" if active_row else "answer"),theme["card"])
-        outline=_hex_rgb(cfg.get("primary" if active_row else "muted"),theme["accent"] if active_row else theme["muted"])
-        draw.rounded_rectangle((x,ry,x+w,ry+rh),radius=radius,fill=fill,outline=outline,width=2)
+        outline=_hex_rgb(cfg.get("border_color"),theme["accent"] if active_row else theme["muted"])
+        draw.rounded_rectangle((x,ry,x+w,ry+rh),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2))))
         draw.line((x+split,ry+10,x+split,ry+rh-10),fill=outline,width=2)
         fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")) if (i<active_idx or reveal) else ""
         if active_row and cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*clamp(motion)))]
@@ -662,7 +692,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     if hist:
         hx=int(cfg.get("history_x",80)); hy=int(cfg.get("history_y",650)); hw=int(cfg.get("history_width",920)); rh=int(cfg.get("history_row_h",78)); hg=int(cfg.get("history_gap",12)); hfs=get_font(int(cfg.get("history_size",30)),ff)
         for pos,(i,item) in enumerate(hist[-12:]):
-            ry=hy+pos*(rh+hg); draw.rounded_rectangle((hx,ry,hx+hw,ry+rh),radius=int(cfg.get("answer_radius",20)),fill=_hex_rgb(cfg.get("answer"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
+            ry=hy+pos*(rh+hg); draw.rounded_rectangle((hx,ry,hx+hw,ry+rh),radius=int(cfg.get("border_radius",cfg.get("answer_radius",20))),fill=_hex_rgb(cfg.get("answer"),theme["card2"]),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("correct"),theme["success"])),width=max(1,int(cfg.get("border_width",2))))
             opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
             try: ans=clean_text(opts["ABCD".index(rc)])
             except Exception: ans=""
@@ -849,11 +879,14 @@ def make_sfx(tmpdir):
             f.writeframes(struct.pack("<h",max(-32767,min(32767,v))))
     return tic,ding
 
-def make_sfx_countdown(tic,tmpdir):
+def make_sfx_countdown(tic,tmpdir,ding=None):
     # Un tic à chaque seconde pendant 3 s. Le son final est ajouté séparément
     # pour marquer clairement la fin du temps de réflexion.
     out=os.path.join(tmpdir,"countdown.wav")
-    cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.12",out]
+    if ding and os.path.exists(ding):
+        cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=2700|2700,volume=0.78[ae];[a0][a1][a2][ae]amix=inputs=4:duration=longest","-t","3.12",out]
+    else:
+        cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.12",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def make_end_tick(tic,ding,tmpdir):
@@ -1321,9 +1354,14 @@ Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div
 
 
 def _ss_default(key, value):
-    """Initialise une valeur de widget une seule fois pour éviter les conflits Streamlit."""
-    if key not in st.session_state:
-        st.session_state[key]=value
+    """Initialise sans écraser une valeur sauvegardée quand un module revient à l’écran."""
+    if key in st.session_state:
+        return
+    snap=st.session_state.get("_qvp_saved_settings", {})
+    if isinstance(snap,dict) and key in snap:
+        st.session_state[key]=snap[key]
+        return
+    st.session_state[key]=value
 
 def render_layout_editor(module, style="1"):
     """Studio compact : un éditeur indépendant par style."""
@@ -1338,9 +1376,10 @@ def render_layout_editor(module, style="1"):
         "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
         "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
         "animation":"Glissement vertical","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
-        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Anneau progressif",
+        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Double cercle",
         "timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
+        "border_color":"#D2DFF5","border_width":2,"border_radius":20,
         "bg_opacity":18,"bg_zoom":1.02,"bg_x":0,"bg_y":0,"bg_mode":"✨ Automatique",
         "translation_x":540,"translation_y":760,"translation_width":850,
         "table_x":70,"table_y":430,"table_width":940,"table_row_h":82,"table_gap":8,"table_split":540,"table_radius":16,"vocab_fr_size":42,"vocab_tr_size":38,"vocab_header_size":28
@@ -1350,6 +1389,7 @@ def render_layout_editor(module, style="1"):
     tabs=st.tabs(["🧩 Structure","📐 Position & taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🌄 Fond"])
     with tabs[0]:
         st.selectbox("Police — utilisée pour toutes les vidéos",FONT_CHOICES,key=p+"font_family")
+        st.caption("Cette police est appliquée à l’aperçu et au rendu vidéo de CE style uniquement.")
         if is_quiz:
             st.info("**Style 1** — Question → 4 réponses → minuteur → bonne réponse verte → explication.\n\n**Style 2** — titre fixe → question active en haut → réflexion → réponse révélée dans l'historique → question suivante au même emplacement.")
         else:
@@ -1382,8 +1422,13 @@ def render_layout_editor(module, style="1"):
             st.color_picker("Accent / titre",key=p+"primary"); st.color_picker("Fond des cartes",key=p+"answer"); st.color_picker("Fond actif / secondaire",key=p+"answer2")
         with c2:
             st.color_picker("Bonne réponse / traduction",key=p+"correct"); st.color_picker("Texte",key=p+"text"); st.color_picker("Texte secondaire",key=p+"muted")
+        st.markdown("**Bordures — tous les éléments du style**")
+        bc1,bc2,bc3=st.columns(3)
+        with bc1: st.color_picker("Couleur des bordures",key=p+"border_color")
+        with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
+        with bc3: st.slider("Arrondi",0,45,key=p+"border_radius")
         if is_quiz:
-            st.markdown("**Émotion**"); st.selectbox("Style",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style"); st.checkbox("Afficher",key=p+"face_show"); st.slider("Taille",18,70,key=p+"face_size")
+            st.caption("Le visage a été supprimé pour garder un rendu professionnel.")
     with tabs[3]:
         st.selectbox("Animation",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
@@ -1396,7 +1441,7 @@ def render_layout_editor(module, style="1"):
         with c1:
             st.slider("Position X",0,1080,key=p+"timer_x"); st.slider("Position Y",250,1400,key=p+"timer_y"); st.slider("Taille",28,130,key=p+"timer_size"); st.slider("Taille du chiffre",20,110,key=p+"timer_text_size")
         with c2:
-            st.selectbox("Style du chronomètre",["Anneau progressif","Double cercle","Barre segmentée","Chiffre géant","Capsule dynamique","Pulse"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
+            st.selectbox("Style du chronomètre",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
     with tabs[5]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé": st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -1410,10 +1455,10 @@ nav=st.session_state.get("module_nav","quiz")
 n1,n2=st.columns(2)
 with n1:
     if st.button("🧠 QUIZ TIKTOK PRO",key="nav_quiz",use_container_width=True):
-        st.session_state["module_nav"]="quiz"; st.rerun()
+        _save_settings(); st.session_state["module_nav"]="quiz"; st.rerun()
 with n2:
     if st.button("🗣️ VOCABULAIRE PRO",key="nav_vocab",use_container_width=True):
-        st.session_state["module_nav"]="vocab"; st.rerun()
+        _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16</small></div>',unsafe_allow_html=True)
@@ -1577,7 +1622,7 @@ if nav=="quiz":
                 try:
                     with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                         with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp,ding)
                             clips=[]; total=len(st.session_state.q_data)
 
                             if style_q_full.startswith("Style 2"):
@@ -1821,7 +1866,7 @@ else:
                 try:
                     with st.spinner("Création du Short Vocabulaire Pro..."):
                         with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp,ding); clips=[]; items=st.session_state.v_data
                             ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
                             hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,hd/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vh")
                             ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
