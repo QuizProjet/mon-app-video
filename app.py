@@ -12,6 +12,7 @@ import random
 import csv
 import io
 import hashlib
+import gc
 import wave
 import struct
 import subprocess
@@ -518,7 +519,13 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
 def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
     cfg=_layout("quiz", "1"); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    _draw_timer_visual(draw,color,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",1045)),max(24,int(cfg.get("timer_size",58))),timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",55))),clean_text(cfg.get("timer_label")) if cfg.get("timer_show_label",True) else None,int(cfg.get("timer_label_size",23)),_hex_rgb(cfg.get("timer_label_color"),color),pulse)
+    timer_size=max(24,int(cfg.get("timer_size",58)))
+    if cfg.get("timer_auto_below_answers", True):
+        answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
+        timer_y=min(1500, answer_bottom + timer_size + 22)
+    else:
+        timer_y=int(cfg.get("timer_y",1045))
+    _draw_timer_visual(draw,color,int(cfg.get("timer_x",540)),timer_y,timer_size,timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",55))),clean_text(cfg.get("timer_label")) if cfg.get("timer_show_label",True) else None,int(cfg.get("timer_label_size",23)),_hex_rgb(cfg.get("timer_label_color"),color),pulse)
 
 
 def _hex_rgb(value, fallback=(255,255,255)):
@@ -586,12 +593,13 @@ def _layout(module="quiz", style=None):
         "font_family":"DejaVu Sans",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
         "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
-        "answer_y":650,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30,"answer_radius":20,
+        "answer_y":630,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "timer_auto_below_answers":True,"explanation_auto_below_timer":True,"explanation_auto_height":True,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
-        "explanation_y":1135,"explanation_h":380,"explanation_size":31,
+        "explanation_y":1160,"explanation_h":320,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
@@ -675,15 +683,31 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0):
-    cfg=_layout("quiz", "1"); y1=int(cfg["explanation_y"]); y2=min(1710,y1+int(cfg["explanation_h"])); p=ease_out(progress)
+    cfg=_layout("quiz", "1")
+    # Style 1 : la carte d'explication se place naturellement sous le minuteur
+    # lorsque l'option automatique est active, sans supprimer le contrôle manuel.
+    if cfg.get("explanation_auto_below_timer", True):
+        timer_cy=int(cfg.get("timer_y",1045)); timer_r=max(24,int(cfg.get("timer_size",58)))
+        y1=min(1450, timer_cy + timer_r + 55)
+    else:
+        y1=int(cfg["explanation_y"])
+    p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
-    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=(6,13,28),outline=_hex_rgb(cfg.get("border_color"),primary),width=max(1,int(cfg.get("border_width",2))))
-    draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=primary)
+    # La hauteur est calculée après le wrapping pour éviter les cartes inutilement hautes.
     cx,cy=98,y1+57
     draw.ellipse((cx-16,cy-22,cx+16,cy+10),outline=primary,width=3)
     draw.line((cx-10,cy+16,cx+10,cy+16),fill=primary,width=3); draw.line((cx-7,cy+23,cx+7,cy+23),fill=primary,width=3)
     draw.text((145,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
-    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,865)[:5]; yy=y1+95
+    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,865)[:5]
+    if cfg.get("explanation_auto_height", True):
+        needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
+        box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
+    else:
+        box_h=int(cfg.get("explanation_h",320))
+    y2=min(1710,y1+box_h)
+    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=(6,13,28),outline=_hex_rgb(cfg.get("border_color"),primary),width=max(1,int(cfg.get("border_width",2))))
+    draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=primary)
+    yy=y1+95
     max_visible=max(1,int(len(lines)*p+0.999))
     for line in lines[:max_visible]:
         tw=text_width(draw,line,f); draw.text(((WIDTH-tw)/2,yy),line,font=f,fill=_hex_rgb(cfg["text"],(255,255,255))); yy+=int(cfg["explanation_size"]*1.35)
@@ -804,7 +828,11 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     nw,nh=int(WIDTH*scale),int(HEIGHT*scale); z=base.resize((nw,nh),Image.Resampling.LANCZOS)
     sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.12*math.sin(phase*math.pi*2)))+int(cfg.get("bg_x",0))))
     sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))+int(cfg.get("bg_y",0))))
-    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse); draw=ImageDraw.Draw(img)
+    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse)
+    # Style 1 : le décor reste visible mais plus discret derrière les réponses.
+    dim=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dd=ImageDraw.Draw(dim)
+    dd.rounded_rectangle((45,520,1035,1655),radius=48,fill=(0,0,0,38))
+    img=Image.alpha_composite(img.convert("RGBA"),dim).convert("RGB"); draw=ImageDraw.Draw(img)
     for k in range(9):
         px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if cfg["show_title"]:
@@ -1494,7 +1522,8 @@ def _qvp_element_boxes(module, style, cfg):
     if module=="quiz" and str(style)=="1":
         add("question","Question",cfg.get("question_x",540),cfg.get("question_y",180),cfg.get("question_width",900),210)
         add("answers","Réponses",cfg.get("answer_x",80)+cfg.get("answer_width",920)/2,cfg.get("answer_y",650)+180,cfg.get("answer_width",920),4*(cfg.get("answer_h",78)+cfg.get("answer_gap",12)))
-        add("timer","Minuteur",cfg.get("timer_x",540),cfg.get("timer_y",1015),220,220)
+        auto_timer_y = (int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))+max(24,int(cfg.get("timer_size",58)))+22) if cfg.get("timer_auto_below_answers",True) else int(cfg.get("timer_y",1015))
+        add("timer","Minuteur",cfg.get("timer_x",540),auto_timer_y,220,220)
         add("explanation","Explication",540,cfg.get("explanation_y",1135)+cfg.get("explanation_h",380)/2,964,cfg.get("explanation_h",380))
     elif module=="quiz" and str(style)=="2":
         add("question","Question active",cfg.get("question_x",540),cfg.get("question_y",150),cfg.get("question_width",920),230)
@@ -1606,12 +1635,13 @@ def render_layout_editor(module, style="1"):
     defaults = {
         "font_family":"DejaVu Sans", "show_title":True, "title_x":540, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
         "question_x":540, "question_y":150 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
-        "answer_y":620 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":88, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
+        "answer_y":630 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
-        "show_explanation":True, "explanation_y":1135, "explanation_h":380, "explanation_size":31,
+        "show_explanation":True, "explanation_y":1160, "explanation_h":320, "explanation_size":31,
         "score_y":112, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
-        "show_timer":True, "timer_y":1015 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":62, "timer_text_size":58, "timer_style":"Double cercle",
+        "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
+        "timer_auto_below_answers":True, "explanation_auto_below_timer":True, "explanation_auto_height":True,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
         "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
@@ -1622,17 +1652,24 @@ def render_layout_editor(module, style="1"):
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
 
-    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • V12.2</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Les réglages sont indépendants pour ce style et sont conservés lorsque tu changes de module.</div>', unsafe_allow_html=True)
     tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond"])
 
     with tabs[0]:
         if is_quiz:
-            st.info("**Style 1** : question + 4 réponses → réflexion → révélation verte + explication.\n\n**Style 2** : titre fixe + une seule question active → réflexion → réponse ajoutée à l'historique → question suivante au même emplacement.")
+            if style=="1":
+                st.info("**Style 1 Pro** : question + 4 réponses → minuteur compact sous les réponses → révélation verte + carte d'explication adaptative. Le fond décoratif est volontairement plus discret pour garder le quiz au premier plan.")
+            else:
+                st.info("**Style 1** : question + 4 réponses → réflexion → révélation verte + explication.\n\n**Style 2** : titre fixe + une seule question active → réflexion → réponse ajoutée à l'historique → question suivante au même emplacement.")
         else:
             st.info("**Style 1** : mot/phrase → réflexion → traduction.\n\n**Style 2** : tableau cumulatif : français à gauche → minuteur dans la cellule traduction → traduction → nouvelle ligne sous la précédente, jusqu'à 15 lignes.")
         st.checkbox("Afficher le titre", key=p+"show_title")
         st.checkbox("Afficher l'explication" if is_quiz else "Afficher le titre", key=p+"show_explanation", disabled=not is_quiz) if is_quiz else None
+        if is_quiz and style=="1":
+            c_auto1,c_auto2=st.columns(2)
+            with c_auto1: st.checkbox("Explication sous le minuteur",key=p+"explanation_auto_below_timer")
+            with c_auto2: st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
 
     with tabs[1]:
         c1,c2 = st.columns(2)
@@ -1720,6 +1757,8 @@ def render_layout_editor(module, style="1"):
 
     with tabs[5]:
         st.checkbox("Afficher le compte à rebours",key=p+"show_timer")
+        if is_quiz and style=="1":
+            st.checkbox("Position automatique sous les 4 réponses",key=p+"timer_auto_below_answers")
         c1,c2=st.columns(2)
         with c1:
             st.slider("Position X",0,1080,key=p+"timer_x")
@@ -1762,7 +1801,7 @@ with n2:
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
     c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
     with c_content:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
@@ -1808,8 +1847,8 @@ if nav=="quiz":
                 if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
                 elif preview_state_q=="Q2 + R1": preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
                 else: preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
-            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.35,video_title=th_q)
-            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.85,motion=1.0,video_title=th_q)
+            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
+            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
             else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
             render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
             st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_q}</b> · les positions se modifient immédiatement.</div>',unsafe_allow_html=True)
@@ -2072,7 +2111,7 @@ if nav=="quiz":
                     st.error(f"Erreur pendant le montage QuizVideo Pro : {e}")
 
 else:
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
     c_content,c_style,c_social=st.columns([1.15,.95,1.15],gap="medium")
     with c_content:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
