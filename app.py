@@ -369,12 +369,14 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     tf=get_font(int(cfg.get("title_size",46)),ff)
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf)
-    # Aucun visage / emoji de visage : le titre reste propre et professionnel.
-    total_w=tw
+    icon_size=int(cfg.get("face_size",30)); total_w=tw+max(46,icon_size+28)
     x=max(42,(WIDTH-total_w)/2)
     y=int(cfg.get("title_y",42))+int(4*math.sin(float(phase)*math.pi*2))
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
+    if cfg.get("face_show",True):
+        fx=int(x+tw+max(25,icon_size+8))+int(cfg.get("face_x",0)); fy=int(y+25)+int(cfg.get("face_y",0))
+        draw_thinking_face(draw,theme,fx,fy,icon_size,phase,style=cfg.get("face_style","Réflexion"),color=_hex_rgb(cfg.get("face_color"),theme["accent"]))
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
@@ -383,49 +385,34 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
-    """Minuteurs professionnels. Le double cercle reste disponible, avec montre, eau, sablier et numérique."""
-    frac=clamp(fraction); style=str(style or "Double cercle")
+    frac=clamp(fraction); style=str(style or "Anneau progressif")
     bg=(7,12,26)
-    def ring(rr, outline, width=3):
-        draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill=bg,outline=outline,width=width)
-    if style=="Double cercle":
-        ring(r,color,5); r2=max(8,int(r*.70)); ring(r2,(255,255,255),3)
-        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.13)))
-    elif style=="Montre":
-        ring(r,(255,255,255),4); ring(max(8,int(r*.86)),color,3)
-        # aiguilles + repères
-        for ang in range(0,360,45):
-            a=math.radians(ang-90); x1=cx+int((r-7)*math.cos(a)); y1=cy+int((r-7)*math.sin(a)); x2=cx+int((r-15)*math.cos(a)); y2=cy+int((r-15)*math.sin(a))
-            draw.line((x1,y1,x2,y2),fill=(220,225,235),width=3)
-        a1=math.radians(-90+360*(1-frac)); a2=math.radians(-90+360*(1-frac)*0.72)
-        draw.line((cx,cy,cx+int(r*.48*math.cos(a1)),cy+int(r*.48*math.sin(a1))),fill=color,width=5)
-        draw.line((cx,cy,cx+int(r*.68*math.cos(a2)),cy+int(r*.68*math.sin(a2))),fill=(255,255,255),width=4)
-        draw.ellipse((cx-6,cy-6,cx+6,cy+6),fill=color)
-        draw.arc((cx-r-8,cy-r-8,cx+r+8,cy+r+8),-90,-90+int(360*frac),fill=color,width=4)
-    elif style=="Gouttes d'eau":
-        # Réservoir vertical : le niveau descend pendant la réflexion.
-        w=max(42,int(r*.72)); h=max(90,int(r*2.0)); left=cx-w//2; top=cy-h//2; right=cx+w//2; bottom=cy+h//2
-        draw.rounded_rectangle((left,top,right,bottom),radius=w//2,fill=bg,outline=(235,240,248),width=4)
-        level=bottom-int((h-14)*frac)-7
-        if level<bottom-7:
-            draw.rounded_rectangle((left+7,level,right-7,bottom-7),radius=max(5,w//3),fill=color)
-        draw.ellipse((cx-7,top-16,cx+7,top-2),fill=color)
-        draw.arc((left-8,top-8,right+8,bottom+8),-90,-90+int(360*frac),fill=color,width=3)
-    elif style=="Sablier":
-        w=int(r*.78); h=int(r*1.55); top=cy-h//2; bottom=cy+h//2
-        draw.line((cx-w,top,cx+w,top),fill=(240,243,248),width=5); draw.line((cx-w,bottom,cx+w,bottom),fill=(240,243,248),width=5)
-        draw.polygon([(cx-w,top),(cx+w,top),(cx+8,cy),(cx-w,bottom),(cx+w,bottom),(cx-8,cy)],outline=color,fill=bg)
-        sand_top=max(top+8,cy-int((h*.46)*frac)); sand_bottom=min(bottom-8,cy+int((h*.46)*(1-frac)))
-        draw.polygon([(cx-6,sand_top),(cx+6,sand_top),(cx+12,cy),(cx-12,cy)],fill=color)
-        if frac<1: draw.polygon([(cx-8,cy),(cx+8,cy),(cx+int(10*(1-frac)),sand_bottom),(cx-int(10*(1-frac)),sand_bottom)],fill=color)
-    elif style=="Anneau progressif":
-        ring(r,(255,255,255),3); draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
-    elif style=="Numérique":
-        w=int(r*2.4); h=int(r*1.0); draw.rounded_rectangle((cx-w//2,cy-h//2,cx+w//2,cy+h//2),radius=16,fill=bg,outline=color,width=4)
-        draw.rectangle((cx-w//2+10,cy+h//2-10,cx-w//2+10+int((w-20)*frac),cy+h//2-5),fill=color)
+    if style=="Anneau progressif":
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(255,255,255),width=3)
+        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
+    elif style=="Double cercle":
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=4)
+        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=(255,255,255),width=3)
+        draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=5)
+    elif style=="Barre segmentée":
+        segs=10; total_w=max(120,int(r*3.2)); gap=5; sw=max(8,(total_w-gap*(segs-1))//segs); x0=cx-total_w//2
+        for i in range(segs):
+            x=x0+i*(sw+gap); active=i < int(math.ceil(frac*segs))
+            draw.rounded_rectangle((x,cy-7,x+sw,cy+7),radius=7,fill=color if active else (70,78,95))
+    elif style=="Chiffre géant":
+        pulse_r=int(8+10*clamp(pulse)); draw.ellipse((cx-r-pulse_r,cy-r-pulse_r,cx+r+pulse_r,cy+r+pulse_r),outline=(*color,120),width=3)
+    elif style=="Capsule dynamique":
+        w=int(r*2.8); h=int(r*.72)
+        draw.rounded_rectangle((cx-w,cy-h,cx+w,cy+h),radius=h,fill=bg,outline=color,width=3)
+        fill_w=int((2*w-12)*frac)
+        if fill_w>0: draw.rounded_rectangle((cx-w+6,cy+h-12,cx-w+6+fill_w,cy+h-5),radius=4,fill=color)
+    elif style=="Pulse":
+        rr=r+int(12*abs(math.sin((1-frac)*math.pi*2)))
+        draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),outline=color,width=5)
     else:
-        ring(r,color,4); draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=5)
-    tf=get_font(text_size); ts=str(timer); th=text_height(tf,ts)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=color,width=3)
+    tf=get_font(text_size)
+    ts=str(timer); th=text_height(tf,ts)
     draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=color)
     if label:
         lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or color)
@@ -473,18 +460,12 @@ def _save_settings():
         if k.startswith(("q_","v_")):
             keys.append(k)
     data={}
-    # Toujours fusionner avec le fichier existant : ainsi, passer Quiz → Vocabulaire
-    # ne peut jamais effacer les réglages Quiz déjà enregistrés.
-    try:
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            old_saved=json.load(f)
-        if isinstance(old_saved,dict): data.update(old_saved)
-    except Exception:
-        pass
     for k in keys:
         v=st.session_state.get(k)
         if isinstance(v,(str,int,float,bool)):
             data[k]=v
+    # Snapshot en session : protège les réglages même si les widgets disparaissent
+    # temporairement lors du passage d’un module à l’autre.
     st.session_state["_qvp_saved_settings"] = dict(data)
     try:
         tmp=SETTINGS_FILE+".tmp"
@@ -509,8 +490,8 @@ def _layout(module="quiz", style=None):
         "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":650,"answer_x":80,"answer_width":920,"answer_h":78,"answer_gap":12,"answer_size":30,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
+        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Anneau progressif","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":True,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "face_size":30,"face_x":0,"face_y":0,"face_style":"Réflexion","face_color":"#FFCD40","face_show":True,
         "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
         "explanation_y":1135,"explanation_h":380,"explanation_size":31,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -879,14 +860,11 @@ def make_sfx(tmpdir):
             f.writeframes(struct.pack("<h",max(-32767,min(32767,v))))
     return tic,ding
 
-def make_sfx_countdown(tic,tmpdir,ding=None):
+def make_sfx_countdown(tic,tmpdir):
     # Un tic à chaque seconde pendant 3 s. Le son final est ajouté séparément
     # pour marquer clairement la fin du temps de réflexion.
     out=os.path.join(tmpdir,"countdown.wav")
-    if ding and os.path.exists(ding):
-        cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=2700|2700,volume=0.78[ae];[a0][a1][a2][ae]amix=inputs=4:duration=longest","-t","3.12",out]
-    else:
-        cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.12",out]
+    cmd=[get_ffmpeg(),"-y","-i",tic,"-filter_complex","[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[a0][a1][a2]amix=inputs=3:duration=longest","-t","3.12",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def make_end_tick(tic,ding,tmpdir):
@@ -971,29 +949,6 @@ def save_frames(frames,tmpdir,prefix):
     for i,(img,dur) in enumerate(frames):
         p=os.path.join(tmpdir,f"{prefix}_{i:04d}.png"); img.save(p); out.append((p,dur))
     return out
-
-class DiskFrameBuffer:
-    """Stocke les images directement sur disque pour éviter une forte consommation RAM.
-    Important pour les quiz de 15 questions, qui peuvent produire des centaines d'images.
-    """
-    def __init__(self,tmpdir,prefix):
-        self.tmpdir=tmpdir; self.prefix=prefix; self.items=[]; self.index=0
-    def append(self,item):
-        img,dur=item
-        path=os.path.join(self.tmpdir,f"{self.prefix}_{self.index:04d}.png")
-        self.index += 1
-        img.save(path,optimize=True)
-        self.items.append((path,float(dur)))
-        try:
-            img.close()
-        except Exception:
-            pass
-    def __len__(self): return len(self.items)
-    def as_list(self): return self.items
-
-def render_steps(duration, minimum=5, maximum=18, density=3.0):
-    """Nombre de frames raisonnable : rendu fluide sans exploser la RAM avec 15 questions."""
-    return max(minimum, min(maximum, int(max(0.1,float(duration))*density)))
 
 def frames_for_audio(audio_path,words,frame_fn,duration=None):
     dur=duration or audio_duration(audio_path)
@@ -1399,7 +1354,7 @@ def render_layout_editor(module, style="1"):
         "face_show":False,"face_style":"Aucun","face_size":30,"face_x":0,"face_y":0,"face_color":"#FFCD40",
         "score_y":112,"score_size":31,"score_radius":22,"score_color":"#FFCD40","score_bg":"#070D1C",
         "animation":"Glissement vertical","animation_speed":1.0,"animation_strength":1.0,"motion_strength":1.0,
-        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Double cercle",
+        "show_timer":True,"timer_y":430 if is_quiz else 760,"timer_x":540 if is_quiz else 810,"timer_size":58,"timer_text_size":55,"timer_style":"Anneau progressif",
         "timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_size":23,"timer_color":"#FFCD40","timer_label_color":"#FFCD40",
         "primary":"#FFCD40","answer":"#11305B","answer2":"#143765","correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
         "border_color":"#D2DFF5","border_width":2,"border_radius":20,
@@ -1451,7 +1406,7 @@ def render_layout_editor(module, style="1"):
         with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
         with bc3: st.slider("Arrondi",0,45,key=p+"border_radius")
         if is_quiz:
-            st.caption("Le visage a été supprimé pour garder un rendu professionnel.")
+            st.markdown("**Émotion**"); st.selectbox("Style",["Aucun","Badge quiz","Point d'interrogation","Éclair","Visage"],key=p+"face_style"); st.checkbox("Afficher",key=p+"face_show"); st.slider("Taille",18,70,key=p+"face_size")
     with tabs[3]:
         st.selectbox("Animation",["Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
@@ -1464,7 +1419,7 @@ def render_layout_editor(module, style="1"):
         with c1:
             st.slider("Position X",0,1080,key=p+"timer_x"); st.slider("Position Y",250,1400,key=p+"timer_y"); st.slider("Taille",28,130,key=p+"timer_size"); st.slider("Taille du chiffre",20,110,key=p+"timer_text_size")
         with c2:
-            st.selectbox("Style du chronomètre",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
+            st.selectbox("Style du chronomètre",["Anneau progressif","Double cercle","Barre segmentée","Chiffre géant","Capsule dynamique","Pulse"],key=p+"timer_style"); st.checkbox("Afficher le texte",key=p+"timer_show_label"); st.text_input("Texte",key=p+"timer_label"); st.slider("Taille du texte",14,42,key=p+"timer_label_size"); st.color_picker("Couleur",key=p+"timer_color")
     with tabs[5]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé": st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -1645,7 +1600,7 @@ if nav=="quiz":
                 try:
                     with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                         with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp,ding)
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp)
                             clips=[]; total=len(st.session_state.q_data)
 
                             if style_q_full.startswith("Style 2"):
@@ -1664,12 +1619,12 @@ if nav=="quiz":
                                     qdur=audio_duration(qa_raw)
                                     adur=audio_duration(ans_raw)
                                     # La question apparaît d'abord, puis le minuteur, puis sa réponse.
-                                    frames=DiskFrameBuffer(tmp,f"s2f_{idx}")
-                                    q_steps=render_steps(qdur,5,16,3.0)
+                                    frames=[]
+                                    q_steps=max(5,min(48,int(qdur*6)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=t*.7,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=32
+                                    cdur=3.12; cd_steps=94
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1678,14 +1633,14 @@ if nav=="quiz":
                                         timer=0 if elapsed>=3.0 else sec
                                         timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer,timer_frac,False,t,th_q),cdur/cd_steps))
-                                    a_steps=render_steps(adur,5,16,3.0)
+                                    a_steps=max(5,min(48,int(adur*6)))
                                     for j in range(a_steps):
                                         t=j/max(1,a_steps-1)
                                         frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
                                     audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,ans_raw],audio)
                                     out=os.path.join(tmp,f"s2_{idx}.mp4")
-                                    make_segment(frames.as_list(),audio,out,tmp,1.0)
+                                    make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
                                     clips.append(out)
                                     del frames
                                     gc.collect()
@@ -1698,13 +1653,13 @@ if nav=="quiz":
                                     ea=os.path.join(tmp,f"s2_exp_{idx}.mp3")
                                     synthesize_audio(exp_text,voice_q,ea,tts_rate)
                                     edur=audio_duration(ea)
-                                    exp_frames=render_steps(edur,5,14,2.5)
-                                    eframes=DiskFrameBuffer(tmp,f"s2ef_{idx}")
+                                    exp_frames=max(5,min(48,int(edur*6)))
+                                    eframes=[]
                                     for j in range(exp_frames):
                                         t=j/max(1,exp_frames-1)
                                         eframes.append((draw_explanation_scene(q["question"],answer_text,exp_text,theme_q,channel_q,bg_q,progress=t,q_num=idx+1,total=total,video_title=th_q),edur/exp_frames))
                                     eo=os.path.join(tmp,f"s2_exp_{idx}.mp4")
-                                    make_segment(eframes.as_list(),ea,eo,tmp,1.0)
+                                    make_segment(save_frames(eframes,tmp,f"s2ef_{idx}"),ea,eo,tmp,1.0)
                                     clips.append(eo)
                                     del eframes
                                     gc.collect()
@@ -1724,12 +1679,12 @@ if nav=="quiz":
                                     mix_voice_sfx(ea_raw,ding,exp_mix,0,0.78)
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
                                     concat_audio_files([qa_raw,countdown_sfx,exp_mix],full_audio)
-                                    frames=DiskFrameBuffer(tmp,f"qfull_{idx}")
-                                    q_steps=render_steps(qdur,5,16,3.0)
+                                    frames=[]
+                                    q_steps=max(5,min(48,int(qdur*6)))
                                     for j in range(q_steps):
                                         t=j/max(1,q_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=ease_out(t),motion=t*0.9,video_title=th_q),qdur/q_steps))
-                                    cdur=3.12; cd_steps=32
+                                    cdur=3.12; cd_steps=94
                                     for j in range(cd_steps):
                                         t=j/max(1,cd_steps-1); elapsed=t*cdur
                                         if elapsed < 1.04: sec=3; frac=1-(elapsed/1.04)
@@ -1737,12 +1692,12 @@ if nav=="quiz":
                                         else: sec=1; frac=1-((elapsed-2.08)/1.04)
                                         timer=0 if elapsed>=3.0 else sec; timer_frac=0.0 if elapsed>=3.0 else frac
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=timer,timer_fraction=timer_frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
-                                    ex_steps=render_steps(edur,8,18,3.0)
+                                    ex_steps=max(8,int(edur*12))
                                     for j in range(ex_steps):
                                         t=j/max(1,ex_steps-1)
                                         frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,t*3),pulse=0.15*(1-t),motion=2.0+t,video_title=th_q,explanation=exp_text,explanation_progress=t),edur/ex_steps))
                                     out=os.path.join(tmp,f"qfull_{idx}.mp4")
-                                    make_segment(frames.as_list(),full_audio,out,tmp,1.0)
+                                    make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                                     clips.append(out)
 
                             # CTA très court seulement après le quiz.
@@ -1889,7 +1844,7 @@ else:
                 try:
                     with st.spinner("Création du Short Vocabulaire Pro..."):
                         with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp,ding); clips=[]; items=st.session_state.v_data
+                            tic,ding=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,tmp); clips=[]; items=st.session_state.v_data
                             ha=os.path.join(tmp,"vh.mp3"); synthesize_audio(hook_v,VOICES_FR["Henri - Dynamique"],ha,tts_rate); hd=audio_duration(ha)
                             hf=save_frames([(draw_hook(hook_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,hd/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vh")
                             ho=os.path.join(tmp,"vh.mp4"); make_segment(hf,ha,ho,tmp); clips.append(ho)
