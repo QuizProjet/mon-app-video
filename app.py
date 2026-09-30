@@ -793,31 +793,31 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
             ty+=text_height(fs,line)+2
         if tr:
             lines2=wrap_text(tr,ts,w-split-45)[:2]; ty2=ry+(rh-len(lines2)*text_height(ts))/2-2
-            # Synchronisation texte/voix : le mot actuellement prononcé est accentué.
+            # Synchronisation stricte avec la voix : seuls les mots déjà prononcés sont visibles.
+            # Le mot actuellement prononcé est mis en évidence.
             global_idx=0
-            reveal_to = int(translation_active_word) if int(translation_active_word) >= 0 else 10**9
+            reveal_to=int(translation_active_word) if int(translation_active_word) >= 0 else 10**9
             for line in lines2:
                 words_line=line.split(); widths=[text_width(draw,z,ts) for z in words_line]; space=text_width(draw," ",ts)
                 indexed=[(global_idx+i,word,ww) for i,(word,ww) in enumerate(zip(words_line,widths))]
                 visible_words=[(gidx,word,ww) for gidx,word,ww in indexed if gidx <= reveal_to]
                 if visible_words:
-                    totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1)
-                    xx=x+split+20
+                    totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1); xx=x+split+20
                     if totalw < w-split-45:
                         xx=x+split+(w-split-totalw)/2
                     for gidx,word,ww in visible_words:
                         active_word=(gidx==int(translation_active_word))
+                        prefix_w=text_width(draw,"✓ ",ts) if gidx==0 else 0
                         if active_word:
                             pad=5
                             draw.rounded_rectangle((xx-pad,ty2-3,xx+ww+pad,ty2+text_height(ts,word)+4),radius=8,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
-                        prefix_w=text_width(draw,"✓ ",ts) if gidx==0 else 0
                         draw.text((xx,ty2),"✓ " if gidx==0 else "",font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
                         draw.text((xx+prefix_w,ty2),word,font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
                         xx+=ww+space+prefix_w
                 global_idx += len(words_line)
                 ty2+=text_height(ts,line)+2
         elif active_row and timer is not None and cfg.get("show_timer",True):
-            # Minuteur compact, réellement contenu dans la cellule TRADUCTION.
+            # Minuteur compact, piloté par les réglages Style 2 sous l'aperçu.
             cell_cx=x+split+(w-split)//2+int(cfg.get("vocab_timer_offset_x",0)); cell_cy=ry+rh//2+int(cfg.get("vocab_timer_offset_y",0))
             r=max(22,min(int(cfg.get("vocab_timer_size",44)),int(rh*.36)))
             ts=max(22,min(int(cfg.get("timer_text_size",38)),int(r*.95)))
@@ -1043,10 +1043,8 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
     # Mot/phrase source : mot actuellement prononcé mis en évidence sans masquer le reste.
     words_src=fr.split()
     if len(words_src)>1 and source_active_word>=0:
-        visible_count=min(len(words_src),int(source_active_word)+1)
-        visible_words=words_src[:visible_count]
-        widths=[text_width(draw,w,fbig) for w in visible_words]; space=text_width(draw," ",fbig); totalw=sum(widths)+space*(len(visible_words)-1); sx=qx-totalw/2
-        for wi,(word,ww) in enumerate(zip(visible_words,widths)):
+        widths=[text_width(draw,w,fbig) for w in words_src]; space=text_width(draw," ",fbig); totalw=sum(widths)+space*(len(words_src)-1); sx=qx-totalw/2
+        for wi,(word,ww) in enumerate(zip(words_src,widths)):
             current=wi==int(source_active_word)
             if current:
                 pad=7; draw.rounded_rectangle((sx-pad,y-6,sx+ww+pad,y+text_height(fbig,word)+6),radius=12,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
@@ -1136,6 +1134,18 @@ def make_sfx_countdown(tic,ding,tmpdir):
     cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,
          "-filter_complex",
          "[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=3000|3000,volume=0.72[ad];[a0][a1][a2][ad]amix=inputs=4:duration=longest,apad=pad_dur=0.12,atrim=duration=3.12",
+         "-c:a","pcm_s16le",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
+
+def make_vocab_style2_countdown_sfx(tic,ding,tmpdir):
+    """Countdown dédié au vocabulaire Style 2 : 3 tics à 0/1/2 s, puis ding complet à 3 s.
+    La durée est légèrement plus longue que 3 s afin que le ding ne soit pas coupé avant
+    le démarrage du segment de traduction. Ce helper ne modifie pas le Quiz ni le Style 1.
+    """
+    out=os.path.join(tmpdir,"vocab_style2_countdown.wav")
+    cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,
+         "-filter_complex",
+         "[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=3000|3000,volume=0.72[ad];[a0][a1][a2][ad]amix=inputs=4:duration=longest,apad=pad_dur=0.12,atrim=duration=3.45",
          "-c:a","pcm_s16le",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
@@ -1908,9 +1918,8 @@ def render_layout_editor(module, style="1"):
         "bg_opacity":18, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
         "translation_x":540, "translation_y":760, "translation_width":850,
         "table_x":70, "table_y":420, "table_width":940, "table_row_h":88, "table_gap":8, "table_split":540, "table_radius":18,
-        "vocab_fr_size":44, "vocab_tr_size":40, "vocab_header_size":29, "table_header_font":"DejaVu Serif", "table_header_h":58,
-        "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
-        "sfx_enabled":True, "sfx_volume":0.30,
+        "vocab_fr_size":44, "vocab_tr_size":40, "vocab_header_size":29, "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
+        "table_header_font":"DejaVu Serif", "table_header_h":58, "sfx_enabled":True, "sfx_volume":0.30,
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
 
@@ -1945,12 +1954,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Historique — Y",450,1300,key=p+"history_y")
             if not is_quiz and style=="2":
                 st.markdown("**Tableau — Style 2**")
-                st.slider("Tableau — X",20,160,key=p+"table_x",step=5)
-                st.slider("Tableau — Y",280,700,key=p+"table_y",step=5)
-                st.slider("Séparation français / traduction",400,650,key=p+"table_split",step=10)
-                st.markdown("**Minuteur dans la cellule traduction**")
-                st.slider("Décalage X du minuteur",-180,180,key=p+"vocab_timer_offset_x",step=5)
-                st.slider("Décalage Y du minuteur",-50,50,key=p+"vocab_timer_offset_y",step=5)
+                st.info("Les réglages pratiques du tableau et du minuteur sont regroupés directement sous l’aperçu, pour éviter de chercher les contrôles dans plusieurs onglets.")
         with c2:
             st.markdown("**Titre**")
             st.slider("Titre — X",0,1080,value=540,key=p+"title_x") if p+"title_x" not in st.session_state else st.slider("Titre — X",0,1080,key=p+"title_x")
@@ -1963,7 +1967,7 @@ def render_layout_editor(module, style="1"):
                 st.markdown("**Explication**")
                 st.slider("Explication — Y",950,1450,key=p+"explanation_y")
             if not is_quiz and style=="2":
-                st.slider("Séparation des colonnes",400,650,key=p+"table_split")
+                st.caption("Séparation des colonnes : réglable dans le panneau Mise en page rapide sous l’aperçu.")
 
     with tabs[2]:
         c1,c2 = st.columns(2)
@@ -1988,12 +1992,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Taille du texte historique",20,52,key=p+"history_size")
             elif not is_quiz and style=="2":
                 st.caption("Table vidéo sans en-tête : les lignes commencent directement par les mots.")
-                st.slider("Largeur du tableau",700,1000,key=p+"table_width",step=10)
-                st.slider("Hauteur d'une ligne",60,115,key=p+"table_row_h",step=5)
-                st.slider("Espacement entre les lignes",0,24,key=p+"table_gap",step=2)
-                st.slider("Taille français",24,60,key=p+"vocab_fr_size")
-                st.slider("Taille traduction",22,56,key=p+"vocab_tr_size")
-                st.slider("Taille du minuteur",24,70,key=p+"vocab_timer_size")
+                st.info("Largeur, hauteur des lignes, séparation des colonnes et tailles du texte se règlent dans le panneau Mise en page rapide sous l’aperçu.")
                 st.caption("En-tête de colonnes : masqué dans la vidéo")
             else:
                 st.slider("X traduction — Style 1",200,880,key=p+"translation_x")
@@ -2031,10 +2030,7 @@ def render_layout_editor(module, style="1"):
         c1,c2=st.columns(2)
         with c1:
             if (not is_quiz) and style=="2":
-                st.markdown("**Minuteur du tableau — position relative**")
-                st.slider("Décalage X dans la cellule",-180,180,key=p+"vocab_timer_offset_x",step=5)
-                st.slider("Décalage Y dans la cellule",-50,50,key=p+"vocab_timer_offset_y",step=5)
-                st.slider("Taille",24,70,key=p+"vocab_timer_size")
+                st.info("Le minuteur du Style 2 est positionné relativement à la cellule de traduction dans le panneau sous l’aperçu.")
             else:
                 st.slider("Position X",0,1080,key=p+"timer_x")
                 st.slider("Position Y",250,1450,key=p+"timer_y")
@@ -2049,7 +2045,7 @@ def render_layout_editor(module, style="1"):
         st.checkbox("Activer les effets sonores",key=p+"sfx_enabled")
         st.slider("Volume des effets",0.05,0.60,key=p+"sfx_volume",step=0.01)
         if (not is_quiz) and style=="2":
-            st.caption("Le son d’entrée accompagne l’apparition du mot, les 3 tics suivent 3 → 2 → 1, le ding marque la fin de réflexion, puis la traduction et sa voix démarrent sur la même coupe.")
+            st.caption("Style 2 : pop à l’apparition du mot • 3 tics pendant 3 → 2 → 1 • ding à la fin de la réflexion • pop discret au démarrage de la traduction.")
         else:
             st.caption("Tic du chrono • entrée de question/mot • pop de révélation • ding de fin.")
 
@@ -2410,7 +2406,7 @@ else:
         hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
         outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
         st.markdown('</div>',unsafe_allow_html=True)
-    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : chaque mot est prononcé et mis en évidence → 3 secondes de réflexion avec 3→2→1 + ding → traduction affichée au moment exact où sa voix commence → ligne suivante.")
+    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : mot + voix synchronisés → 3 secondes de réflexion (3 → 2 → 1) + ding → traduction révélée progressivement en même temps que sa voix.")
     left_v, right_v = st.columns([1.18, 0.82], gap="medium")
     with left_v:
         with st.container(border=True):
@@ -2434,81 +2430,78 @@ else:
             if style_v.startswith("Style 2"):
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
                 active=0 if preview_state_v=="Ligne 1 + réflexion" else 1 if preview_state_v=="Ligne 2 + réflexion + traduction 1" else 2
-                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v)
+                preview_translation_word = 0 if "traduction" in preview_state_v else -1
+                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v,translation_active_word=preview_translation_word)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
             render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
-            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_v}</b> · les changements sont visibles immédiatement. La voix et l’apparition des mots suivent les WordBoundaries TTS.</div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_v}</b> · les changements sont visibles immédiatement.</div>',unsafe_allow_html=True)
 
             if style_v.startswith("Style 2"):
-                # Panneau pratique : les contrôles ici pilotent uniquement le rendu Style 2.
-                with st.expander("🛠️ MISE EN PAGE RAPIDE — STYLE 2", expanded=True):
-                    lp1,lp2=st.columns(2)
+                # Un seul panneau Style 2 sous l’aperçu : aucun contrôle n’est dupliqué avec l’éditeur.
+                with st.expander("🛠️ MISE EN PAGE RAPIDE — STYLE 2 VOCABULAIRE", expanded=True):
+                    lp1,lp2=st.columns(2,gap="medium")
                     with lp1:
-                        st.markdown("**Tableau**")
-                        st.slider("Position X",20,160,key=vprefix+"table_x",step=5)
-                        st.slider("Position Y",280,700,key=vprefix+"table_y",step=5)
-                        st.slider("Largeur",700,1000,key=vprefix+"table_width",step=10)
-                        st.slider("Séparation des colonnes",400,650,key=vprefix+"table_split",step=10)
+                        st.markdown("**📋 Tableau**")
+                        st.slider("Position X du tableau",20,160,key=vprefix+"table_x",step=5)
+                        st.slider("Position Y du tableau",280,700,key=vprefix+"table_y",step=5)
+                        st.slider("Largeur du tableau",700,1000,key=vprefix+"table_width",step=10)
+                        st.slider("Séparation français / traduction",400,650,key=vprefix+"table_split",step=10)
                     with lp2:
-                        st.markdown("**Lignes & texte**")
-                        st.slider("Hauteur d'une ligne",60,115,key=vprefix+"table_row_h",step=5)
+                        st.markdown("**🔤 Texte & lignes**")
+                        st.slider("Hauteur d’une ligne",60,115,key=vprefix+"table_row_h",step=5)
                         st.slider("Espace entre les lignes",0,24,key=vprefix+"table_gap",step=2)
                         st.slider("Taille français",24,60,key=vprefix+"vocab_fr_size")
                         st.slider("Taille traduction",22,56,key=vprefix+"vocab_tr_size")
-                    st.markdown("**Minuteur dans la colonne traduction**")
-                    mt1,mt2,mt3=st.columns(3)
+                    st.markdown("**⏱️ Minuteur dans la colonne traduction**")
+                    mt1,mt2,mt3=st.columns(3,gap="small")
                     with mt1: st.slider("Décalage X",-180,180,key=vprefix+"vocab_timer_offset_x",step=5)
                     with mt2: st.slider("Décalage Y",-50,50,key=vprefix+"vocab_timer_offset_y",step=5)
-                    with mt3: st.slider("Taille",24,70,key=vprefix+"vocab_timer_size")
-                    p1,p2,p3,p4=st.columns(4)
-                    with p1:
-                        if st.button("↔ Centrer tableau",key="v2_center_table",use_container_width=True):
+                    with mt3: st.slider("Taille du minuteur",24,70,key=vprefix+"vocab_timer_size")
+                    b1,b2,b3,b4=st.columns(4,gap="small")
+                    with b1:
+                        if st.button("↔ Centrer tableau",key="v2_quick_center_table",use_container_width=True):
                             st.session_state[vprefix+"table_x"]=70; st.rerun()
-                    with p2:
-                        if st.button("↕ Remonter tableau",key="v2_up_table",use_container_width=True):
+                    with b2:
+                        if st.button("↕ Remonter tableau",key="v2_quick_up_table",use_container_width=True):
                             st.session_state[vprefix+"table_y"]=380; st.rerun()
-                    with p3:
-                        if st.button("◉ Centrer minuteur",key="v2_center_timer",use_container_width=True):
+                    with b3:
+                        if st.button("◉ Centrer minuteur",key="v2_quick_center_timer",use_container_width=True):
                             st.session_state[vprefix+"vocab_timer_offset_x"]=0; st.session_state[vprefix+"vocab_timer_offset_y"]=0; st.rerun()
-                    with p4:
-                        if st.button("↔ Colonne équilibrée",key="v2_balance",use_container_width=True):
+                    with b4:
+                        if st.button("↔ Équilibrer colonnes",key="v2_quick_balance",use_container_width=True):
                             st.session_state[vprefix+"table_split"]=540; st.rerun()
-
-            m1,m2,m3,m4,m5=st.columns(5,gap="small")
-            with m1:
-                if st.button("←",key="mvv_l",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=-20); st.rerun()
-            with m2:
-                if st.button("↑",key="mvv_u",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=-20); st.rerun()
-            with m3:
-                if st.button("●",key="mvv_c",use_container_width=True):
-                    p=_qvp_prefix("vocab",vocab_style_id)
-                    center={"title":"title_x","word":"question_x","translation":"translation_x"}.get(selected_v)
-                    if center: st.session_state[p+center]=540
-                    if selected_v=="timer":
-                        if vocab_style_id=="1": st.session_state[p+"timer_x"]=810
-                        else:
-                            st.session_state[p+"vocab_timer_offset_x"]=0
-                            st.session_state[p+"vocab_timer_offset_y"]=0
-                    if selected_v=="table": st.session_state[p+"table_x"]=70
-                    _save_settings(); st.rerun()
-            with m4:
-                if st.button("↓",key="mvv_d",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=20); st.rerun()
-            with m5:
-                if st.button("→",key="mvv_r",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=20); st.rerun()
-            s1,s2,s3=st.columns(3,gap="small")
-            with s1:
-                if st.button("A −",key="szv_m",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=-2); st.rerun()
-            with s2:
-                st.caption("Ajustement rapide")
-            with s3:
-                if st.button("A +",key="szv_p",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=2); st.rerun()
-            b1,b2=st.columns(2,gap="small")
-            with b1:
-                if st.button("▶️ Voir l’animation",key="animv",use_container_width=True):
-                    play_preview_animation("vocab",vocab_style_id,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v)
-            with b2:
-                if st.button("✕ Désélectionner",key="clearv",use_container_width=True): _qvp_clear_selected(); st.rerun()
+            else:
+                m1,m2,m3,m4,m5=st.columns(5,gap="small")
+                with m1:
+                    if st.button("←",key="mvv_l",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=-20); st.rerun()
+                with m2:
+                    if st.button("↑",key="mvv_u",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=-20); st.rerun()
+                with m3:
+                    if st.button("●",key="mvv_c",use_container_width=True):
+                        p=_qvp_prefix("vocab",vocab_style_id)
+                        center={"title":"title_x","word":"question_x","translation":"translation_x"}.get(selected_v)
+                        if center: st.session_state[p+center]=540
+                        if selected_v=="timer": st.session_state[p+"timer_x"]=810
+                        if selected_v=="table": st.session_state[p+"table_x"]=70
+                        _save_settings(); st.rerun()
+                with m4:
+                    if st.button("↓",key="mvv_d",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=20); st.rerun()
+                with m5:
+                    if st.button("→",key="mvv_r",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=20); st.rerun()
+                s1,s2,s3=st.columns(3,gap="small")
+                with s1:
+                    if st.button("A −",key="szv_m",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=-2); st.rerun()
+                with s2:
+                    st.caption("Ajustement rapide")
+                with s3:
+                    if st.button("A +",key="szv_p",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=2); st.rerun()
+                b1,b2=st.columns(2,gap="small")
+                with b1:
+                    if st.button("▶️ Voir l’animation",key="animv",use_container_width=True):
+                        play_preview_animation("vocab",vocab_style_id,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v)
+                with b2:
+                    if st.button("✕ Désélectionner",key="clearv",use_container_width=True): _qvp_clear_selected(); st.rerun()
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
@@ -2583,7 +2576,8 @@ else:
                 try:
                     with st.spinner("Création du Short Vocabulaire Pro..."):
                         with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp); clips=[]; items=st.session_state.v_data
+                            tic,ding,pop,whoosh=make_sfx(tmp); clips=[]; items=st.session_state.v_data
+                            countdown_sfx = make_vocab_style2_countdown_sfx(tic,ding,tmp) if style_v.startswith("Style 2") else make_sfx_countdown(tic,ding,tmp)
                             for idx,item in enumerate(items):
                                 fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
                                 if style_v.startswith("Style 2"):
@@ -2594,13 +2588,14 @@ else:
                                     else: word_voice_fx=fa
                                     fo2=os.path.join(tmp,f"fr_{idx}_seg.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo2,tmp); clips.append(fo2)
                                     cframes=[]
+                                    countdown_duration=3.45
                                     for j in range(COUNTDOWN_STEPS):
-                                        t=j/max(1,31); elapsed=t*3.12
+                                        t=j/max(1,COUNTDOWN_STEPS-1); elapsed=t*3.12
                                         if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
                                         elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
                                         elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
                                         else: sec=None; frac=0.0
-                                        cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=frac,reveal=False,motion=t,video_title=th_v),3.12/32))
+                                        cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=frac,reveal=False,motion=t,video_title=th_v),countdown_duration/COUNTDOWN_STEPS))
                                     co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
                                     ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
                                     tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=prog,video_title=th_v,translation_active_word=wi),td)
