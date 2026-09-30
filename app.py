@@ -781,15 +781,22 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
         else: dx=0
         lines=wrap_text(fr,fs,split-45)[:2]
         ty=ry+(rh-len(lines)*text_height(fs))/2-2; global_source_word=0
+        reveal_to=int(source_active_word) if int(source_active_word) >= 0 else -1
         for line in lines:
-            words_line=line.split(); widths=[text_width(draw,z,fs) for z in words_line]; space=text_width(draw," ",fs); totalw=sum(widths)+space*max(0,len(words_line)-1); xx=x+20+dx
-            if totalw < split-45: xx=x+(split-totalw)/2+dx
-            for word,ww in zip(words_line,widths):
-                current=(active_row and source_active_word>=0 and global_source_word==int(source_active_word))
-                if current:
-                    pad=5; draw.rounded_rectangle((xx-pad,ty-3,xx+ww+pad,ty+text_height(fs,word)+4),radius=9,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
-                draw.text((xx,ty),word,font=fs,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),(255,255,255)))
-                xx+=ww+space; global_source_word+=1
+            words_line=line.split(); widths=[text_width(draw,z,fs) for z in words_line]; space=text_width(draw," ",fs)
+            indexed=[(global_source_word+i,word,ww) for i,(word,ww) in enumerate(zip(words_line,widths))]
+            visible_words=[(gidx,word,ww) for gidx,word,ww in indexed if gidx <= reveal_to]
+            if visible_words:
+                totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1)
+                xx=x+20+dx
+                if totalw < split-45: xx=x+(split-totalw)/2+dx
+                for gidx,word,ww in visible_words:
+                    current=(active_row and gidx==int(source_active_word))
+                    if current:
+                        pad=5; draw.rounded_rectangle((xx-pad,ty-3,xx+ww+pad,ty+text_height(fs,word)+4),radius=9,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
+                    draw.text((xx,ty),word,font=fs,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),(255,255,255)))
+                    xx+=ww+space
+            global_source_word += len(words_line)
             ty+=text_height(fs,line)+2
         if tr:
             lines2=wrap_text(tr,ts,w-split-45)[:2]; ty2=ry+(rh-len(lines2)*text_height(ts))/2-2
@@ -1138,16 +1145,24 @@ def make_sfx_countdown(tic,ding,tmpdir):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def make_vocab_style2_countdown_sfx(tic,ding,tmpdir):
-    """Countdown dédié au vocabulaire Style 2 : 3 tics à 0/1/2 s, puis ding complet à 3 s.
-    La durée est légèrement plus longue que 3 s afin que le ding ne soit pas coupé avant
-    le démarrage du segment de traduction. Ce helper ne modifie pas le Quiz ni le Style 1.
+    """Style 2 Vocabulaire uniquement.
+    3 tics audibles pendant 3 → 2 → 1, puis un ding distinct à la fin.
+    Les événements sont légèrement décalés du bord exact des secondes pour éviter
+    qu'un effet soit mangé par l'attaque audio ou par l'encodage vidéo.
     """
     out=os.path.join(tmpdir,"vocab_style2_countdown.wav")
     cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,
          "-filter_complex",
-         "[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=3000|3000,volume=0.72[ad];[a0][a1][a2][ad]amix=inputs=4:duration=longest,apad=pad_dur=0.12,atrim=duration=3.45",
+         "[0:a]adelay=120|120[a0];"
+         "[0:a]adelay=1120|1120[a1];"
+         "[0:a]adelay=2120|2120[a2];"
+         "[1:a]adelay=3120|3120,volume=0.90[ad];"
+         "[a0][a1][a2][ad]amix=inputs=4:duration=longest,"
+         "apad=pad_dur=0.08,atrim=duration=3.60,"
+         "asetpts=PTS-STARTPTS",
          "-c:a","pcm_s16le",out]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return out
 
 def make_end_tick(tic,ding,tmpdir):
     out=os.path.join(tmpdir,"reflection_end.wav")
@@ -1302,6 +1317,43 @@ def word_timed_frames(audio_path, words, frame_fn, duration=None):
         out.append((frame_fn(len(clean_words)-1,cursor),dur-cursor))
     return out
 
+def word_timed_frames_vocab_style2(audio_path, words, frame_fn, duration=None):
+    """Timing dédié au Vocabulaire Style 2.
+    Les WordBoundaries sont triées, tronquées aux frontières précédentes et la somme
+    des intervalles est exactement égale à la durée audio. Cela évite les chevauchements
+    et le décalage cumulatif sur les longues séries (jusqu'à 15 mots).
+    """
+    dur=max(0.05,float(duration or audio_duration(audio_path)))
+    boundaries=[]
+    for w in (words or []):
+        try:
+            st=max(0.0,min(dur,float(w.get("start",0.0))))
+            en=max(st,min(dur,float(w.get("end",st))))
+            if en>st+0.005:
+                boundaries.append((st,en))
+        except Exception:
+            pass
+    boundaries.sort(key=lambda z:(z[0],z[1]))
+    if not boundaries:
+        return [(frame_fn(-1,0.0),dur)]
+    out=[]; cursor=0.0
+    for i,(st,en) in enumerate(boundaries):
+        st=max(cursor,st)
+        en=max(st,en)
+        if st>cursor+0.005:
+            out.append((frame_fn(i-1,0.0),st-cursor))
+        if en>st+0.005:
+            out.append((frame_fn(i,1.0),en-st))
+            cursor=en
+    if cursor<dur-0.005:
+        out.append((frame_fn(len(boundaries)-1,1.0),dur-cursor))
+    total=sum(float(d) for _,d in out)
+    if out and abs(total-dur)>0.002:
+        # Dernière correction numérique : aucun écart ne doit s'accumuler.
+        img,last_d=out[-1]
+        out[-1]=(img,max(0.033,float(last_d)+(dur-total)))
+    return out
+
 def _repair_final_av_sync(path, tmpdir):
     """Dernier verrou : durée vidéo exactement égale à la durée audio finale."""
     target=max(0.05,audio_duration(path)); current=max(0.0,video_duration(path))
@@ -1341,6 +1393,30 @@ def concat_videos(clips,output,tmpdir):
         os.replace(raw,output)
 
     # Contrôle léger: pas de seconde passe si tout est déjà aligné.
+    vd=video_duration(output); ad=audio_duration(output)
+    if vd>0 and abs(vd-ad)>0.08:
+        _repair_final_av_sync(output,tmpdir)
+    return output
+
+def concat_videos_precise(clips, output, tmpdir):
+    """Concaténation réencodée précise, réservée au Vocabulaire Style 2.
+    Elle évite que de petites différences de timebase/PTS s'accumulent sur 15 questions.
+    """
+    clips=[p for p in clips if p and os.path.exists(p)]
+    if not clips:
+        raise ValueError("Aucun segment à concaténer.")
+    lst=os.path.join(tmpdir,"concat_precise.txt")
+    with open(lst,"w",encoding="utf-8") as f:
+        for p in clips:
+            f.write(f"file '{p.replace(chr(92),'/')}'\\n")
+    cmd=[get_ffmpeg(),"-y","-fflags","+genpts",
+         "-f","concat","-safe","0","-i",lst,
+         "-map","0:v:0","-map","0:a:0",
+         "-vf",f"fps={FPS},format=yuv420p",
+         "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
+         "-c:a","aac","-b:a","160k",
+         "-movflags","+faststart",output]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     vd=video_duration(output); ad=audio_duration(output)
     if vd>0 and abs(vd-ad)>0.08:
         _repair_final_av_sync(output,tmpdir)
@@ -1953,8 +2029,14 @@ def render_layout_editor(module, style="1"):
                 st.slider("Historique — X",0,220,key=p+"history_x")
                 st.slider("Historique — Y",450,1300,key=p+"history_y")
             if not is_quiz and style=="2":
-                st.markdown("**Tableau — Style 2**")
-                st.info("Les réglages pratiques du tableau et du minuteur sont regroupés directement sous l’aperçu, pour éviter de chercher les contrôles dans plusieurs onglets.")
+                st.markdown("**📋 Mise en page — Style 2**")
+                st.caption("Réglages essentiels, regroupés ici pour garder la page courte.")
+                st.slider("Tableau — X",20,160,key=p+"table_x",step=5)
+                st.slider("Tableau — Y",280,700,key=p+"table_y",step=5)
+                st.slider("Largeur du tableau",700,1000,key=p+"table_width",step=10)
+                st.slider("Séparation français / traduction",400,650,key=p+"table_split",step=10)
+                st.slider("Hauteur d’une ligne",60,115,key=p+"table_row_h",step=5)
+                st.slider("Espace entre lignes",0,24,key=p+"table_gap",step=2)
         with c2:
             st.markdown("**Titre**")
             st.slider("Titre — X",0,1080,value=540,key=p+"title_x") if p+"title_x" not in st.session_state else st.slider("Titre — X",0,1080,key=p+"title_x")
@@ -1967,7 +2049,10 @@ def render_layout_editor(module, style="1"):
                 st.markdown("**Explication**")
                 st.slider("Explication — Y",950,1450,key=p+"explanation_y")
             if not is_quiz and style=="2":
-                st.caption("Séparation des colonnes : réglable dans le panneau Mise en page rapide sous l’aperçu.")
+                st.markdown("**⏱️ Minuteur — Style 2**")
+                st.slider("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
+                st.slider("Décalage Y", -50, 50, key=p+"vocab_timer_offset_y", step=5)
+                st.slider("Taille du minuteur",24,70,key=p+"vocab_timer_size")
 
     with tabs[2]:
         c1,c2 = st.columns(2)
@@ -2437,41 +2522,7 @@ else:
             render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
             st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_v}</b> · les changements sont visibles immédiatement.</div>',unsafe_allow_html=True)
 
-            if style_v.startswith("Style 2"):
-                # Un seul panneau Style 2 sous l’aperçu : aucun contrôle n’est dupliqué avec l’éditeur.
-                with st.expander("🛠️ MISE EN PAGE RAPIDE — STYLE 2 VOCABULAIRE", expanded=True):
-                    lp1,lp2=st.columns(2,gap="medium")
-                    with lp1:
-                        st.markdown("**📋 Tableau**")
-                        st.slider("Position X du tableau",20,160,key=vprefix+"table_x",step=5)
-                        st.slider("Position Y du tableau",280,700,key=vprefix+"table_y",step=5)
-                        st.slider("Largeur du tableau",700,1000,key=vprefix+"table_width",step=10)
-                        st.slider("Séparation français / traduction",400,650,key=vprefix+"table_split",step=10)
-                    with lp2:
-                        st.markdown("**🔤 Texte & lignes**")
-                        st.slider("Hauteur d’une ligne",60,115,key=vprefix+"table_row_h",step=5)
-                        st.slider("Espace entre les lignes",0,24,key=vprefix+"table_gap",step=2)
-                        st.slider("Taille français",24,60,key=vprefix+"vocab_fr_size")
-                        st.slider("Taille traduction",22,56,key=vprefix+"vocab_tr_size")
-                    st.markdown("**⏱️ Minuteur dans la colonne traduction**")
-                    mt1,mt2,mt3=st.columns(3,gap="small")
-                    with mt1: st.slider("Décalage X",-180,180,key=vprefix+"vocab_timer_offset_x",step=5)
-                    with mt2: st.slider("Décalage Y",-50,50,key=vprefix+"vocab_timer_offset_y",step=5)
-                    with mt3: st.slider("Taille du minuteur",24,70,key=vprefix+"vocab_timer_size")
-                    b1,b2,b3,b4=st.columns(4,gap="small")
-                    with b1:
-                        if st.button("↔ Centrer tableau",key="v2_quick_center_table",use_container_width=True):
-                            st.session_state[vprefix+"table_x"]=70; st.rerun()
-                    with b2:
-                        if st.button("↕ Remonter tableau",key="v2_quick_up_table",use_container_width=True):
-                            st.session_state[vprefix+"table_y"]=380; st.rerun()
-                    with b3:
-                        if st.button("◉ Centrer minuteur",key="v2_quick_center_timer",use_container_width=True):
-                            st.session_state[vprefix+"vocab_timer_offset_x"]=0; st.session_state[vprefix+"vocab_timer_offset_y"]=0; st.rerun()
-                    with b4:
-                        if st.button("↔ Équilibrer colonnes",key="v2_quick_balance",use_container_width=True):
-                            st.session_state[vprefix+"table_split"]=540; st.rerun()
-            else:
+            if not style_v.startswith("Style 2"):
                 m1,m2,m3,m4,m5=st.columns(5,gap="small")
                 with m1:
                     if st.button("←",key="mvv_l",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=-20); st.rerun()
@@ -2581,24 +2632,28 @@ else:
                             for idx,item in enumerate(items):
                                 fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
                                 if style_v.startswith("Style 2"):
-                                    fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=prog,video_title=th_v,source_active_word=wi),fd)
+                                    fwords=word_timed_frames_vocab_style2(fa,fw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=prog,video_title=th_v,source_active_word=wi),fd)
                                     word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
                                     sfx_cfg=_layout("vocab","2")
                                     if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
                                     else: word_voice_fx=fa
                                     fo2=os.path.join(tmp,f"fr_{idx}_seg.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo2,tmp); clips.append(fo2)
                                     cframes=[]
-                                    countdown_duration=3.45
+                                    countdown_duration=3.60
                                     for j in range(COUNTDOWN_STEPS):
-                                        t=j/max(1,COUNTDOWN_STEPS-1); elapsed=t*3.12
-                                        if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
-                                        elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                        elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
+                                        t=j/max(1,COUNTDOWN_STEPS-1); elapsed=t*countdown_duration
+                                        if elapsed < 1.05: sec=3; frac=1-(elapsed/1.05)
+                                        elif elapsed < 2.10: sec=2; frac=1-((elapsed-1.05)/1.05)
+                                        elif elapsed < 3.12: sec=1; frac=1-((elapsed-2.10)/1.02)
                                         else: sec=None; frac=0.0
-                                        cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=frac,reveal=False,motion=t,video_title=th_v),countdown_duration/COUNTDOWN_STEPS))
-                                    co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
+                                        cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=max(0.0,frac),reveal=False,motion=t,video_title=th_v),countdown_duration/COUNTDOWN_STEPS))
+                                    co=os.path.join(tmp,f"count_{idx}.mp4")
+                                    # Le Style 2 garde TOUJOURS ses 3 tics + ding de fin,
+                                    # indépendamment du bouton des effets facultatifs.
+                                    make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92)
+                                    clips.append(co)
                                     ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                    tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=prog,video_title=th_v,translation_active_word=wi),td)
+                                    tf=word_timed_frames_vocab_style2(ta,tw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=prog,video_title=th_v,translation_active_word=wi),td)
                                     tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
                                     if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
                                     else: tr_fx=ta
@@ -2629,7 +2684,11 @@ else:
                             oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
                             of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                             oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                            final=os.path.join(tmp,"vocabulaire_pro.mp4"); concat_videos(clips,final,tmp)
+                            final=os.path.join(tmp,"vocabulaire_pro.mp4")
+                            if style_v.startswith("Style 2"):
+                                concat_videos_precise(clips,final,tmp)
+                            else:
+                                concat_videos(clips,final,tmp)
                             with open(final,"rb") as f: data=f.read()
                             st.success("✅ Short Vocabulaire Pro terminé.")
                             st.video(data)
