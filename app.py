@@ -2778,7 +2778,15 @@ else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
                 active=0 if preview_state_v=="Ligne 1 + réflexion" else 1 if preview_state_v=="Ligne 2 + réflexion + traduction 1" else 2
                 preview_translation_word = 0 if "traduction" in preview_state_v else -1
-                preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v,translation_active_word=preview_translation_word)
+                preview_v=draw_vocab_cumulative_frame(
+                    sample_items,active,theme_v,channel_v,sample_bg_v,
+                    timer=3 if "réflexion" in preview_state_v else None,
+                    timer_fraction=.72,
+                    reveal=("traduction" in preview_state_v),
+                    video_title=th_v,
+                    source_active_word=0 if active >= 0 else -1,
+                    translation_active_word=preview_translation_word
+                )
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
             render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
@@ -2896,6 +2904,10 @@ else:
                                 if style_v.startswith("Style 2"):
                                     # ==========================================================
                                     # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
+                                    # État unique par ligne :
+                                    # FR progressive -> FR permanent -> réflexion ->
+                                    # traduction progressive -> FR+TR permanent -> ligne suivante.
+                                    # Aucun état ultérieur ne peut effacer une ligne déjà révélée.
                                     # Français + voix
                                     # → réflexion 3-2-1 + tic/tac
                                     # → ding
@@ -2932,6 +2944,10 @@ else:
                                     )
 
                                     # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
+                                    # IMPORTANT : le français doit rester affiché pendant toute
+                                    # la réflexion. On verrouille donc la dernière parole FR
+                                    # comme état permanent de cette ligne.
+                                    fr_last_word = max(0, len(fw) - 1)
                                     reflection_duration=3.55
                                     cframes=[]
                                     steps=36
@@ -2958,7 +2974,9 @@ else:
                                                 timer_fraction=max(0.0,frac),
                                                 reveal=False,
                                                 motion=elapsed/reflection_duration,
-                                                video_title=th_v
+                                                video_title=th_v,
+                                                # Le mot français reste visible pendant 3-2-1.
+                                                source_active_word=fr_last_word
                                             ),
                                             reflection_duration/steps
                                         ))
@@ -2980,6 +2998,9 @@ else:
                                             items,idx,theme_v,channel_v,bg_v,
                                             reveal=True,motion=prog,
                                             video_title=th_v,
+                                            # Le français reste définitivement visible
+                                            # pendant que la traduction est prononcée.
+                                            source_active_word=fr_last_word,
                                             translation_active_word=wi
                                         ),
                                         td
