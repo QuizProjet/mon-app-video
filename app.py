@@ -1526,6 +1526,13 @@ def make_vocab_style2_segment(frames,audio,output,tmpdir,volume=1.0):
     else:
         mux_audio(normalized,audio,output,volume=1.0)
 
+    # Les fichiers raw/norm sont uniquement des intermédiaires lourds.
+    # On les supprime immédiatement pour éviter que 15 mots remplissent
+    # le disque temporaire pendant une génération longue.
+    for _tmp_path in (raw, normalized):
+        try: os.remove(_tmp_path)
+        except OSError: pass
+
     target=audio_duration(audio)
     actual=video_duration(output)
     if actual>0 and abs(actual-target)>0.04:
@@ -1682,49 +1689,71 @@ def concat_videos_precise(clips, output, tmpdir):
         _repair_final_av_sync(output,tmpdir)
     return output
 
-def concat_videos_style2(clips,output,tmpdir):
-    """Concaténation audio+vidéo robuste réservée au Vocabulaire Style 2.
-    Le filtre concat réinitialise les PTS de chaque segment et évite l'accumulation
-    de décalage observée avec le concat demuxer sur de longues séries.
+def _concat_videos_style2_pairwise(clips, output, tmpdir):
+    """Concatène 2 fichiers maximum à la fois pour limiter fortement la RAM.
+    Les segments Style 2 ont déjà été normalisés au même codec/fps/résolution,
+    donc FFmpeg peut généralement faire un stream-copy sans réencodage.
     """
     clips=[p for p in clips if p and os.path.exists(p)]
     if not clips:
         raise ValueError("Aucun segment à concaténer.")
+    if len(clips)==1:
+        if os.path.abspath(clips[0]) != os.path.abspath(output):
+            import shutil
+            shutil.copyfile(clips[0], output)
+        return output
 
-    inputs=[]
-    graph=[]
-    pairs=[]
+    current=clips[0]
+    created=[]
+    for i,nxt in enumerate(clips[1:],1):
+        pair_out = output if i==len(clips)-1 else os.path.join(tmpdir,f"__v2_pair_{i:03d}.mp4")
+        lst=os.path.join(tmpdir,f"__v2_pair_{i:03d}.txt")
+        with open(lst,"w",encoding="utf-8") as f:
+            f.write(f"file '{current.replace(chr(92),'/')}'\n")
+            f.write(f"file '{nxt.replace(chr(92),'/')}'\n")
+        cmd=[get_ffmpeg(),"-y","-f","concat","-safe","0","-i",lst,
+             "-map","0:v:0","-map","0:a:0","-c","copy",
+             "-avoid_negative_ts","make_zero","-movflags","+faststart",pair_out]
+        try:
+            subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+        except subprocess.CalledProcessError:
+            # Fallback limité à deux fichiers : jamais 16 entrées simultanément.
+            raw=pair_out+".reencode.mp4"
+            cmd=[get_ffmpeg(),"-y","-fflags","+genpts","-f","concat","-safe","0","-i",lst,
+                 "-map","0:v:0","-map","0:a:0","-vf",f"fps={FPS},format=yuv420p",
+                 "-c:v","libx264","-preset","veryfast","-crf","22",
+                 "-c:a","aac","-b:a","160k","-movflags","+faststart",raw]
+            subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+            os.replace(raw,pair_out)
+        if current != clips[0] and current not in clips:
+            try: os.remove(current)
+            except OSError: pass
+        if pair_out != output:
+            created.append(pair_out)
+        current=pair_out
 
-    for i,p in enumerate(clips):
-        inputs += ["-i",p]
-        graph.append(
-            f"[{i}:v:0]fps={FPS},format=yuv420p,setpts=PTS-STARTPTS[v{i}];"
-        )
-        graph.append(
-            f"[{i}:a:0]aresample=async=1:first_pts=0[a{i}];"
-        )
-        pairs.append(f"[v{i}][a{i}]")
+    for pth in created:
+        if os.path.abspath(pth) != os.path.abspath(output):
+            try: os.remove(pth)
+            except OSError: pass
 
-    graph.append(
-        "".join(pairs)+
-        f"concat=n={len(clips)}:v=1:a=1[outv][outa]"
-    )
-
-    cmd=[get_ffmpeg(),"-y",*inputs,
-         "-filter_complex","".join(graph),
-         "-map","[outv]","-map","[outa]",
-         "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
-         "-c:a","aac","-b:a","160k",
-         "-movflags","+faststart",output]
-
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-
-    vd=video_duration(output)
-    ad=audio_duration(output)
-    if vd>0 and abs(vd-ad)>0.06:
+    vd=video_duration(output); ad=audio_duration(output)
+    if vd>0 and abs(vd-ad)>0.08:
         _repair_final_av_sync(output,tmpdir)
-
     return output
+
+
+def concat_videos_style2(clips,output,tmpdir):
+    """Concaténation mémoire-safe réservée au Vocabulaire Style 2.
+    V6 construisait un filter_complex avec tous les clips (jusqu'à 16 entrées
+    pour 15 mots + outro), ce qui pouvait faire saturer la mémoire et faire
+    tomber Streamlit avec l'écran « Oh no ». V7 concatène au maximum 2 clips
+    simultanément et évite le gros réencodage final.
+    """
+    clips=[p for p in clips if p and os.path.exists(p)]
+    if not clips:
+        raise ValueError("Aucun segment à concaténer.")
+    return _concat_videos_style2_pairwise(clips,output,tmpdir)
 
 
 def save_frames(frames,tmpdir,prefix):
@@ -3076,6 +3105,12 @@ else:
                                         [fr_clip,count_clip,tr_clip],
                                         item_clip,tmp
                                     )
+                                    # Une fois la séquence du mot fusionnée, les 3
+                                    # sous-clips ne servent plus. Les supprimer évite
+                                    # une accumulation de gros fichiers sur 15 mots.
+                                    for _phase_clip in (fr_clip,count_clip,tr_clip):
+                                        try: os.remove(_phase_clip)
+                                        except OSError: pass
                                     clips.append(item_clip)
 
                                 else:
