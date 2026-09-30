@@ -620,7 +620,7 @@ def _layout(module="quiz", style=None):
             "translation_x":540,"translation_y":760,"translation_width":850,
             "table_x":70,"table_y":430,"table_width":940,"table_row_h":82,"table_gap":8,
             "table_split":540,"table_radius":16,"vocab_fr_size":42,"vocab_tr_size":38,
-            "vocab_timer_size":44,"vocab_header_size":28,
+            "vocab_timer_size":44,"vocab_header_size":28,"vocab_history_dim":0.78,
         })
     out={}
     for k,v in defaults.items():
@@ -853,6 +853,20 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
             source_limit=-1
             translation_limit=-1
 
+        # Hiérarchie visuelle : la ligne active domine, l'historique reste lisible
+        # mais plus discret. Cela évite l'effet "mur vert" à 10–15 lignes.
+        if history_row:
+            dim=float(cfg.get("vocab_history_dim",0.78))
+            muted_rgb=_hex_rgb(cfg.get("muted"), theme["muted"])
+            card_rgb=_hex_rgb(cfg.get("answer"), theme["card"])
+            # Mélange avec la carte pour obtenir une vraie discrétion visuelle
+            # sans utiliser de transparence (le rendu final est en RGB).
+            history_fr_fill=tuple(int(card_rgb[k]*(1-dim)+muted_rgb[k]*dim) for k in range(3))
+            history_tr_fill=history_fr_fill
+        else:
+            history_fr_fill = _hex_rgb(cfg.get("text"), (255,255,255))
+            history_tr_fill = _hex_rgb(cfg.get("correct"), theme["success"])
+
         # ----- Français -----
         lines=wrap_text(fr,fs,max(80,split-45))[:2]
         ty=ry+(effective_rh-len(lines)*text_height(fs))/2-2
@@ -892,7 +906,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                     draw.text(
                         (xx,ty),word,font=fs,
                         fill=_hex_rgb(cfg.get("correct"),theme["success"]) if current
-                        else _hex_rgb(cfg.get("text"),(255,255,255))
+                        else history_fr_fill
                     )
                     xx+=ww+space
 
@@ -931,7 +945,6 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
 
                     for gidx,word,ww in visible_words:
                         active_word=(active_row and gidx==int(translation_active_word))
-                        prefix_w=text_width(draw,"✓ ",ts) if gidx==0 else 0
 
                         if active_word:
                             pad=5
@@ -943,16 +956,11 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                                 width=2
                             )
 
-                        if gidx==0:
-                            draw.text(
-                                (xx,ty2),"✓ ",font=ts,
-                                fill=_hex_rgb(cfg.get("correct"),theme["success"])
-                            )
                         draw.text(
-                            (xx+prefix_w,ty2),word,font=ts,
-                            fill=_hex_rgb(cfg.get("correct"),theme["success"])
+                            (xx,ty2),word,font=ts,
+                            fill=_hex_rgb(cfg.get("correct"),theme["success"]) if active_word else history_tr_fill
                         )
-                        xx+=ww+space+prefix_w
+                        xx+=ww+space
 
                 global_idx+=len(words_line)
                 ty2+=text_height(ts,line)+2
@@ -1113,6 +1121,41 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
     draw_brand(draw,theme,channel,(q_num-1)/max(1,total)); draw.text((55,1788),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+    return img
+
+def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
+    """Écran final dédié au Vocabulaire Style 2. Le texte principal est celui
+    choisi par l'utilisateur dans "Message de fin"; aucun libellé fixe de quiz.
+    """
+    theme=THEMES[theme_name]
+    cfg=_layout("vocab","2")
+    ff=cfg.get("font_family","DejaVu Sans")
+    p=ease_back(progress)
+    img=add_top_glow(make_base(theme_name,bg_file),theme,1.15*p)
+    draw=ImageDraw.Draw(img)
+    # Cercle central discret, sans badge "TESTE-TOI".
+    r=int(190*p)
+    draw.ellipse((540-r,500-r,540+r,500+r),outline=(*theme["accent"],),width=4)
+    title=clean_text(message or "Bravo !")
+    f=get_font(72,ff)
+    lines=wrap_text(title,f,860)[:3]
+    y=560-int(60*(1-p))
+    for line in lines:
+        tw=text_width(draw,line,f)
+        draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
+        draw.text(((WIDTH-tw)/2,y),line,font=f,fill="white")
+        y+=100
+    sub=clean_text(subtitle or "")
+    if sub:
+        sf=get_font(34,ff)
+        slines=wrap_text(sub,sf,800)[:2]
+        sy=y+28
+        for line in slines:
+            tw=text_width(draw,line,sf)
+            draw.text(((WIDTH-tw)/2,sy),line,font=sf,fill=theme["accent"])
+            sy+=52
+    draw_brand(draw,theme,channel)
+    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=theme["muted"])
     return img
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1"):
@@ -2338,9 +2381,9 @@ def render_layout_editor(module, style="1"):
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
                 st.slider("Taille du texte historique",20,52,key=p+"history_size")
             elif not is_quiz and style=="2":
-                st.caption("Table vidéo sans en-tête : les lignes commencent directement par les mots.")
-                st.info("Largeur, hauteur des lignes, séparation des colonnes et tailles du texte se règlent dans le panneau Mise en page rapide sous l’aperçu.")
-                st.caption("En-tête de colonnes : masqué dans la vidéo")
+                st.caption("Tableau cumulatif optimisé pour 1 à 15 lignes. À partir de 12 lignes, la hauteur et la taille du texte s'adaptent automatiquement.")
+                st.slider("Discrétion des anciennes lignes",0.55,1.0,key=p+"vocab_history_dim",step=0.05)
+                st.caption("La ligne active reste dominante ; les lignes déjà apprises restent visibles mais plus discrètes.")
             else:
                 st.slider("X traduction — Style 1",200,880,key=p+"translation_x")
                 st.slider("Y traduction — Style 1",650,1200,key=p+"translation_y")
@@ -2377,7 +2420,7 @@ def render_layout_editor(module, style="1"):
         c1,c2=st.columns(2)
         with c1:
             if (not is_quiz) and style=="2":
-                st.info("Le minuteur du Style 2 est positionné relativement à la cellule de traduction dans le panneau sous l’aperçu.")
+                st.info("Le minuteur du Style 2 est positionné dans la cellule de traduction. Utilise les réglages X/Y juste au-dessus pour l’ajuster.")
             else:
                 st.slider("Position X",0,1080,key=p+"timer_x")
                 st.slider("Position Y",250,1450,key=p+"timer_y")
@@ -2751,7 +2794,11 @@ else:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">RÉSEAUX</div>',unsafe_allow_html=True)
         channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
         hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
-        outro_v=st.text_input("CTA final","Abonne-toi pour un nouveau mot !",key="ov")
+        outro_v=st.text_input("Message de fin","Abonne-toi pour un nouveau mot !",key="ov")
+        if style_v.startswith("Style 2"):
+            outro_v_sub=st.text_input("Sous-message de fin (facultatif)","Nouveau mot demain 👋",key="ov_sub")
+        else:
+            outro_v_sub=""
         st.markdown('</div>',unsafe_allow_html=True)
     st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : mot + voix synchronisés → 3 secondes de réflexion (3 → 2 → 1) + ding → traduction révélée progressivement en même temps que sa voix.")
     left_v, right_v = st.columns([1.18, 0.82], gap="medium")
@@ -3055,7 +3102,10 @@ else:
                                     tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
                                 gc.collect()
                             oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="2" if style_v.startswith("Style 2") else "1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                            if style_v.startswith("Style 2"):
+                                of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                            else:
+                                of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                             oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                             final=os.path.join(tmp,"vocabulaire_pro.mp4")
                             if style_v.startswith("Style 2"):
