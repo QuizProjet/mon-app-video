@@ -1408,7 +1408,7 @@ def concat_videos_precise(clips, output, tmpdir):
     lst=os.path.join(tmpdir,"concat_precise.txt")
     with open(lst,"w",encoding="utf-8") as f:
         for p in clips:
-            f.write(f"file '{p.replace(chr(92),'/')}'\\n")
+            f.write(f"file '{p.replace(chr(92),'/')}'\n")
     cmd=[get_ffmpeg(),"-y","-fflags","+genpts",
          "-f","concat","-safe","0","-i",lst,
          "-map","0:v:0","-map","0:a:0",
