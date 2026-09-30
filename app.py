@@ -746,93 +746,249 @@ def _animated_progress(value, style):
     return ease_out(v)
 
 def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, reveal=False, motion=0.0, video_title="Voyage", translation_active_word=-1, source_active_word=-1):
+    """Vocabulaire Style 2 uniquement.
+    Tableau cumulatif : les anciennes lignes restent toujours visibles.
+    Sur la ligne active, les mots apparaissent au rythme des WordBoundaries TTS.
+    """
     cfg=_layout("vocab", "2"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
-    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
-    img=add_top_glow(base,theme,1.0+0.12*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
-    total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]
+    if alpha:
+        base=Image.alpha_composite(
+            base.convert("RGBA"),
+            Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))
+        ).convert("RGB")
+    img=add_top_glow(base,theme,1.0+0.08*math.sin(float(motion)*math.pi*2))
+    draw=ImageDraw.Draw(img)
+
+    total=max(1,len(items))
+    active_idx=max(0,min(int(active_idx),total-1))
     ff=cfg.get("font_family","DejaVu Sans")
     table_ff=cfg.get("table_font_family",ff)
+
     if cfg.get("show_title",True):
-        title=clean_text(video_title or "Vocabulaire"); tf=get_font(int(cfg.get("title_size",34)),ff)
-        tw=text_width(draw,title,tf); tx=int(cfg.get("title_x",540))-tw/2; draw.text((tx,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
-    # Tableau : les lignes apparaissent une par une, la traduction reste affichée.
-    x=int(cfg.get("table_x",70)); y0=int(cfg.get("table_y",430)); w=int(cfg.get("table_width",940)); rh=int(cfg.get("table_row_h",82)); gap=int(cfg.get("table_gap",8)); split=int(cfg.get("table_split",540)); radius=int(cfg.get("table_radius",16))
-    # Vocabulaire Style 2 — aucun titre de colonne dans la vidéo.
-    # Le tableau commence directement par la première ligne pour un rendu plus
-    # épuré et plus proche d'une vidéo Short. Les lignes restent colorées et
-    # utilisent la police du tableau/projet configurée dans l'éditeur.
+        title=clean_text(video_title or "Vocabulaire")
+        tf=get_font(int(cfg.get("title_size",34)),ff)
+        tw=text_width(draw,title,tf)
+        tx=int(cfg.get("title_x",540))-tw/2
+        draw.text((tx,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+
+    # Pour 15 lignes, on réduit automatiquement la hauteur si nécessaire afin
+    # que le tableau reste entièrement visible et ne touche jamais le footer.
+    x=int(cfg.get("table_x",70))
+    y0=int(cfg.get("table_y",350))
+    w=int(cfg.get("table_width",940))
+    configured_rh=int(cfg.get("table_row_h",82))
+    gap=int(cfg.get("table_gap",6))
+    split=int(cfg.get("table_split",540))
+    radius=int(cfg.get("table_radius",16))
+
+    bottom_limit=1775
+    max_rh=(bottom_limit-y0-gap*(total-1))//total
+    effective_rh=max(58,min(configured_rh,int(max_rh))) if total>=12 else configured_rh
+
+    # Taille adaptée automatiquement quand 12–15 lignes sont affichées.
+    base_fr_size=int(cfg.get("vocab_fr_size",44))
+    base_tr_size=int(cfg.get("vocab_tr_size",40))
+    if total>=12:
+        fr_size=min(base_fr_size,max(30,int(effective_rh*0.47)))
+        tr_size=min(base_tr_size,max(28,int(effective_rh*0.42)))
+    else:
+        fr_size=base_fr_size
+        tr_size=base_tr_size
+
     visible=active_idx+1
+
     for i in range(visible):
-        item=items[i]; ry=y0+i*(rh+gap); active_row=(i==active_idx)
+        item=items[i]
+        ry=y0+i*(effective_rh+gap)
+        active_row=(i==active_idx)
+        history_row=(i<active_idx)
+
         fill=_hex_rgb(cfg.get("answer2" if active_row else "answer"),theme["card"])
-        outline=_hex_rgb(cfg.get("border_color"),theme["accent"] if active_row else theme["muted"])
+        outline=_hex_rgb(
+            cfg.get("border_color"),
+            theme["accent"] if active_row else theme["muted"]
+        )
+
         if active_row:
-            shadow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); sd=ImageDraw.Draw(shadow); sd.rounded_rectangle((x+4,ry+5,x+w+4,ry+rh+5),radius=int(cfg.get("border_radius",radius)),fill=(0,0,0,70)); shadow=shadow.filter(ImageFilter.GaussianBlur(8)); img=Image.alpha_composite(img.convert("RGBA"),shadow).convert("RGB"); draw=ImageDraw.Draw(img)
-        draw.rounded_rectangle((x,ry,x+w,ry+rh),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2)) + (1 if active_row else 0)))
-        draw.line((x+split,ry+10,x+split,ry+rh-10),fill=outline,width=2)
-        fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")) if (i<active_idx or reveal) else ""
-        if active_row and cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*clamp(motion)))]
-        fs=get_font(int(cfg.get("vocab_fr_size",42)),table_ff); ts=get_font(int(cfg.get("vocab_tr_size",38)),table_ff)
-        # Animation sur la ligne active
-        if active_row:
-            prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*80) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
-        else: dx=0
-        lines=wrap_text(fr,fs,split-45)[:2]
-        ty=ry+(rh-len(lines)*text_height(fs))/2-2; global_source_word=0
-        reveal_to=int(source_active_word) if int(source_active_word) >= 0 else -1
+            shadow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
+            sd=ImageDraw.Draw(shadow)
+            sd.rounded_rectangle(
+                (x+4,ry+5,x+w+4,ry+effective_rh+5),
+                radius=int(cfg.get("border_radius",radius)),
+                fill=(0,0,0,70)
+            )
+            shadow=shadow.filter(ImageFilter.GaussianBlur(8))
+            img=Image.alpha_composite(img.convert("RGBA"),shadow).convert("RGB")
+            draw=ImageDraw.Draw(img)
+
+        draw.rounded_rectangle(
+            (x,ry,x+w,ry+effective_rh),
+            radius=int(cfg.get("border_radius",radius)),
+            fill=fill,
+            outline=outline,
+            width=max(1,int(cfg.get("border_width",2))+(1 if active_row else 0))
+        )
+        draw.line(
+            (x+split,ry+10,x+split,ry+effective_rh-10),
+            fill=outline,width=2
+        )
+
+        fr=clean_text(item.get("fr",""))
+        tr=clean_text(item.get("trad",""))
+
+        fs=get_font(fr_size,table_ff)
+        ts=get_font(tr_size,table_ff)
+
+        # HISTORIQUE : français ET traduction restent définitivement affichés.
+        # L'ancienne version envoyait -1 pour ces lignes, ce qui les effaçait.
+        if history_row:
+            source_limit=10**9
+            translation_limit=10**9
+        elif active_row:
+            source_limit=int(source_active_word) if int(source_active_word)>=0 else -1
+            translation_limit=int(translation_active_word) if int(translation_active_word)>=0 else -1
+        else:
+            source_limit=-1
+            translation_limit=-1
+
+        # ----- Français -----
+        lines=wrap_text(fr,fs,max(80,split-45))[:2]
+        ty=ry+(effective_rh-len(lines)*text_height(fs))/2-2
+        global_source_word=0
+
         for line in lines:
-            words_line=line.split(); widths=[text_width(draw,z,fs) for z in words_line]; space=text_width(draw," ",fs)
-            indexed=[(global_source_word+i,word,ww) for i,(word,ww) in enumerate(zip(words_line,widths))]
-            visible_words=[(gidx,word,ww) for gidx,word,ww in indexed if gidx <= reveal_to]
+            words_line=line.split()
+            widths=[text_width(draw,z,fs) for z in words_line]
+            space=text_width(draw," ",fs)
+            indexed=[
+                (global_source_word+j,word,ww)
+                for j,(word,ww) in enumerate(zip(words_line,widths))
+            ]
+            visible_words=[
+                (gidx,word,ww)
+                for gidx,word,ww in indexed
+                if gidx<=source_limit
+            ]
+
             if visible_words:
                 totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1)
-                xx=x+20+dx
-                if totalw < split-45: xx=x+(split-totalw)/2+dx
+                xx=x+20
+                if totalw < split-45:
+                    xx=x+(split-totalw)/2
+
                 for gidx,word,ww in visible_words:
                     current=(active_row and gidx==int(source_active_word))
                     if current:
-                        pad=5; draw.rounded_rectangle((xx-pad,ty-3,xx+ww+pad,ty+text_height(fs,word)+4),radius=9,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
-                    draw.text((xx,ty),word,font=fs,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),(255,255,255)))
+                        pad=5
+                        draw.rounded_rectangle(
+                            (xx-pad,ty-3,xx+ww+pad,ty+text_height(fs,word)+4),
+                            radius=9,
+                            fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),
+                            outline=_hex_rgb(cfg.get("correct"),theme["success"]),
+                            width=2
+                        )
+                    draw.text(
+                        (xx,ty),word,font=fs,
+                        fill=_hex_rgb(cfg.get("correct"),theme["success"]) if current
+                        else _hex_rgb(cfg.get("text"),(255,255,255))
+                    )
                     xx+=ww+space
-            global_source_word += len(words_line)
+
+            global_source_word+=len(words_line)
             ty+=text_height(fs,line)+2
-        if tr:
-            lines2=wrap_text(tr,ts,w-split-45)[:2]; ty2=ry+(rh-len(lines2)*text_height(ts))/2-2
-            # Synchronisation stricte avec la voix : seuls les mots déjà prononcés sont visibles.
-            # Le mot actuellement prononcé est mis en évidence.
+
+        # ----- Traduction -----
+        # Elle n'apparaît que sur l'historique ou après le ding, puis se construit
+        # mot par mot au rythme de la voix de traduction.
+        show_translation=history_row or (active_row and reveal)
+
+        if show_translation:
+            lines2=wrap_text(tr,ts,max(80,w-split-45))[:2]
+            ty2=ry+(effective_rh-len(lines2)*text_height(ts))/2-2
             global_idx=0
-            reveal_to=int(translation_active_word) if int(translation_active_word) >= 0 else 10**9
+
             for line in lines2:
-                words_line=line.split(); widths=[text_width(draw,z,ts) for z in words_line]; space=text_width(draw," ",ts)
-                indexed=[(global_idx+i,word,ww) for i,(word,ww) in enumerate(zip(words_line,widths))]
-                visible_words=[(gidx,word,ww) for gidx,word,ww in indexed if gidx <= reveal_to]
+                words_line=line.split()
+                widths=[text_width(draw,z,ts) for z in words_line]
+                space=text_width(draw," ",ts)
+                indexed=[
+                    (global_idx+j,word,ww)
+                    for j,(word,ww) in enumerate(zip(words_line,widths))
+                ]
+                visible_words=[
+                    (gidx,word,ww)
+                    for gidx,word,ww in indexed
+                    if gidx<=translation_limit
+                ]
+
                 if visible_words:
-                    totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1); xx=x+split+20
+                    totalw=sum(ww for _,_,ww in visible_words)+space*max(0,len(visible_words)-1)
+                    xx=x+split+20
                     if totalw < w-split-45:
                         xx=x+split+(w-split-totalw)/2
+
                     for gidx,word,ww in visible_words:
-                        active_word=(gidx==int(translation_active_word))
+                        active_word=(active_row and gidx==int(translation_active_word))
                         prefix_w=text_width(draw,"✓ ",ts) if gidx==0 else 0
+
                         if active_word:
                             pad=5
-                            draw.rounded_rectangle((xx-pad,ty2-3,xx+ww+pad,ty2+text_height(ts,word)+4),radius=8,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
-                        draw.text((xx,ty2),"✓ " if gidx==0 else "",font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
-                        draw.text((xx+prefix_w,ty2),word,font=ts,fill=_hex_rgb(cfg.get("correct"),theme["success"]))
+                            draw.rounded_rectangle(
+                                (xx-pad,ty2-3,xx+ww+pad,ty2+text_height(ts,word)+4),
+                                radius=8,
+                                fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),
+                                outline=_hex_rgb(cfg.get("correct"),theme["success"]),
+                                width=2
+                            )
+
+                        if gidx==0:
+                            draw.text(
+                                (xx,ty2),"✓ ",font=ts,
+                                fill=_hex_rgb(cfg.get("correct"),theme["success"])
+                            )
+                        draw.text(
+                            (xx+prefix_w,ty2),word,font=ts,
+                            fill=_hex_rgb(cfg.get("correct"),theme["success"])
+                        )
                         xx+=ww+space+prefix_w
-                global_idx += len(words_line)
+
+                global_idx+=len(words_line)
                 ty2+=text_height(ts,line)+2
+
+        # ----- Minuteur : uniquement pendant la réflexion de la ligne active -----
         elif active_row and timer is not None and cfg.get("show_timer",True):
-            # Minuteur compact, piloté par les réglages Style 2 sous l'aperçu.
-            cell_cx=x+split+(w-split)//2+int(cfg.get("vocab_timer_offset_x",0)); cell_cy=ry+rh//2+int(cfg.get("vocab_timer_offset_y",0))
-            r=max(22,min(int(cfg.get("vocab_timer_size",44)),int(rh*.36)))
-            ts=max(22,min(int(cfg.get("timer_text_size",38)),int(r*.95)))
+            cell_cx=(
+                x+split+(w-split)//2+
+                int(cfg.get("vocab_timer_offset_x",0))
+            )
+            cell_cy=(
+                ry+effective_rh//2+
+                int(cfg.get("vocab_timer_offset_y",0))
+            )
+            r=max(22,min(int(cfg.get("vocab_timer_size",44)),int(effective_rh*.36)))
+            timer_text_size=max(
+                22,min(int(cfg.get("timer_text_size",38)),int(r*.95))
+            )
             tc=_hex_rgb(cfg.get("timer_color"),theme["accent"])
-            if timer is not None and timer<=1: tc=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-            _draw_timer_visual(draw,tc,int(cell_cx),int(cell_cy),r,timer,timer_fraction,cfg.get("timer_style","Double cercle"),ts,None,20,tc,0.12)
-    draw_brand(draw,theme,channel,active_idx/max(1,total)); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+            if timer is not None and timer<=1:
+                tc=_hex_rgb(cfg.get("timer_color"),theme["danger"])
+
+            _draw_timer_visual(
+                draw,tc,int(cell_cx),int(cell_cy),r,timer,timer_fraction,
+                cfg.get("timer_style","Double cercle"),
+                timer_text_size,None,20,tc,0.12
+            )
+
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
+    draw.text(
+        (55,1860),"QuizVideo Pro  •  Vocabulaire Pro",
+        font=get_font(21,ff),
+        fill=_hex_rgb(cfg.get("muted"),theme["muted"])
+    )
     return img
+
 
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale", question_active_word=-1):
     """Quiz Style 2 : question active en haut, minuteur juste dessous, historique discret dessous.
@@ -1146,23 +1302,40 @@ def make_sfx_countdown(tic,ding,tmpdir):
 
 def make_vocab_style2_countdown_sfx(tic,ding,tmpdir):
     """Style 2 Vocabulaire uniquement.
-    3 tics audibles pendant 3 → 2 → 1, puis un ding distinct à la fin.
-    Les événements sont légèrement décalés du bord exact des secondes pour éviter
-    qu'un effet soit mangé par l'attaque audio ou par l'encodage vidéo.
+    Réflexion type montre : tic/tac audibles pendant 3 secondes, puis ding net.
+    La traduction commence seulement après ce son de fin.
     """
     out=os.path.join(tmpdir,"vocab_style2_countdown.wav")
-    cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,
+    tock=os.path.join(tmpdir,"vocab_style2_tock.wav")
+
+    # Tock légèrement plus grave pour obtenir une vraie sensation tic/tac.
+    rate=44100
+    n=int(rate*0.085)
+    _write_wav_mono(
+        tock,
+        [
+            11500*math.sin(2*math.pi*820*i/rate)*math.exp(-i/700)
+            for i in range(n)
+        ],
+        rate
+    )
+
+    cmd=[get_ffmpeg(),"-y","-i",tic,"-i",tock,"-i",ding,
          "-filter_complex",
-         "[0:a]adelay=120|120[a0];"
-         "[0:a]adelay=1120|1120[a1];"
-         "[0:a]adelay=2120|2120[a2];"
-         "[1:a]adelay=3120|3120,volume=0.90[ad];"
-         "[a0][a1][a2][ad]amix=inputs=4:duration=longest,"
-         "apad=pad_dur=0.08,atrim=duration=3.60,"
-         "asetpts=PTS-STARTPTS",
+         "[0:a]volume=1.20,adelay=120|120[t1];"
+         "[1:a]volume=1.05,adelay=620|620[t2];"
+         "[0:a]volume=1.20,adelay=1120|1120[t3];"
+         "[1:a]volume=1.05,adelay=1620|1620[t4];"
+         "[0:a]volume=1.20,adelay=2120|2120[t5];"
+         "[1:a]volume=1.05,adelay=2620|2620[t6];"
+         "[2:a]volume=1.15,adelay=3120|3120[ding];"
+         "[t1][t2][t3][t4][t5][t6][ding]"
+         "amix=inputs=7:duration=longest:dropout_transition=0,"
+         "apad=pad_dur=0.08,atrim=duration=3.55,asetpts=PTS-STARTPTS",
          "-c:a","pcm_s16le",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return out
+
 
 def make_end_tick(tic,ding,tmpdir):
     out=os.path.join(tmpdir,"reflection_end.wav")
@@ -1289,6 +1462,37 @@ def make_segment(frames,audio,output,tmpdir,volume=1.0):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return output
 
+def make_vocab_style2_segment(frames,audio,output,tmpdir,volume=1.0):
+    """Encodeur robuste réservé au Vocabulaire Style 2.
+    1) construit la vidéo à partir des durées d'images,
+    2) force sa durée à celle de la voix,
+    3) remuxe ensuite la voix.
+    Cette méthode évite les décalages de timebase observés sur 15 lignes.
+    """
+    if not frames:
+        raise ValueError("Aucune image à encoder pour le segment Vocabulaire Style 2.")
+
+    raw=os.path.join(tmpdir,os.path.basename(output)+".raw.mp4")
+    normalized=os.path.join(tmpdir,os.path.basename(output)+".norm.mp4")
+
+    make_image_video(frames,raw,fps=FPS)
+    _normalize_video_to_audio(raw,audio,normalized)
+
+    if abs(float(volume)-1.0)>1e-6:
+        mux_audio(normalized,audio,output,volume=float(volume))
+    else:
+        mux_audio(normalized,audio,output,volume=1.0)
+
+    target=audio_duration(audio)
+    actual=video_duration(output)
+    if actual>0 and abs(actual-target)>0.04:
+        # Dernier verrou du segment.
+        _normalize_video_to_audio(output,audio,normalized)
+        mux_audio(normalized,audio,output,volume=float(volume))
+
+    return output
+
+
 def word_timed_frames(audio_path, words, frame_fn, duration=None):
     """Construit des images dont les intervalles suivent les WordBoundaries TTS.
     Le premier intervalle commence toujours à 0 et le dernier va jusqu'à la fin
@@ -1319,40 +1523,53 @@ def word_timed_frames(audio_path, words, frame_fn, duration=None):
 
 def word_timed_frames_vocab_style2(audio_path, words, frame_fn, duration=None):
     """Timing dédié au Vocabulaire Style 2.
-    Les WordBoundaries sont triées, tronquées aux frontières précédentes et la somme
-    des intervalles est exactement égale à la durée audio. Cela évite les chevauchements
-    et le décalage cumulatif sur les longues séries (jusqu'à 15 mots).
+    Chaque mot devient visible à son WordBoundary START et reste visible
+    jusqu'au début du mot suivant. C'est volontairement différent du découpage
+    par END : cela évite que l'écriture paraisse plus rapide que la voix.
     """
     dur=max(0.05,float(duration or audio_duration(audio_path)))
-    boundaries=[]
+    starts=[]
+
     for w in (words or []):
         try:
             st=max(0.0,min(dur,float(w.get("start",0.0))))
-            en=max(st,min(dur,float(w.get("end",st))))
-            if en>st+0.005:
-                boundaries.append((st,en))
+            if not starts or st>starts[-1]+0.005:
+                starts.append(st)
         except Exception:
             pass
-    boundaries.sort(key=lambda z:(z[0],z[1]))
-    if not boundaries:
+
+    if not starts:
         return [(frame_fn(-1,0.0),dur)]
-    out=[]; cursor=0.0
-    for i,(st,en) in enumerate(boundaries):
+
+    out=[]
+    cursor=0.0
+
+    # Petit silence initial éventuel : aucun mot n'est encore affiché.
+    if starts[0]>0.02:
+        out.append((frame_fn(-1,0.0),starts[0]))
+        cursor=starts[0]
+
+    for i,st in enumerate(starts):
         st=max(cursor,st)
-        en=max(st,en)
-        if st>cursor+0.005:
-            out.append((frame_fn(i-1,0.0),st-cursor))
-        if en>st+0.005:
-            out.append((frame_fn(i,1.0),en-st))
-            cursor=en
-    if cursor<dur-0.005:
-        out.append((frame_fn(len(boundaries)-1,1.0),dur-cursor))
+        next_st=starts[i+1] if i+1<len(starts) else dur
+        end=max(st,min(dur,next_st))
+
+        if end>st+0.005:
+            # motion est seulement utilisé pour les animations légères; la
+            # visibilité des mots est pilotée par i, donc par la voix.
+            out.append((frame_fn(i,0.0),end-st))
+            cursor=end
+
+    if not out:
+        return [(frame_fn(-1,0.0),dur)]
+
     total=sum(float(d) for _,d in out)
-    if out and abs(total-dur)>0.002:
-        # Dernière correction numérique : aucun écart ne doit s'accumuler.
-        img,last_d=out[-1]
-        out[-1]=(img,max(0.033,float(last_d)+(dur-total)))
+    if abs(total-dur)>0.002:
+        img,last=out[-1]
+        out[-1]=(img,max(0.033,float(last)+(dur-total)))
+
     return out
+
 
 def _repair_final_av_sync(path, tmpdir):
     """Dernier verrou : durée vidéo exactement égale à la durée audio finale."""
@@ -1421,6 +1638,51 @@ def concat_videos_precise(clips, output, tmpdir):
     if vd>0 and abs(vd-ad)>0.08:
         _repair_final_av_sync(output,tmpdir)
     return output
+
+def concat_videos_style2(clips,output,tmpdir):
+    """Concaténation audio+vidéo robuste réservée au Vocabulaire Style 2.
+    Le filtre concat réinitialise les PTS de chaque segment et évite l'accumulation
+    de décalage observée avec le concat demuxer sur de longues séries.
+    """
+    clips=[p for p in clips if p and os.path.exists(p)]
+    if not clips:
+        raise ValueError("Aucun segment à concaténer.")
+
+    inputs=[]
+    graph=[]
+    pairs=[]
+
+    for i,p in enumerate(clips):
+        inputs += ["-i",p]
+        graph.append(
+            f"[{i}:v:0]fps={FPS},format=yuv420p,setpts=PTS-STARTPTS[v{i}];"
+        )
+        graph.append(
+            f"[{i}:a:0]aresample=async=1:first_pts=0[a{i}];"
+        )
+        pairs.append(f"[v{i}][a{i}]")
+
+    graph.append(
+        "".join(pairs)+
+        f"concat=n={len(clips)}:v=1:a=1[outv][outa]"
+    )
+
+    cmd=[get_ffmpeg(),"-y",*inputs,
+         "-filter_complex","".join(graph),
+         "-map","[outv]","-map","[outa]",
+         "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
+         "-c:a","aac","-b:a","160k",
+         "-movflags","+faststart",output]
+
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+
+    vd=video_duration(output)
+    ad=audio_duration(output)
+    if vd>0 and abs(vd-ad)>0.06:
+        _repair_final_av_sync(output,tmpdir)
+
+    return output
+
 
 def save_frames(frames,tmpdir,prefix):
     out=[]
@@ -1993,8 +2255,8 @@ def render_layout_editor(module, style="1"):
         "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
         "bg_opacity":18, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
         "translation_x":540, "translation_y":760, "translation_width":850,
-        "table_x":70, "table_y":420, "table_width":940, "table_row_h":88, "table_gap":8, "table_split":540, "table_radius":18,
-        "vocab_fr_size":44, "vocab_tr_size":40, "vocab_header_size":29, "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
+        "table_x":70, "table_y":350, "table_width":940, "table_row_h":82, "table_gap":6, "table_split":540, "table_radius":18,
+        "vocab_fr_size":42, "vocab_tr_size":38, "vocab_header_size":29, "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
         "table_header_font":"DejaVu Serif", "table_header_h":58, "sfx_enabled":True, "sfx_volume":0.30,
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
@@ -2632,32 +2894,122 @@ else:
                             for idx,item in enumerate(items):
                                 fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
                                 if style_v.startswith("Style 2"):
-                                    fwords=word_timed_frames_vocab_style2(fa,fw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=False,motion=prog,video_title=th_v,source_active_word=wi),fd)
-                                    word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                                    # ==========================================================
+                                    # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
+                                    # Français + voix
+                                    # → réflexion 3-2-1 + tic/tac
+                                    # → ding
+                                    # → traduction + voix
+                                    # → ligne conservée dans l'historique
+                                    # ==========================================================
                                     sfx_cfg=_layout("vocab","2")
-                                    if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                    else: word_voice_fx=fa
-                                    fo2=os.path.join(tmp,f"fr_{idx}_seg.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo2,tmp); clips.append(fo2)
+
+                                    # --- 1. VOIX FRANÇAISE + apparition mot par mot ---
+                                    fwords=word_timed_frames_vocab_style2(
+                                        fa,fw,
+                                        lambda wi,prog: draw_vocab_cumulative_frame(
+                                            items,idx,theme_v,channel_v,bg_v,
+                                            reveal=False,motion=prog,
+                                            video_title=th_v,
+                                            source_active_word=wi
+                                        ),
+                                        fd
+                                    )
+
+                                    word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                                    if sfx_cfg.get("sfx_enabled",True):
+                                        mix_voice_sfx(
+                                            fa,pop,word_voice_fx,0,
+                                            float(sfx_cfg.get("sfx_volume",0.30))
+                                        )
+                                    else:
+                                        word_voice_fx=fa
+
+                                    fr_clip=os.path.join(tmp,f"fr_{idx}_seg.mp4")
+                                    make_vocab_style2_segment(
+                                        save_frames(fwords,tmp,f"vf_{idx}"),
+                                        word_voice_fx,fr_clip,tmp,1.0
+                                    )
+
+                                    # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
+                                    reflection_duration=3.55
                                     cframes=[]
-                                    countdown_duration=3.60
-                                    for j in range(COUNTDOWN_STEPS):
-                                        t=j/max(1,COUNTDOWN_STEPS-1); elapsed=t*countdown_duration
-                                        if elapsed < 1.05: sec=3; frac=1-(elapsed/1.05)
-                                        elif elapsed < 2.10: sec=2; frac=1-((elapsed-1.05)/1.05)
-                                        elif elapsed < 3.12: sec=1; frac=1-((elapsed-2.10)/1.02)
-                                        else: sec=None; frac=0.0
-                                        cframes.append((draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,timer=sec,timer_fraction=max(0.0,frac),reveal=False,motion=t,video_title=th_v),countdown_duration/COUNTDOWN_STEPS))
-                                    co=os.path.join(tmp,f"count_{idx}.mp4")
-                                    # Le Style 2 garde TOUJOURS ses 3 tics + ding de fin,
-                                    # indépendamment du bouton des effets facultatifs.
-                                    make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92)
-                                    clips.append(co)
-                                    ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                    tf=word_timed_frames_vocab_style2(ta,tw,lambda wi,prog: draw_vocab_cumulative_frame(items,idx,theme_v,channel_v,bg_v,reveal=True,motion=prog,video_title=th_v,translation_active_word=wi),td)
+                                    steps=36
+
+                                    for j in range(steps):
+                                        elapsed=reflection_duration*j/steps
+                                        if elapsed<1.05:
+                                            sec=3
+                                            frac=1-(elapsed/1.05)
+                                        elif elapsed<2.10:
+                                            sec=2
+                                            frac=1-((elapsed-1.05)/1.05)
+                                        elif elapsed<3.15:
+                                            sec=1
+                                            frac=1-((elapsed-2.10)/1.05)
+                                        else:
+                                            sec=None
+                                            frac=0.0
+
+                                        cframes.append((
+                                            draw_vocab_cumulative_frame(
+                                                items,idx,theme_v,channel_v,bg_v,
+                                                timer=sec,
+                                                timer_fraction=max(0.0,frac),
+                                                reveal=False,
+                                                motion=elapsed/reflection_duration,
+                                                video_title=th_v
+                                            ),
+                                            reflection_duration/steps
+                                        ))
+
+                                    count_clip=os.path.join(tmp,f"count_{idx}.mp4")
+                                    make_vocab_style2_segment(
+                                        save_frames(cframes,tmp,f"vc_{idx}"),
+                                        countdown_sfx,count_clip,tmp,1.0
+                                    )
+
+                                    # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
+                                    ta=os.path.join(tmp,f"tr_{idx}.mp3")
+                                    tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
+                                    td=audio_duration(ta)
+
+                                    tf=word_timed_frames_vocab_style2(
+                                        ta,tw,
+                                        lambda wi,prog: draw_vocab_cumulative_frame(
+                                            items,idx,theme_v,channel_v,bg_v,
+                                            reveal=True,motion=prog,
+                                            video_title=th_v,
+                                            translation_active_word=wi
+                                        ),
+                                        td
+                                    )
+
                                     tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                    else: tr_fx=ta
-                                    tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
+                                    if sfx_cfg.get("sfx_enabled",True):
+                                        mix_voice_sfx(
+                                            ta,pop,tr_fx,0,
+                                            float(sfx_cfg.get("sfx_volume",0.30))
+                                        )
+                                    else:
+                                        tr_fx=ta
+
+                                    tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
+                                    make_vocab_style2_segment(
+                                        save_frames(tf,tmp,f"trf_{idx}"),
+                                        tr_fx,tr_clip,tmp,1.0
+                                    )
+
+                                    # On regroupe immédiatement les 3 phases du mot.
+                                    # Cela empêche les petits écarts de timebase de se
+                                    # cumuler sur 15 mots.
+                                    item_clip=os.path.join(tmp,f"item_{idx}.mp4")
+                                    concat_videos_style2(
+                                        [fr_clip,count_clip,tr_clip],
+                                        item_clip,tmp
+                                    )
+                                    clips.append(item_clip)
+
                                 else:
                                     fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
                                     word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
@@ -2686,7 +3038,7 @@ else:
                             oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                             final=os.path.join(tmp,"vocabulaire_pro.mp4")
                             if style_v.startswith("Style 2"):
-                                concat_videos_precise(clips,final,tmp)
+                                concat_videos_style2(clips,final,tmp)
                             else:
                                 concat_videos(clips,final,tmp)
                             with open(final,"rb") as f: data=f.read()
