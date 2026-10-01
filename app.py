@@ -597,8 +597,8 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
-        "question_x":540,"question_y":180,"question_size":47,"question_width":900,"question_box_radius":28,
-        "answer_y":630,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
+        "question_x":540,"question_y":235,"question_size":47,"question_width":900,"question_box_radius":28,
+        "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
         "timer_auto_below_answers":True,"explanation_auto_below_timer":True,"explanation_auto_height":True,
@@ -646,10 +646,9 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
         for local_word_index,(w,ww) in enumerate(zip(words,widths)):
             key=w.strip(".,?!:;()[]«»\"'").lower()
             current=(active_word >= 0 and global_word == int(active_word))
-            fill=_hex_rgb(cfg["primary"],theme["accent"]) if (key in hi or current) else _hex_rgb(cfg["text"],(255,255,255))
-            if current:
-                pad=4
-                draw.rounded_rectangle((x-pad,yy-4,x+ww+pad,yy+text_height(f,w)+4),radius=8,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
+            # Karaoké Style 1 : aucun encadré autour du mot actif.
+            # Le mot prononcé passe simplement du blanc au jaune/or.
+            fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255))
             draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
             x+=ww+space; global_word+=1
         yy+=int(cfg["question_size"]*1.18)
@@ -1396,6 +1395,30 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     cmd=[get_ffmpeg(),"-y",
          "-f","lavfi","-i",f"sine=frequency=92:sample_rate=44100:duration={duration:.3f}",
          "-f","lavfi","-i",f"sine=frequency=138:sample_rate=44100:duration={duration:.3f}",
+         "-filter_complex",filt,"-c:a","pcm_s16le",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return out
+
+def make_quiz_background_music(duration,tmpdir,name,volume=0.065):
+    """Fond sonore léger de suspense, généré localement, sans fichier externe.
+    Une pulsation discrète évite les blancs sans couvrir la voix, le compte à rebours
+    ni le ding. Utilisé uniquement par Quiz Style 1.
+    """
+    duration=max(0.4,float(duration))
+    out=os.path.join(tmpdir,f"{name}.wav")
+    vol=max(0.0,min(0.12,float(volume)))
+    # Deux nappes très basses + une pulsation douce toutes les ~0,8 s.
+    pulse=max(0.2,duration)
+    filt=(
+        f"[0:a]volume={vol:.3f},lowpass=f=700,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[base];"
+        f"[1:a]volume={vol*0.55:.3f},lowpass=f=1100,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[low];"
+        f"[2:a]volume={vol*0.50:.3f},afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[p];"
+        "[base][low][p]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.92"
+    )
+    cmd=[get_ffmpeg(),"-y",
+         "-f","lavfi","-i",f"sine=frequency=92:sample_rate=44100:duration={duration:.3f}",
+         "-f","lavfi","-i",f"sine=frequency=138:sample_rate=44100:duration={duration:.3f}",
+         "-f","lavfi","-i",f"sine=frequency=185:sample_rate=44100:duration={duration:.3f}",
          "-filter_complex",filt,"-c:a","pcm_s16le",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return out
@@ -2518,7 +2541,8 @@ if nav=="quiz":
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
         th_q=st.text_input("Sujet","Culture Générale",key="thq")
         nb_q=st.slider("Questions",1,15,15,key="nbq")
-        voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),key="vq")]
+        voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),index=1,key="vq")]
+        st.caption("🎙️ Vivienne – Énergique est proposée par défaut pour un rendu plus vivant. Les autres voix restent disponibles.")
         st.markdown('</div>',unsafe_allow_html=True)
     with c_style:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">STYLE VIDÉO</div>',unsafe_allow_html=True)
@@ -2776,8 +2800,12 @@ if nav=="quiz":
                                         mix_voice_sfx(qa_raw,whoosh,q_with_fx,0,float(sfx_cfg.get("sfx_volume",0.30))*0.75)
                                     else:
                                         q_with_fx=qa_raw
+                                    full_audio_raw=os.path.join(tmp,f"question_full_raw_{idx}.m4a")
+                                    concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
+                                    # Fond musical très discret : la voix et les SFX restent prioritaires.
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                    concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio)
+                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.065)
+                                    mix_background_music(full_audio_raw,music,full_audio,1.0,0.85)
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
                                     cdur=3.12; cd_steps=COUNTDOWN_STEPS
