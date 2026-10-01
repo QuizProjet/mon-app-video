@@ -1397,21 +1397,47 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     return out
 
 def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense léger"):
-    """Génère un fond musical normalisé; le volume utilisateur est appliqué au mix final."""
+    """Fond musical réellement audible mais discret, généré localement.
+    La valeur `volume` sert de gain de génération; le niveau utilisateur est appliqué
+    ensuite dans le mix final. On évite le simple bourdon de deux sinusoïdes.
+    """
     duration=max(0.4,float(duration)); out=os.path.join(tmpdir,f"{name}.wav")
-    vol=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger")
-    presets={"Suspense léger":(92,138,185,0.45),"Chill":(73,110,146,0.32),"Pop légère":(110,165,220,0.28)}
-    f1,f2,f3,p=presets.get(style,presets["Suspense léger"])
-    fade=max(0.0,duration-0.30)
-    filt=(f"[0:a]volume={vol:.3f},lowpass=f=900,afade=t=in:st=0:d=0.18,afade=t=out:st={fade:.3f}:d=0.30[a];"
-          f"[1:a]volume={vol*0.55:.3f},lowpass=f=1250,afade=t=in:st=0:d=0.18,afade=t=out:st={fade:.3f}:d=0.30[b];"
-          f"[2:a]volume={vol*p:.3f},lowpass=f=1800,afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[c];"
-          "[a][b][c]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.95")
-    cmd=[get_ffmpeg(),"-y","-f","lavfi","-i",f"sine=frequency={f1}:sample_rate=44100:duration={duration:.3f}",
-         "-f","lavfi","-i",f"sine=frequency={f2}:sample_rate=44100:duration={duration:.3f}",
-         "-f","lavfi","-i",f"sine=frequency={f3}:sample_rate=44100:duration={duration:.3f}",
-         "-filter_complex",filt,"-c:a","pcm_s16le",out]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
+    gain=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger")
+    rate=44100
+    # Petits motifs musicaux différents selon l'ambiance.
+    presets={
+        "Suspense léger": ([110,146,174,220],0.72,2.2),
+        "Chill": ([98,123,147,196],0.58,1.8),
+        "Pop légère": ([110,138,165,220],0.48,2.8),
+    }
+    notes,beat_depth,beat_speed=presets.get(style,presets["Suspense léger"])
+    n=int(duration*rate)
+    samples=[]
+    fade_in_n=int(min(0.35,duration*0.12)*rate)
+    fade_out_n=int(min(0.45,duration*0.16)*rate)
+    for i in range(n):
+        t=i/rate
+        # Fond harmonique doux.
+        chord=(
+            0.48*math.sin(2*math.pi*notes[0]*t)+
+            0.30*math.sin(2*math.pi*notes[1]*t)+
+            0.20*math.sin(2*math.pi*notes[2]*t)+
+            0.12*math.sin(2*math.pi*notes[3]*t)
+        )
+        # Pulsation lente pour donner une vraie sensation de fond musical.
+        pulse=0.72+0.28*(0.5+0.5*math.sin(2*math.pi*beat_speed*t))
+        # Petit motif rythmique discret, sans percussion agressive.
+        beat_phase=(t*2.0)%1.0
+        pluck=0.0
+        if beat_phase<0.075:
+            pluck=0.20*math.exp(-beat_phase*42.0)*math.sin(2*math.pi*440*t)
+        value=(chord*pulse+pluck)*0.105*gain
+        if i<fade_in_n: value*=i/max(1,fade_in_n)
+        if i>=n-fade_out_n: value*=max(0,(n-i)/max(1,fade_out_n))
+        samples.append(int(max(-32767,min(32767,value*32767))) )
+    _write_wav_mono(out,samples,rate)
+    return out
+
 
 def prepare_custom_background_music(uploaded,duration,tmpdir,name):
     if uploaded is None: return None
@@ -1423,14 +1449,22 @@ def prepare_custom_background_music(uploaded,duration,tmpdir,name):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def mix_background_music(voice_path,music_path,output,voice_volume=1.0,music_volume=0.10):
-    """Mixe la voix et une musique de fond discrète sans écraser la voix."""
+    """Mixage robuste : la musique reste clairement audible sous la voix.
+    Le curseur 0.10–0.15 correspond à un fond discret, mais pas inaudible.
+    """
+    user=float(music_volume)
+    # Mapping perceptuel : 0.15 -> ~-9 dB, 0.10 -> ~-12 dB.
+    # Cela évite qu'un simple gain linéaire de 0.15 devienne imperceptible après AAC.
+    music_db=-24.0 + 100.0*max(0.0,min(0.30,user))
+    music_db=min(-8.0,max(-24.0,music_db))
     filt=(f"[0:a]volume={voice_volume:.3f}[v];"
-          f"[1:a]volume={music_volume:.3f}[m];"
-          "[v][m]amix=inputs=2:duration=first:dropout_transition=0")
+          f"[1:a]volume={music_db:.2f}dB[m];"
+          "[v][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.98")
     cmd=[get_ffmpeg(),"-y","-i",voice_path,"-i",music_path,"-filter_complex",filt,
-         "-c:a","aac","-b:a","160k","-shortest",output]
+         "-c:a","aac","-b:a","192k","-ar","44100","-ac","2","-shortest",output]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return output
+
 
 def mix_voice_sfx(voice_path,sfx_path,output,delay_ms=0,sfx_volume=0.65):
     filt=f"[1:a]volume={sfx_volume},adelay={delay_ms}|{delay_ms}[s];[0:a][s]amix=inputs=2:duration=longest:dropout_transition=0"
