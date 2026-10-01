@@ -620,7 +620,7 @@ def _layout(module="quiz", style=None):
             "translation_x":540,"translation_y":760,"translation_width":850,
             "table_x":70,"table_y":430,"table_width":940,"table_row_h":82,"table_gap":8,
             "table_split":540,"table_radius":16,"vocab_fr_size":42,"vocab_tr_size":38,
-            "vocab_timer_size":44,"vocab_header_size":28,"vocab_history_dim":0.78,
+            "vocab_timer_size":44,"vocab_header_size":28,"vocab_history_dim":0.62,
         })
     out={}
     for k,v in defaults.items():
@@ -836,6 +836,8 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
         )
 
         fr=clean_text(item.get("fr",""))
+        if fr:
+            fr=fr[:1].upper()+fr[1:]
         tr=clean_text(item.get("trad",""))
 
         fs=get_font(fr_size,table_ff)
@@ -856,7 +858,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
         # Hiérarchie visuelle : la ligne active domine, l'historique reste lisible
         # mais plus discret. Cela évite l'effet "mur vert" à 10–15 lignes.
         if history_row:
-            dim=float(cfg.get("vocab_history_dim",0.78))
+            dim=float(cfg.get("vocab_history_dim",0.62))
             muted_rgb=_hex_rgb(cfg.get("muted"), theme["muted"])
             card_rgb=_hex_rgb(cfg.get("answer"), theme["card"])
             # Mélange avec la carte pour obtenir une vraie discrétion visuelle
@@ -894,15 +896,8 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
 
                 for gidx,word,ww in visible_words:
                     current=(active_row and gidx==int(source_active_word))
-                    if current:
-                        pad=5
-                        draw.rounded_rectangle(
-                            (xx-pad,ty-3,xx+ww+pad,ty+text_height(fs,word)+4),
-                            radius=9,
-                            fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),
-                            outline=_hex_rgb(cfg.get("correct"),theme["success"]),
-                            width=2
-                        )
+                    # Le mot français actif reste mis en valeur par sa couleur,
+                    # sans petit cadre supplémentaire autour du mot.
                     draw.text(
                         (xx,ty),word,font=fs,
                         fill=_hex_rgb(cfg.get("correct"),theme["success"]) if current
@@ -1682,33 +1677,28 @@ def concat_videos_precise(clips, output, tmpdir):
         _repair_final_av_sync(output,tmpdir)
     return output
 
-def concat_videos_style2(clips,output,tmpdir):
-    """Concaténation audio+vidéo robuste réservée au Vocabulaire Style 2.
-    Le filtre concat réinitialise les PTS de chaque segment et évite l'accumulation
-    de décalage observée avec le concat demuxer sur de longues séries.
+def _concat_videos_style2_chunk(clips, output, tmpdir):
+    """Concatène un petit groupe avec le même moteur PTS/audio que V6.
+    On limite volontairement le nombre d'entrées FFmpeg pour éviter le pic RAM
+    de V6, tout en conservant le réencodage qui faisait fonctionner le chrono,
+    le tic/tac et le ding correctement.
     """
     clips=[p for p in clips if p and os.path.exists(p)]
     if not clips:
         raise ValueError("Aucun segment à concaténer.")
+    if len(clips)==1:
+        import shutil
+        if os.path.abspath(clips[0]) != os.path.abspath(output):
+            shutil.copyfile(clips[0], output)
+        return output
 
-    inputs=[]
-    graph=[]
-    pairs=[]
-
+    inputs=[]; graph=[]; pairs=[]
     for i,p in enumerate(clips):
         inputs += ["-i",p]
-        graph.append(
-            f"[{i}:v:0]fps={FPS},format=yuv420p,setpts=PTS-STARTPTS[v{i}];"
-        )
-        graph.append(
-            f"[{i}:a:0]aresample=async=1:first_pts=0[a{i}];"
-        )
+        graph.append(f"[{i}:v:0]fps={FPS},format=yuv420p,setpts=PTS-STARTPTS[v{i}];")
+        graph.append(f"[{i}:a:0]aresample=async=1:first_pts=0[a{i}];")
         pairs.append(f"[v{i}][a{i}]")
-
-    graph.append(
-        "".join(pairs)+
-        f"concat=n={len(clips)}:v=1:a=1[outv][outa]"
-    )
+    graph.append("".join(pairs)+f"concat=n={len(clips)}:v=1:a=1[outv][outa]")
 
     cmd=[get_ffmpeg(),"-y",*inputs,
          "-filter_complex","".join(graph),
@@ -1716,16 +1706,66 @@ def concat_videos_style2(clips,output,tmpdir):
          "-c:v","libx264","-preset",VIDEO_PRESET,"-crf",str(VIDEO_CRF),
          "-c:a","aac","-b:a","160k",
          "-movflags","+faststart",output]
-
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    return output
+
+
+def concat_videos_style2(clips,output,tmpdir):
+    """V8 : même mécanique audio/vidéo fiable que V6, mais par petits groupes.
+
+    V6 envoyait jusqu'à 16 entrées dans un seul filter_complex, ce qui pouvait
+    faire tomber Streamlit avec 15 mots. V7 a réduit la RAM avec du stream-copy,
+    mais cette approche pouvait casser les PTS et faire disparaître ou désynchroniser
+    le compte à rebours et ses effets sonores. V8 garde donc le réencodage précis de
+    V6, en limitant simplement chaque opération à 4 clips maximum.
+    """
+    clips=[p for p in clips if p and os.path.exists(p)]
+    if not clips:
+        raise ValueError("Aucun segment à concaténer.")
+    if len(clips)==1:
+        import shutil
+        if os.path.abspath(clips[0]) != os.path.abspath(output):
+            shutil.copyfile(clips[0], output)
+        return output
+
+    # Petits groupes : 4 entrées max par passe. Cela réduit fortement le pic mémoire
+    # sans changer le moteur de concaténation qui garantit les PTS et l'audio.
+    current=list(clips)
+    level=0
+    while len(current)>1:
+        nxt=[]
+        for gi in range(0,len(current),4):
+            group=current[gi:gi+4]
+            if len(group)==1:
+                nxt.append(group[0])
+                continue
+            is_final=(len(current)<=4 and gi==0)
+            group_out=output if is_final else os.path.join(tmpdir,f"__v2_chunk_{level:02d}_{gi//4:02d}.mp4")
+            _concat_videos_style2_chunk(group,group_out,tmpdir)
+            nxt.append(group_out)
+        # Supprimer seulement les intermédiaires devenus inutiles.
+        old=set(current)
+        keep=set(nxt)
+        for p in old:
+            if p in clips or p in keep:
+                continue
+            try: os.remove(p)
+            except OSError: pass
+        current=nxt
+        level+=1
+
+    final=current[0]
+    if os.path.abspath(final)!=os.path.abspath(output):
+        import shutil
+        shutil.copyfile(final,output)
+        try: os.remove(final)
+        except OSError: pass
 
     vd=video_duration(output)
     ad=audio_duration(output)
     if vd>0 and abs(vd-ad)>0.06:
         _repair_final_av_sync(output,tmpdir)
-
     return output
-
 
 def save_frames(frames,tmpdir,prefix):
     out=[]
