@@ -227,6 +227,11 @@ VOICES_MAP = {
     "Allemand": {"Killian": "de-DE-KillianNeural", "Klarissa": "de-DE-KlarissaNeural"},
     "Italien": {"Diego": "it-IT-DiegoNeural", "Elsa": "it-IT-ElsaNeural"},
 }
+QUIZ_LANGUAGES = {
+    "Français": VOICES_FR,
+    **VOICES_MAP,
+}
+QUIZ_LANGUAGE_LABELS = {"Français":"français","Anglais":"anglais","Espagnol":"espagnol","Arabe":"arabe","Allemand":"allemand","Italien":"italien"}
 
 # ------------------------- Helpers --------------------------
 def get_ffmpeg():
@@ -1397,46 +1402,23 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     return out
 
 def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense léger"):
-    """Fond musical réellement audible mais discret, généré localement.
-    La valeur `volume` sert de gain de génération; le niveau utilisateur est appliqué
-    ensuite dans le mix final. On évite le simple bourdon de deux sinusoïdes.
-    """
+    """Fond musical local audible : harmonie + petite mélodie + pulsation douce."""
     duration=max(0.4,float(duration)); out=os.path.join(tmpdir,f"{name}.wav")
-    gain=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger")
-    rate=44100
-    # Petits motifs musicaux différents selon l'ambiance.
-    presets={
-        "Suspense léger": ([110,146,174,220],0.72,2.2),
-        "Chill": ([98,123,147,196],0.58,1.8),
-        "Pop légère": ([110,138,165,220],0.48,2.8),
-    }
-    notes,beat_depth,beat_speed=presets.get(style,presets["Suspense léger"])
-    n=int(duration*rate)
-    samples=[]
-    fade_in_n=int(min(0.35,duration*0.12)*rate)
-    fade_out_n=int(min(0.45,duration*0.16)*rate)
+    gain=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger"); rate=44100
+    presets={"Suspense léger":([110,146,174,220],[220,174,146,220],2.2),"Chill":([98,123,147,196],[196,147,123,196],1.8),"Pop légère":([110,138,165,220],[220,165,138,220],2.8)}
+    chords,melody,beat_speed=presets.get(style,presets["Suspense léger"]); n=int(duration*rate); samples=[]
+    fi=int(min(0.35,duration*0.12)*rate); fo=int(min(0.50,duration*0.16)*rate)
     for i in range(n):
-        t=i/rate
-        # Fond harmonique doux.
-        chord=(
-            0.48*math.sin(2*math.pi*notes[0]*t)+
-            0.30*math.sin(2*math.pi*notes[1]*t)+
-            0.20*math.sin(2*math.pi*notes[2]*t)+
-            0.12*math.sin(2*math.pi*notes[3]*t)
-        )
-        # Pulsation lente pour donner une vraie sensation de fond musical.
-        pulse=0.72+0.28*(0.5+0.5*math.sin(2*math.pi*beat_speed*t))
-        # Petit motif rythmique discret, sans percussion agressive.
-        beat_phase=(t*2.0)%1.0
-        pluck=0.0
-        if beat_phase<0.075:
-            pluck=0.20*math.exp(-beat_phase*42.0)*math.sin(2*math.pi*440*t)
-        value=(chord*pulse+pluck)*0.105*gain
-        if i<fade_in_n: value*=i/max(1,fade_in_n)
-        if i>=n-fade_out_n: value*=max(0,(n-i)/max(1,fade_out_n))
-        samples.append(int(max(-32767,min(32767,value*32767))) )
-    _write_wav_mono(out,samples,rate)
-    return out
+        t=i/rate; beat=t*beat_speed; step=int(beat)%4; phase=beat-step
+        root=chords[step]; third=chords[(step+1)%4]; fifth=chords[(step+2)%4]
+        harmonic=0.44*math.sin(2*math.pi*root*t)+0.25*math.sin(2*math.pi*third*t)+0.16*math.sin(2*math.pi*fifth*t)+0.07*math.sin(2*math.pi*root*2*t)
+        melodic=0.24*math.exp(-3.0*phase)*math.sin(2*math.pi*melody[step]*t)
+        pulse=0.80+0.20*math.sin(2*math.pi*beat_speed*t)
+        value=(harmonic*pulse+melodic)*0.22*gain
+        if i<fi: value*=i/max(1,fi)
+        if i>=n-fo: value*=max(0,(n-i)/max(1,fo))
+        samples.append(int(max(-32767,min(32767,value*32767))))
+    _write_wav_mono(out,samples,rate); return out
 
 
 def prepare_custom_background_music(uploaded,duration,tmpdir,name):
@@ -1449,20 +1431,12 @@ def prepare_custom_background_music(uploaded,duration,tmpdir,name):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def mix_background_music(voice_path,music_path,output,voice_volume=1.0,music_volume=0.10):
-    """Mixage robuste : la musique reste clairement audible sous la voix.
-    Le curseur 0.10–0.15 correspond à un fond discret, mais pas inaudible.
-    """
-    user=float(music_volume)
-    # Mapping perceptuel : 0.15 -> ~-9 dB, 0.10 -> ~-12 dB.
-    # Cela évite qu'un simple gain linéaire de 0.15 devienne imperceptible après AAC.
-    music_db=-24.0 + 100.0*max(0.0,min(0.30,user))
-    music_db=min(-8.0,max(-24.0,music_db))
-    filt=(f"[0:a]volume={voice_volume:.3f}[v];"
-          f"[1:a]volume={music_db:.2f}dB[m];"
-          "[v][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.98")
-    cmd=[get_ffmpeg(),"-y","-i",voice_path,"-i",music_path,"-filter_complex",filt,
-         "-c:a","aac","-b:a","192k","-ar","44100","-ac","2","-shortest",output]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    """Mixage robuste. 0.10≈-6 dB et 0.15≈-3 dB pour que la musique reste audible."""
+    user=max(0.0,min(0.30,float(music_volume))); music_db=-12.0+(user/0.30)*18.0; music_db=max(-18.0,min(4.0,music_db))
+    filt=(f"[0:a]volume={float(voice_volume):.3f}[v];" f"[1:a]highpass=f=55,lowpass=f=7000,volume={music_db:.2f}dB[m];" "[v][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.94")
+    cmd=[get_ffmpeg(),"-y","-i",voice_path,"-i",music_path,"-filter_complex",filt,"-c:a","aac","-b:a","256k","-ar","44100","-ac","2","-shortest",output]
+    res=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    if res.returncode!=0: raise RuntimeError("Impossible de mixer la musique de fond : "+res.stderr[-1200:])
     return output
 
 
@@ -2008,8 +1982,8 @@ def normalize_questions(data):
 def _stable_hash(payload):
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
-def _quiz_generation_key(nb, subject):
-    return _stable_hash({"type": "quiz", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower()})
+def _quiz_generation_key(nb, subject, language="Français"):
+    return _stable_hash({"type":"quiz","model":MODEL_NAME,"nb":int(nb),"subject":clean_text(subject).lower(),"language":language})
 
 def _vocab_generation_key(nb, subject, language):
     return _stable_hash({"type": "vocab", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower(), "language": language})
@@ -2574,11 +2548,11 @@ def render_layout_editor(module, style="1"):
                 st.selectbox("Ambiance", ["Suspense léger","Chill","Pop légère"], key=p+"bg_music_style")
             with c2:
                 st.slider("Volume",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
-            st.caption("0,10–0,15 = fond discret. La voix, le compte à rebours et le ding restent prioritaires.")
+            st.caption("0,10–0,15 = fond audible mais secondaire. La voix, le compte à rebours et le ding restent prioritaires.")
             st.radio("Source", ["Musique générée par QuizVideo Pro","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
             if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
                 st.file_uploader("Importer une musique", type=["mp3","wav","m4a","aac","ogg"], key=p+"bg_music_upload")
-            st.caption("La musique choisie est intégrée au fichier vidéo final.")
+            st.caption("La musique choisie est intégrée au fichier vidéo final et bouclée si nécessaire.")
     _save_settings()
 
 
@@ -2598,8 +2572,15 @@ if nav=="quiz":
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
         th_q=st.text_input("Sujet","Culture Générale",key="thq")
         nb_q=st.slider("Questions",1,15,15,key="nbq")
-        voice_q=VOICES_FR[st.selectbox("Voix",list(VOICES_FR),index=1,key="vq")]
-        st.caption("🎙️ Vivienne – Énergique est proposée par défaut pour un rendu plus vivant. Les autres voix restent disponibles.")
+        quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
+        voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
+        voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
+        voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
+        st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
+        st.markdown("**💬 Messages de motivation**")
+        mot_start_q=st.text_input("Avant le quiz","🔥 Prêt ? C’est parti !",key="mot_start_q")
+        mot_mid_q=st.text_input("Au milieu","👏 Bravo, continue comme ça !",key="mot_mid_q")
+        mot_end_q=st.text_input("À la fin","🏆 Bravo ! À bientôt pour un nouveau quiz !",key="mot_end_q")
         st.markdown('</div>',unsafe_allow_html=True)
     with c_style:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">STYLE VIDÉO</div>',unsafe_allow_html=True)
@@ -2612,6 +2593,13 @@ if nav=="quiz":
         hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
         outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
         st.markdown('</div>',unsafe_allow_html=True)
+    q_top_ready=bool(st.session_state.get("q_data"))
+    topa,topb=st.columns([1,1.65],gap="small")
+    with topa:
+        if st.button("💾 Enregistrer le style",key="studio_save_top",use_container_width=True):
+            _save_settings(); st.success("✅ Style enregistré.")
+    with topb:
+        q_generate_top_clicked=st.button("🎬 GÉNÉRER LE SHORT QUIZ",key="makeq_topbar",type="primary",use_container_width=True,disabled=not q_top_ready)
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
     left_q, right_q = st.columns([1.18, 0.82], gap="medium")
@@ -2688,13 +2676,13 @@ if nav=="quiz":
     with aq3:
         st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
         generate_label_q="🎬 GÉNÉRER LE SHORT QUIZ"
-        q_generate_btn_clicked = st.button(generate_label_q,key="makeq_top",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
+        q_generate_btn_clicked = st.button(generate_label_q,key="makeq_studio",type="secondary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
         st.markdown('</div>',unsafe_allow_html=True)
     with st.expander("🎯 CONTENU — Questions / réponses", expanded=False):
         mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
         if mode_q=="🤖 IA Gemini":
             st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
-            gen_key=_quiz_generation_key(nb_q,th_q)
+            gen_key=_quiz_generation_key(nb_q,th_q,quiz_language)
             cached_key=st.session_state.get("q_ai_key")
             if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
                 st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
@@ -2709,7 +2697,7 @@ if nav=="quiz":
                         st.error("Ajoute ta clé API Gemini dans la barre latérale.")
                     else:
                         try:
-                            prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en français sur le sujet « {th_q} ».
+                            prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur le sujet « {th_q} ».
     Varie les connaissances testées et évite toute répétition entre les questions.
     Chaque objet doit respecter EXACTEMENT cette structure :
     {{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
@@ -2731,7 +2719,7 @@ if nav=="quiz":
                     if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
                     else:
                         try:
-                            prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en français sur « {th_q} ».
+                            prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur « {th_q} ».
     Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
     Une seule bonne réponse. Retourne uniquement le JSON.'''
                             res_text,_=gemini_generate_text(prompt)
@@ -2756,35 +2744,52 @@ if nav=="quiz":
 
         if st.session_state.get("q_data"):
             st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-            st.markdown("### ✏️ Modifier ou ajouter des questions — sans quota Gemini")
-            quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
-            edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={
-                "Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),
-                "Question":st.column_config.TextColumn("Question",width="large"),
-                "Explication":st.column_config.TextColumn("Explication",width="large")
-            },hide_index=True)
-            be1,be2=st.columns(2)
-            with be1:
-                if st.button("💾 Enregistrer les modifications",key="saveqedit",use_container_width=True):
+            st.markdown("### ✏️ Édition manuelle rapide")
+            st.caption("Choisis une question et modifie-la ici. Le grand tableau reste disponible seulement si nécessaire.")
+            qlist=st.session_state.q_data
+            qnum=st.selectbox("Question à modifier",list(range(1,len(qlist)+1)),format_func=lambda n:f"Question {n}",key="manual_q_index")
+            qi=int(qnum)-1; qcur=qlist[qi]; opts=list(qcur.get("options",[]))+["","","",""]
+            m1,m2=st.columns(2)
+            with m1:
+                mq_question=st.text_area("Question",qcur.get("question",""),height=72,key="manual_q_text")
+                mq_a=st.text_input("A",opts[0],key="manual_q_a"); mq_b=st.text_input("B",opts[1],key="manual_q_b")
+            with m2:
+                mq_c=st.text_input("C",opts[2],key="manual_q_c"); mq_d=st.text_input("D",opts[3],key="manual_q_d")
+                cc=qcur.get("reponse_correcte","A") if qcur.get("reponse_correcte","A") in ["A","B","C","D"] else "A"
+                mq_correct=st.selectbox("Bonne réponse",["A","B","C","D"],index=["A","B","C","D"].index(cc),key="manual_q_correct")
+            mq_exp=st.text_area("Explication",qcur.get("explication",""),height=62,key="manual_q_exp")
+            e1,e2,e3=st.columns(3)
+            with e1:
+                if st.button("💾 Enregistrer cette question",key="saveqedit",use_container_width=True):
+                    st.session_state.q_data[qi]={"question":clean_text(mq_question),"options":[clean_text(mq_a),clean_text(mq_b),clean_text(mq_c),clean_text(mq_d)],"reponse_correcte":mq_correct,"explication":clean_text(mq_exp)}
+                    st.session_state.q_source="Questions modifiées manuellement"; st.success("✅ Question enregistrée.")
+            with e2:
+                if st.button("↩️ Restaurer le lot IA",key="restoreq",use_container_width=True):
+                    if st.session_state.get("q_ai_cache"):
+                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]; st.session_state.q_source=f"IA • {th_q} • restauré"; st.success("✅ Lot IA restauré, 0 quota consommé.")
+                    else: st.info("Aucun lot IA en cache.")
+            with e3: st.caption(f"{len(qlist)} questions • édition rapide")
+            with st.expander("🧰 Édition avancée — tableau complet",expanded=False):
+                quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
+                edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={"Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),"Question":st.column_config.TextColumn("Question",width="large"),"Explication":st.column_config.TextColumn("Explication",width="large")},hide_index=True)
+                if st.button("💾 Enregistrer le tableau",key="saveqtable",use_container_width=True):
                     saved=_save_quiz_editor(edited)
                     if saved:
-                        st.session_state.q_data=saved
-                        st.session_state.q_source="Questions modifiées manuellement"
-                        st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
+                        st.session_state.q_data=saved; st.session_state.q_source="Questions modifiées manuellement"; st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
                     else: st.error("Aucune question valide à enregistrer.")
-            with be2:
-                if st.button("↩️ Restaurer le dernier lot IA",key="restoreq",use_container_width=True):
-                    if st.session_state.get("q_ai_cache"):
-                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
-                        st.session_state.q_source=f"IA • {th_q} • restauré"
-                        st.success("✅ Lot IA restauré, 0 quota consommé.")
-                    else: st.info("Aucun lot IA en cache.")
-            if q_generate_btn_clicked:
+            if (q_generate_btn_clicked or q_generate_top_clicked):
                 try:
                     with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                         with tempfile.TemporaryDirectory() as tmp:
                             tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
                             clips=[]; total=len(st.session_state.q_data)
+
+                            # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
+                            if clean_text(mot_start_q):
+                                ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(mot_start_q,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                if md>0.15:
+                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                                    mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
                             if style_q_full.startswith("Style 2"):
                                 # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
@@ -2891,6 +2896,19 @@ if nav=="quiz":
                                     make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                                     clips.append(out)
 
+                            # Motivation au milieu, insérée entre les deux moitiés du quiz.
+                            if clean_text(mot_mid_q) and len(st.session_state.q_data)>=2:
+                                mid_pos=1+((len(st.session_state.q_data)-1)//2)
+                                ma=os.path.join(tmp,"mot_mid.m4a"); synthesize_audio(mot_mid_q,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                if md>0.15:
+                                    mf=save_frames([(draw_motivation_scene(mot_mid_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_mid")
+                                    mm=os.path.join(tmp,"mot_mid.mp4"); make_segment(mf,ma,mm,tmp); clips.insert(min(mid_pos,len(clips)),mm)
+                            # Motivation de fin, avant le CTA existant.
+                            if clean_text(mot_end_q):
+                                ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(mot_end_q,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                if md>0.15:
+                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
+                                    me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
                             # CTA très court seulement après le quiz.
                             if clean_text(outro_q):
                                 oa=os.path.join(tmp,"outro.m4a")
