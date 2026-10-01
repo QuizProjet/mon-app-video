@@ -172,6 +172,8 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-preview-stage{display:flex;justify-content:center;align-items:flex-start;padding:6px 0 2px;}
 .qvp-preview-stage [data-testid="stImage"]{width:min(100%,520px)!important;margin:0 auto!important;}
 .qvp-preview-stage img{border-radius:16px!important;border:1px solid #cbd5e1!important;box-shadow:0 16px 36px rgba(15,23,42,.15)!important;}
+.qvp-preview-stage{margin-bottom:6px!important;}
+
 .qvp-actionbar-v11{position:sticky;bottom:10px;z-index:60;margin-top:12px;padding:8px;background:rgba(248,250,252,.94);backdrop-filter:blur(12px);border:1px solid #cdd8e5;border-radius:16px;box-shadow:0 14px 30px rgba(15,23,42,.14);}
 .qvp-actionbar-v11 .qvp-action-label{font-size:.68rem;color:#64748b;font-weight:750;text-align:center;margin:0 0 4px;}
 .qvp-actionbar-v11 button{min-height:42px!important;font-weight:820!important;}
@@ -2267,20 +2269,76 @@ def _qvp_image_data_uri(image):
 
 
 def render_clickable_preview(image, module, style, cfg, selected):
-    """Aperçu 9:16 réduit avec zones réellement cliquables qui sélectionnent l'élément."""
+    """Aperçu 9:16 compact. La sélection et les commandes sont gérées par Streamlit sous l'aperçu."""
     max_w=360
     max_h=int(max_w*16/9)
     thumb=image.copy().resize((max_w,max_h),Image.Resampling.LANCZOS)
-    uri=_qvp_image_data_uri(thumb)
-    html=[f'<div class="qvp-click-preview" style="width:{max_w}px;height:{max_h}px;background-image:url({uri});">']
-    for name,label,x,y,w,h in _qvp_element_boxes(module,style,cfg):
-        left=max(0,min(max_w-2,(x-w/2)/1080*max_w)); top=max(0,min(max_h-2,(y-h/2)/1920*max_h))
-        ww=max(10,min(max_w-left,(w/1080)*max_w)); hh=max(10,min(max_h-top,(h/1920)*max_h))
-        cls="qvp-hotspot selected" if name==selected else "qvp-hotspot"
-        html.append(f'<a class="{cls}" style="left:{left:.1f}px;top:{top:.1f}px;width:{ww:.1f}px;height:{hh:.1f}px" href="?qvp_element={name}" aria-label="Modifier {label}"><span>{label}</span></a>')
-    html.append('</div>')
-    st.markdown("".join(html), unsafe_allow_html=True)
+    # L'ancienne couche de hotspots HTML est volontairement supprimée : elle était lourde
+    # et ses liens query-string ne déclenchaient pas toujours correctement Streamlit.
+    st.markdown('<div class="qvp-preview-stage">', unsafe_allow_html=True)
+    st.image(thumb, use_container_width=False, width=max_w)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+
+
+def _qvp_quick_controls(module, style, selected, theme_name, channel, bg, state, title, language="Anglais", prefix_key="qvp"):
+    """Barre compacte d'édition rapide sous l'aperçu. Ne remplace pas l'Éditeur Studio."""
+    allowed = list(_qvp_element_boxes(module, style, _layout(module, style)))
+    labels = {name: label for name, label, *_ in allowed}
+    names = [name for name, *_ in allowed]
+    if not names:
+        return selected
+    current = selected if selected in names else names[0]
+    current = st.selectbox(
+        "Élément à modifier",
+        names,
+        index=names.index(current),
+        format_func=lambda x: labels.get(x, x),
+        key=f"{prefix_key}_element_select_{module}_{style}"
+    )
+    _qvp_set_selected(current)
+
+    c1,c2,c3,c4,c5,c6=st.columns([.75,.75,.9,.75,.75,1.25],gap="small")
+    with c1:
+        if st.button("←",key=f"{prefix_key}_l_{module}_{style}",use_container_width=True):
+            _qvp_adjust(module,style,current,dx=-20); st.rerun()
+    with c2:
+        if st.button("↑",key=f"{prefix_key}_u_{module}_{style}",use_container_width=True):
+            _qvp_adjust(module,style,current,dy=-20); st.rerun()
+    with c3:
+        if st.button("● Centrer",key=f"{prefix_key}_c_{module}_{style}",use_container_width=True):
+            p=_qvp_prefix(module,style)
+            center={"title":"title_x","question":"question_x","word":"question_x","answers":"answer_x","timer":"timer_x","translation":"translation_x","history":"history_x","table":"table_x"}.get(current)
+            if center:
+                st.session_state[p+center] = 540 if current not in ("answers","history","table") else (80 if current in ("answers","history") else 70)
+            if current=="explanation": st.session_state[p+"explanation_y"]=1135
+            if current=="timer" and module=="vocab": st.session_state[p+"timer_x"]=810
+            _save_settings(); st.rerun()
+    with c4:
+        if st.button("↓",key=f"{prefix_key}_d_{module}_{style}",use_container_width=True):
+            _qvp_adjust(module,style,current,dy=20); st.rerun()
+    with c5:
+        if st.button("→",key=f"{prefix_key}_r_{module}_{style}",use_container_width=True):
+            _qvp_adjust(module,style,current,dx=20); st.rerun()
+    with c6:
+        z1,z2=st.columns(2,gap="small")
+        with z1:
+            if st.button("A −",key=f"{prefix_key}_sm_{module}_{style}",use_container_width=True):
+                _qvp_adjust(module,style,current,dsize=-2); st.rerun()
+        with z2:
+            if st.button("A +",key=f"{prefix_key}_sp_{module}_{style}",use_container_width=True):
+                _qvp_adjust(module,style,current,dsize=2); st.rerun()
+
+    a1,a2,a3=st.columns([1,1,1],gap="small")
+    with a1:
+        if st.button("▶️ Animation",key=f"{prefix_key}_anim_{module}_{style}",use_container_width=True):
+            play_preview_animation(module,style,theme_name,channel,bg,state,title,language)
+    with a2:
+        if st.button("✕ Désélectionner",key=f"{prefix_key}_clear_{module}_{style}",use_container_width=True):
+            _qvp_clear_selected(); st.rerun()
+    with a3:
+        st.caption(f"🎯 {labels.get(current,current)}")
+    return current
 
 def _qvp_animation_frames(module, style, theme_name, channel, bg, state, title, language="Anglais"):
     """Petite animation de démonstration, volontairement courte pour rester fluide."""
@@ -2631,38 +2689,8 @@ if nav=="quiz":
             elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
             else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
             render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
-            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_q}</b> · les positions se modifient immédiatement.</div>',unsafe_allow_html=True)
-            # Commandes directes, sans doublonner les sliders de l'éditeur.
-            st.markdown('<div class="qvp-selected-card"><div class="qvp-selected-title">Ajuster la mise en page</div></div>',unsafe_allow_html=True)
-            m1,m2,m3,m4,m5=st.columns(5,gap="small")
-            with m1:
-                if st.button("←",key="mvq_l",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dx=-20); st.rerun()
-            with m2:
-                if st.button("↑",key="mvq_u",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dy=-20); st.rerun()
-            with m3:
-                if st.button("●",key="mvq_c",use_container_width=True):
-                    p=_qvp_prefix("quiz",quiz_style_id); center={"title":"title_x","question":"question_x","answers":"answer_x","timer":"timer_x","explanation":None,"history":"history_x"}.get(selected_q)
-                    if center: st.session_state[p+center]=540 if selected_q not in ("answers","history") else (80 if selected_q=="answers" else 80)
-                    if selected_q=="explanation": st.session_state[p+"explanation_y"]=1135
-                    _save_settings(); st.rerun()
-            with m4:
-                if st.button("↓",key="mvq_d",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dy=20); st.rerun()
-            with m5:
-                if st.button("→",key="mvq_r",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dx=20); st.rerun()
-            s1,s2,s3=st.columns(3,gap="small")
-            with s1:
-                if st.button("A −",key="szq_m",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dsize=-2); st.rerun()
-            with s2:
-                if st.button("Taille actuelle",key="szq_now",use_container_width=True): pass
-            with s3:
-                if st.button("A +",key="szq_p",use_container_width=True): _qvp_adjust("quiz",quiz_style_id,selected_q,dsize=2); st.rerun()
-            b1,b2=st.columns(2,gap="small")
-            with b1:
-                if st.button("▶️ Voir l’animation",key="animq",use_container_width=True):
-                    play_preview_animation("quiz",quiz_style_id,theme_q,channel_q,sample_bg,preview_state_q,th_q)
-            with b2:
-                if st.button("✕ Désélectionner",key="clearq",use_container_width=True):
-                    _qvp_clear_selected(); st.rerun()
+            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides. Les réglages sont enregistrés dans le rendu réel.")
+            selected_q=_qvp_quick_controls("quiz",quiz_style_id,selected_q,theme_q,channel_q,sample_bg,preview_state_q,th_q,prefix_key="quickq")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     # Barre d'actions principale : toujours visible en bas de la zone de travail.
@@ -2991,39 +3019,11 @@ else:
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
             render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
-            st.markdown(f'<div class="qvp-interactive-note">🎯 Élément sélectionné : <b>{selected_v}</b> · les changements sont visibles immédiatement.</div>',unsafe_allow_html=True)
-
+            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides.")
             if not style_v.startswith("Style 2"):
-                m1,m2,m3,m4,m5=st.columns(5,gap="small")
-                with m1:
-                    if st.button("←",key="mvv_l",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=-20); st.rerun()
-                with m2:
-                    if st.button("↑",key="mvv_u",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=-20); st.rerun()
-                with m3:
-                    if st.button("●",key="mvv_c",use_container_width=True):
-                        p=_qvp_prefix("vocab",vocab_style_id)
-                        center={"title":"title_x","word":"question_x","translation":"translation_x"}.get(selected_v)
-                        if center: st.session_state[p+center]=540
-                        if selected_v=="timer": st.session_state[p+"timer_x"]=810
-                        if selected_v=="table": st.session_state[p+"table_x"]=70
-                        _save_settings(); st.rerun()
-                with m4:
-                    if st.button("↓",key="mvv_d",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dy=20); st.rerun()
-                with m5:
-                    if st.button("→",key="mvv_r",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dx=20); st.rerun()
-                s1,s2,s3=st.columns(3,gap="small")
-                with s1:
-                    if st.button("A −",key="szv_m",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=-2); st.rerun()
-                with s2:
-                    st.caption("Ajustement rapide")
-                with s3:
-                    if st.button("A +",key="szv_p",use_container_width=True): _qvp_adjust("vocab",vocab_style_id,selected_v,dsize=2); st.rerun()
-                b1,b2=st.columns(2,gap="small")
-                with b1:
-                    if st.button("▶️ Voir l’animation",key="animv",use_container_width=True):
-                        play_preview_animation("vocab",vocab_style_id,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v)
-                with b2:
-                    if st.button("✕ Désélectionner",key="clearv",use_container_width=True): _qvp_clear_selected(); st.rerun()
+                selected_v=_qvp_quick_controls("vocab",vocab_style_id,selected_v,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v,prefix_key="quickv")
+            else:
+                st.caption(f"🎯 Élément sélectionné : {selected_v} · les réglages du Style 2 restent dans l'Éditeur Studio.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
