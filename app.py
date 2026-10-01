@@ -597,7 +597,7 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
-        "question_x":540,"question_y":235,"question_size":47,"question_width":900,"question_box_radius":28,
+        "question_x":540,"question_y":247,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
@@ -1214,9 +1214,8 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
         for w,ww in zip(line,widths):
             active=(idx==active_word)
             col=theme["accent"] if active else "white"
-            if active:
-                pad=7+int(4*pulse)
-                draw.rounded_rectangle((x-pad,yy-5,x+ww+pad,yy+55),radius=12,fill=theme["card2"],outline=theme["accent"],width=2)
+            # Karaoké propre : aucune boîte autour du mot actif.
+            # Seule la couleur du texte change pendant la prononciation.
             draw.text((x,yy),w,font=f,fill=col)
             x+=ww+space; idx+=1
         yy+=58
@@ -1399,7 +1398,7 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return out
 
-def make_quiz_background_music(duration,tmpdir,name,volume=0.065):
+def make_quiz_background_music(duration,tmpdir,name,volume=0.11):
     """Fond sonore léger de suspense, généré localement, sans fichier externe.
     Une pulsation discrète évite les blancs sans couvrir la voix, le compte à rebours
     ni le ding. Utilisé uniquement par Quiz Style 1.
@@ -2804,8 +2803,8 @@ if nav=="quiz":
                                     concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
                                     # Fond musical très discret : la voix et les SFX restent prioritaires.
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.065)
-                                    mix_background_music(full_audio_raw,music,full_audio,1.0,0.85)
+                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.11)
+                                    mix_background_music(full_audio_raw,music,full_audio,1.0,1.0)
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
                                     cdur=3.12; cd_steps=COUNTDOWN_STEPS
