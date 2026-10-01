@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
 # QUIZVIDEO PRO — STUDIO
+# V11 — Quiz Style 1 targeted fixes: question spacing, clean karaoke, audible background music
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 
@@ -597,7 +598,7 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
-        "question_x":540,"question_y":247,"question_size":47,"question_width":900,"question_box_radius":28,
+        "question_x":540,"question_y":259,"question_size":47,"question_width":900,"question_box_radius":28,
         "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
@@ -725,9 +726,8 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(WIDTH-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            if current:
-                pad=6
-                draw.rounded_rectangle((x-pad,yy-5,x+ww+pad,yy+text_height(f,w)+5),radius=10,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("correct"),theme["success"]),width=2)
+            # Karaoké explication : changement de couleur uniquement, sans cadre
+            # ni fond autour du mot actif pour éviter tout scintillement visuel.
             draw.text((x,yy),w,font=f,fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255)))
             x+=ww+space; global_word+=1
         yy+=int(cfg["explanation_size"]*1.35)
@@ -1405,13 +1405,13 @@ def make_quiz_background_music(duration,tmpdir,name,volume=0.11):
     """
     duration=max(0.4,float(duration))
     out=os.path.join(tmpdir,f"{name}.wav")
-    vol=max(0.0,min(0.12,float(volume)))
+    vol=max(0.0,min(0.80,float(volume)))
     # Deux nappes très basses + une pulsation douce toutes les ~0,8 s.
     pulse=max(0.2,duration)
     filt=(
-        f"[0:a]volume={vol:.3f},lowpass=f=700,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[base];"
-        f"[1:a]volume={vol*0.55:.3f},lowpass=f=1100,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[low];"
-        f"[2:a]volume={vol*0.50:.3f},afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[p];"
+        f"[0:a]volume={vol:.3f},lowpass=f=850,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[base];"
+        f"[1:a]volume={vol*0.45:.3f},lowpass=f=1250,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[low];"
+        f"[2:a]volume={vol*0.32:.3f},lowpass=f=1800,afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[p];"
         "[base][low][p]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.92"
     )
     cmd=[get_ffmpeg(),"-y",
@@ -2803,8 +2803,9 @@ if nav=="quiz":
                                     concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
                                     # Fond musical très discret : la voix et les SFX restent prioritaires.
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.11)
-                                    mix_background_music(full_audio_raw,music,full_audio,1.0,1.0)
+                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.70)
+                                    # Fond musical réellement audible, mais sous la voix (≈14%).
+                                    mix_background_music(full_audio_raw,music,full_audio,1.0,0.14)
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
                                     cdur=3.12; cd_steps=COUNTDOWN_STEPS
