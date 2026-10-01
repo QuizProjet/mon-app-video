@@ -1029,8 +1029,6 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
         words=line.split(); widths=[text_width(draw,w,qf) for w in words]; space=text_width(draw," ",qf); totalw=sum(widths)+space*max(0,len(words)-1); xx=qx-totalw/2+dx
         for word,ww in zip(words,widths):
             current=(question_active_word>=0 and global_q_word==int(question_active_word))
-            if current:
-                pad=5; draw.rounded_rectangle((xx-pad,q_draw_y-4,xx+ww+pad,q_draw_y+text_height(qf,word)+5),radius=9,fill=_hex_rgb(cfg.get("answer2"),theme["card2"]),outline=_hex_rgb(cfg.get("primary"),theme["accent"]),width=2)
             draw.text((xx+2,q_draw_y+3),word,font=qf,fill=(0,0,0)); draw.text((xx,q_draw_y),word,font=qf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),(255,255,255)))
             xx+=ww+space; global_q_word+=1
         q_draw_y+=line_h
@@ -1398,29 +1396,31 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return out
 
-def make_quiz_background_music(duration,tmpdir,name,volume=0.11):
-    """Fond sonore léger de suspense, généré localement, sans fichier externe.
-    Une pulsation discrète évite les blancs sans couvrir la voix, le compte à rebours
-    ni le ding. Utilisé uniquement par Quiz Style 1.
-    """
-    duration=max(0.4,float(duration))
-    out=os.path.join(tmpdir,f"{name}.wav")
-    vol=max(0.0,min(0.80,float(volume)))
-    # Deux nappes très basses + une pulsation douce toutes les ~0,8 s.
-    pulse=max(0.2,duration)
-    filt=(
-        f"[0:a]volume={vol:.3f},lowpass=f=850,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[base];"
-        f"[1:a]volume={vol*0.45:.3f},lowpass=f=1250,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0.0,duration-0.30):.3f}:d=0.30[low];"
-        f"[2:a]volume={vol*0.32:.3f},lowpass=f=1800,afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[p];"
-        "[base][low][p]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.92"
-    )
-    cmd=[get_ffmpeg(),"-y",
-         "-f","lavfi","-i",f"sine=frequency=92:sample_rate=44100:duration={duration:.3f}",
-         "-f","lavfi","-i",f"sine=frequency=138:sample_rate=44100:duration={duration:.3f}",
-         "-f","lavfi","-i",f"sine=frequency=185:sample_rate=44100:duration={duration:.3f}",
+def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense léger"):
+    """Génère un fond musical normalisé; le volume utilisateur est appliqué au mix final."""
+    duration=max(0.4,float(duration)); out=os.path.join(tmpdir,f"{name}.wav")
+    vol=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger")
+    presets={"Suspense léger":(92,138,185,0.45),"Chill":(73,110,146,0.32),"Pop légère":(110,165,220,0.28)}
+    f1,f2,f3,p=presets.get(style,presets["Suspense léger"])
+    fade=max(0.0,duration-0.30)
+    filt=(f"[0:a]volume={vol:.3f},lowpass=f=900,afade=t=in:st=0:d=0.18,afade=t=out:st={fade:.3f}:d=0.30[a];"
+          f"[1:a]volume={vol*0.55:.3f},lowpass=f=1250,afade=t=in:st=0:d=0.18,afade=t=out:st={fade:.3f}:d=0.30[b];"
+          f"[2:a]volume={vol*p:.3f},lowpass=f=1800,afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0,duration-0.10):.3f}:d=0.10[c];"
+          "[a][b][c]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.95")
+    cmd=[get_ffmpeg(),"-y","-f","lavfi","-i",f"sine=frequency={f1}:sample_rate=44100:duration={duration:.3f}",
+         "-f","lavfi","-i",f"sine=frequency={f2}:sample_rate=44100:duration={duration:.3f}",
+         "-f","lavfi","-i",f"sine=frequency={f3}:sample_rate=44100:duration={duration:.3f}",
          "-filter_complex",filt,"-c:a","pcm_s16le",out]
-    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-    return out
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
+
+def prepare_custom_background_music(uploaded,duration,tmpdir,name):
+    if uploaded is None: return None
+    src=os.path.join(tmpdir,f"{name}_source")
+    data=uploaded.getvalue() if hasattr(uploaded,"getvalue") else uploaded
+    with open(src,"wb") as f: f.write(data)
+    out=os.path.join(tmpdir,f"{name}.wav")
+    cmd=[get_ffmpeg(),"-y","-stream_loop","-1","-i",src,"-t",f"{max(0.4,float(duration)):.3f}","-ac","2","-ar","44100","-c:a","pcm_s16le",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
 def mix_background_music(voice_path,music_path,output,voice_volume=1.0,music_volume=0.10):
     """Mixe la voix et une musique de fond discrète sans écraser la voix."""
@@ -2347,7 +2347,7 @@ def render_layout_editor(module, style="1"):
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
     defaults = {
         "font_family":"Lato", "show_title":True, "title_x":540, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
-        "question_x":540, "question_y":150 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
+        "question_x":540, "question_y":270 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
         "answer_y":630 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
         "show_explanation":True, "explanation_y":1160, "explanation_h":320, "explanation_size":31,
@@ -2366,9 +2366,18 @@ def render_layout_editor(module, style="1"):
     }
     for k,v in defaults.items(): _ss_default(p+k,v)
 
+    # Migration : l’ancien défaut Style 1 (150 px) est remplacé par 270 px.
+    if is_quiz and style == "1" and st.session_state.get(p+"question_y") == 150:
+        st.session_state[p+"question_y"] = 270
+    if is_quiz and style == "1":
+        _ss_default(p+"bg_music_enabled", True)
+        _ss_default(p+"bg_music_volume", 0.15)
+        _ss_default(p+"bg_music_style", "Suspense léger")
+        _ss_default(p+"bg_music_source", "Musique générée par QuizVideo Pro")
+
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • V14.0</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Les réglages sont indépendants pour ce style et sont conservés lorsque tu changes de module.</div>', unsafe_allow_html=True)
-    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond"])
+    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
 
     with tabs[0]:
         if is_quiz:
@@ -2521,6 +2530,21 @@ def render_layout_editor(module, style="1"):
             st.slider("Déplacement X",-120,120,key=p+"bg_x")
             st.slider("Déplacement Y",-120,120,key=p+"bg_y")
         st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
+
+    if is_quiz and style == "1":
+        with tabs[8]:
+            st.markdown("**🎵 Musique de fond du Quiz Style 1**")
+            st.checkbox("Activer la musique de fond", key=p+"bg_music_enabled")
+            c1,c2=st.columns(2)
+            with c1:
+                st.selectbox("Ambiance", ["Suspense léger","Chill","Pop légère"], key=p+"bg_music_style")
+            with c2:
+                st.slider("Volume",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
+            st.caption("0,10–0,15 = fond discret. La voix, le compte à rebours et le ding restent prioritaires.")
+            st.radio("Source", ["Musique générée par QuizVideo Pro","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
+            if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
+                st.file_uploader("Importer une musique", type=["mp3","wav","m4a","aac","ogg"], key=p+"bg_music_upload")
+            st.caption("La musique choisie est intégrée au fichier vidéo final.")
     _save_settings()
 
 
@@ -2801,11 +2825,21 @@ if nav=="quiz":
                                         q_with_fx=qa_raw
                                     full_audio_raw=os.path.join(tmp,f"question_full_raw_{idx}.m4a")
                                     concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
-                                    # Fond musical très discret : la voix et les SFX restent prioritaires.
+                                    # Fond musical contrôlé depuis l’Éditeur Studio.
                                     full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",0.70)
-                                    # Fond musical réellement audible, mais sous la voix (≈14%).
-                                    mix_background_music(full_audio_raw,music,full_audio,1.0,0.14)
+                                    music_enabled=bool(st.session_state.get("q1_bg_music_enabled",True))
+                                    music_volume=float(st.session_state.get("q1_bg_music_volume",0.15))
+                                    music_style=st.session_state.get("q1_bg_music_style","Suspense léger")
+                                    music_source=st.session_state.get("q1_bg_music_source","Musique générée par QuizVideo Pro")
+                                    uploaded_music=st.session_state.get("q1_bg_music_upload") if music_source=="Ma propre musique" else None
+                                    if music_enabled and music_volume>0:
+                                        if uploaded_music is not None:
+                                            music=prepare_custom_background_music(uploaded_music,audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}")
+                                        else:
+                                            music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style)
+                                        mix_background_music(full_audio_raw,music,full_audio,1.0,music_volume)
+                                    else:
+                                        full_audio=full_audio_raw
                                     qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                                     frames=[(img,dur) for img,dur in qframes]
                                     cdur=3.12; cd_steps=COUNTDOWN_STEPS
