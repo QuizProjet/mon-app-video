@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
 # QUIZVIDEO PRO — STUDIO
-# V11 — Quiz Style 1 targeted fixes: question spacing, clean karaoke, audible background music
+# V16 — Quiz Style 1 targeted fixes: question spacing, clean karaoke, audible background music
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 
@@ -1161,25 +1161,29 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
     theme=THEMES[theme_name]
     ff=_layout(module, style).get("font_family","DejaVu Sans")
     p=ease_back(progress)
-    img=add_top_glow(make_base(theme_name,bg_file),theme,1.2*p)
+    img=add_top_glow(make_base(theme_name,bg_file),theme,1.25*p)
     draw=ImageDraw.Draw(img)
-    # subtle focus circle
-    r=int(210*p)
-    draw.ellipse((540-r,430-r,540+r,430+r),outline=(*theme["accent"],),width=4)
-    badge_w=500; bx=(WIDTH-badge_w)//2; by=250-int(30*(1-p))
-    rounded_text(draw,(bx,by,bx+badge_w,by+76),"TESTE-TOI",get_font(34,ff),theme["accent"],None,0,34)
-    draw_lightning_icon(draw,theme,bx+42,by+38,18)
-    f=get_font(76,ff)
-    lines=wrap_text(text,f,850)[:3]
-    y=690-int(90*(1-p))
+    brand=clean_text(channel or "SuspenseLingo")
+    bf=get_font(34,ff); bw=text_width(draw,brand,bf)
+    draw.text(((WIDTH-bw)/2,300),brand,font=bf,fill=theme["accent"])
+    _motivation_icon(draw,theme,"end",540,485,78,p)
+    lf=get_font(32,ff); label="NEXT CHALLENGE"; lw=text_width(draw,label,lf)
+    draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
+    visible=_motivation_text_clean(text)
+    f=get_font(64,ff); lines=wrap_text(visible,f,850)[:3] or ["See you next time!"]
+    y=735-int(45*(1-ease_out(p)))
     for line in lines:
         tw=text_width(draw,line,f)
-        draw.text(((WIDTH-tw)/2+5,y+6),line,font=f,fill=(0,0,0))
+        draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
         draw.text(((WIDTH-tw)/2,y),line,font=f,fill="white")
-        y+=108
-    draw_brand(draw,theme,channel)
-    sf=get_font(23,ff)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
+        y+=88
+    sub="Follow SuspenseLingo for the next quiz"
+    sf=get_font(29,ff); sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1115),sub,font=sf,fill=(220,228,242))
+    draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
+    draw.rounded_rectangle((180,1270,180+int(720*clamp(p)),1284),radius=7,fill=theme["accent"])
+    sf2=get_font(21,ff); sw2=text_width(draw,brand,sf2)
+    draw.text(((WIDTH-sw2)/2,1450),brand,font=sf2,fill=theme["muted"])
     return img
 
 def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1,video_title="Culture Générale"):
@@ -2025,24 +2029,104 @@ MOTIVATION_LINES=[
     "💬 Abonne-toi pour le prochain quiz !",
 ]
 
-def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phase=0.0):
+def _motivation_text_clean(text):
+    """Retire les emojis du texte PIL : ils ne sont pas fiables avec les polices vidéo."""
+    t=clean_text(text or "")
+    t=re.sub(r"[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U00002300-\U000023FF\U00002B00-\U00002BFF]", "", t)
+    t=re.sub(r"\s{2,}", " ", t).strip()
+    return t
+
+def _motivation_icon(draw, theme, kind="start", cx=540, cy=455, size=78, phase=0.0):
+    """Icône vectorielle fiable, sans dépendre d'une police emoji."""
+    a=theme["accent"]
+    pulse=1.0+0.06*math.sin(float(phase)*math.pi*2)
+    r=int(size*pulse)
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(8,13,28),outline=a,width=4)
+    kind=str(kind or "mid")
+    if kind=="start":
+        # éclair + petite étincelle = énergie immédiate
+        draw_lightning_icon(draw,theme,cx,cy,size//2)
+        draw.ellipse((cx+r+12,cy-r//2,cx+r+28,cy-r//2+16),fill=a)
+        draw.ellipse((cx-r-28,cy-r//3,cx-r-12,cy-r//3+16),fill=a)
+    elif kind=="end":
+        # trophée stylisé
+        cup=(cx-30,cy-34,cx+30,cy+16)
+        draw.rounded_rectangle(cup,radius=8,fill=a)
+        draw.arc((cx-52,cy-28,cx-12,cy+10),70,290,fill=a,width=7)
+        draw.arc((cx+12,cy-28,cx+52,cy+10),250,110,fill=a,width=7)
+        draw.rectangle((cx-6,cy+16,cx+6,cy+35),fill=a)
+        draw.rounded_rectangle((cx-34,cy+35,cx+34,cy+45),radius=5,fill=a)
+    else:
+        # sourire + étoiles pour le message du milieu
+        er=7
+        draw.ellipse((cx-28-er,cy-18-er,cx-28+er,cy-18+er),fill="white")
+        draw.ellipse((cx+28-er,cy-18-er,cx+28+er,cy-18+er),fill="white")
+        draw.arc((cx-35,cy-5,cx+35,cy+48),10,170,fill=a,width=6)
+        for sx,sy in ((cx-r-18,cy-25),(cx+r+18,cy+5)):
+            draw.line((sx-10,sy,sx+10,sy),fill=a,width=4)
+            draw.line((sx,sy-10,sx,sy+10),fill=a,width=4)
+
+def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phase=0.0,kind="mid"):
+    """Écran motivation professionnel : intro forte, pause milieu ou fin."""
     theme=THEMES[theme_name]
-    img=add_top_glow(make_base(theme_name,bg_file),theme,1.15)
+    img=add_top_glow(make_base(theme_name,bg_file),theme,1.25+0.08*math.sin(float(phase)*math.pi*2))
     draw=ImageDraw.Draw(img)
-    drift=int(22*math.sin(phase*math.pi*2))
-    rounded_text(draw,(90+drift,310,990+drift,420),"PAUSE QUIZ",get_font(42),theme["accent"],None,0,30)
-    draw_lightning_icon(draw,theme,128+drift,365,18)
-    f=get_font(64)
-    lines=wrap_text(text,f,850)[:3]
-    y=650-int(40*(1-ease_out(phase)))
+    p=ease_out(progress)
+    kind=str(kind or "mid")
+
+    # Assombrissement central pour un rendu plus premium et lisible.
+    panel=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
+    pd=ImageDraw.Draw(panel)
+    pd.rounded_rectangle((55,250,1025,1510),radius=46,fill=(4,9,22,205),outline=(*theme["accent"],95),width=2)
+    panel=panel.filter(ImageFilter.GaussianBlur(0.2))
+    img=Image.alpha_composite(img.convert("RGBA"),panel).convert("RGB")
+    draw=ImageDraw.Draw(img)
+
+    # Marque toujours visible dès la première seconde.
+    brand=clean_text(channel or "SuspenseLingo")
+    bf=get_font(30)
+    bw=text_width(draw,brand,bf)
+    draw.text(((WIDTH-bw)/2,292),brand,font=bf,fill=theme["accent"])
+    draw.line((330,340,750,340),fill=(255,255,255,55),width=2)
+
+    icon_kind="start" if kind=="start" else "end" if kind=="end" else "mid"
+    _motivation_icon(draw,theme,icon_kind,540,485,78,phase)
+
+    labels={"start":"READY?","mid":"KEEP GOING","end":"QUIZ COMPLETE"}
+    label=labels.get(kind,"KEEP GOING")
+    lf=get_font(34)
+    lw=text_width(draw,label,lf)
+    draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
+
+    visible=_motivation_text_clean(text)
+    f=get_font(68)
+    lines=wrap_text(visible,f,850)[:3] or ["Keep going!"]
+    y=760-int(45*(1-p))
     for i,line in enumerate(lines):
-        x=(WIDTH-text_width(draw,line,f))/2+int(28*math.sin((phase+i*0.15)*math.pi*2))
+        tw=text_width(draw,line,f)
+        x=(WIDTH-tw)/2+int(12*math.sin((phase+i*.15)*math.pi*2))
+        draw.text((x+4,y+6),line,font=f,fill=(0,0,0))
         draw.text((x,y),line,font=f,fill="white")
         y+=92
-    draw_brand(draw,theme,channel,progress)
-    # Signature discrète des deux modules de QuizVideo Pro.
-    sf=get_font(23)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
+
+    if kind=="start":
+        sub="Can you get them all?"
+    elif kind=="end":
+        sub="See you in the next challenge."
+    else:
+        sub="You're doing great — keep going!"
+    sf=get_font(29)
+    sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1110),sub,font=sf,fill=(220,228,242))
+
+    # Barre de progression discrète : 0→100 selon l'étape de la scène.
+    draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
+    draw.rounded_rectangle((180,1270,180+int(720*p),1284),radius=7,fill=theme["accent"])
+    draw_brand(draw,theme,brand,None)
+    sf2=get_font(21)
+    sig="SuspenseLingo  •  Quiz"
+    sw2=text_width(draw,sig,sf2)
+    draw.text(((WIDTH-sw2)/2,1450),sig,font=sf2,fill=theme["muted"])
     return img
 
 
@@ -2636,7 +2720,7 @@ if nav=="quiz":
         voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
         st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
         st.markdown("**💬 Messages de motivation**")
-        mot_start_q=st.text_input("Avant le quiz","🔥 Prêt ? C’est parti !",key="mot_start_q")
+        mot_start_q=st.text_input("Avant le quiz","🔥 Ready? Let’s go!",key="mot_start_q")
         mot_mid_q=st.text_input("Au milieu","👏 Bravo, continue comme ça !",key="mot_mid_q")
         mot_end_q=st.text_input("À la fin","🏆 Bravo ! À bientôt pour un nouveau quiz !",key="mot_end_q")
         st.markdown('</div>',unsafe_allow_html=True)
@@ -2647,7 +2731,10 @@ if nav=="quiz":
         st.markdown('</div>',unsafe_allow_html=True)
     with c_social:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">RÉSEAUX</div>',unsafe_allow_html=True)
-        channel_q=st.text_input("Chaîne","@QuizMaster_Pro",key="cq")
+        # Migration transparente : l'ancien nom par défaut ne revient jamais.
+        if st.session_state.get("cq") == "@QuizMaster_Pro":
+            st.session_state["cq"] = "SuspenseLingo"
+        channel_q=st.text_input("Chaîne","SuspenseLingo",key="cq")
         hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
         outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
         st.markdown('</div>',unsafe_allow_html=True)
@@ -2816,7 +2903,7 @@ if nav=="quiz":
                             if clean_text(mot_start_q):
                                 ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(mot_start_q,voice_q,ma,tts_rate); md=audio_duration(ma)
                                 if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
                                     mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
                             if style_q_full.startswith("Style 2"):
@@ -2929,13 +3016,13 @@ if nav=="quiz":
                                 mid_pos=1+((len(st.session_state.q_data)-1)//2)
                                 ma=os.path.join(tmp,"mot_mid.m4a"); synthesize_audio(mot_mid_q,voice_q,ma,tts_rate); md=audio_duration(ma)
                                 if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_mid_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_mid")
+                                    mf=save_frames([(draw_motivation_scene(mot_mid_q,theme_q,channel_q,bg_q,p,kind="mid"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_mid")
                                     mm=os.path.join(tmp,"mot_mid.mp4"); make_segment(mf,ma,mm,tmp); clips.insert(min(mid_pos,len(clips)),mm)
                             # Motivation de fin, avant le CTA existant.
                             if clean_text(mot_end_q):
                                 ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(mot_end_q,voice_q,ma,tts_rate); md=audio_duration(ma)
                                 if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
+                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
                                     me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
                             # CTA très court seulement après le quiz.
                             if clean_text(outro_q):
@@ -2948,7 +3035,7 @@ if nav=="quiz":
                                     oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
                             final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
-                            concat_videos(clips,final,tmp)
+                            concat_videos_precise(clips,final,tmp)
                             with open(final,"rb") as f: data=f.read()
                             st.success("✅ Short Quiz terminé avec ta mise en page.")
                             st.video(data)
