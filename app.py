@@ -650,8 +650,14 @@ def _layout(module="quiz", style=None):
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1):
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
-    f=get_font(cfg["question_size"],ff); lines=wrap_text(question,f,int(cfg.get("question_width",900)))[:3]; hi=_highlight_words(question); yy=int(cfg["question_y"])
-    box_top=yy-18; box_bottom=yy+len(lines)*int(cfg["question_size"]*1.18)+12
+    base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
+    size=base_size
+    f=get_font(size,ff); lines=wrap_text(question,f,maxw)
+    while len(lines)>2 and size>30:
+        size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
+    lines=lines[:2]
+    hi=_highlight_words(question); yy=int(cfg["question_y"])
+    box_top=yy-18; box_bottom=yy+len(lines)*int(size*1.18)+12
     radius=int(cfg["question_box_radius"])
     box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
     draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=(6,12,28,218),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
@@ -668,7 +674,7 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
             fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255))
             draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
             x+=ww+space; global_word+=1
-        yy+=int(cfg["question_size"]*1.18)
+        yy+=int(size*1.18)
     return box_bottom
 
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
@@ -719,7 +725,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         else:
             timer_cy=int(cfg.get("timer_y",1045))
         timer_r=timer_size
-        y1=min(1450, timer_cy + timer_r + 55)
+        y1=min(1450, timer_cy + timer_r + 10)
     else:
         y1=int(cfg["explanation_y"])
     p=ease_out(progress)
@@ -1000,11 +1006,6 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
             )
 
     draw_brand(draw,theme,channel,active_idx/max(1,total))
-    draw.text(
-        (55,1860),"QuizVideo Pro  •  Vocabulaire Pro",
-        font=get_font(21,ff),
-        fill=_hex_rgb(cfg.get("muted"),theme["muted"])
-    )
     return img
 
 
@@ -1093,7 +1094,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
             ty=ry+(rh-len(lines2)*text_height(hfs))/2-2
             for line in lines2:
                 tw=text_width(draw,line,hfs); draw.text((hx+hw/2-tw/2,ty),line,font=hfs,fill=_hex_rgb(cfg.get("correct"),theme["success"])); ty+=text_height(hfs,line)+2
-    draw_brand(draw,theme,channel,active_idx/max(1,total)); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0, question_active_word=-1, explanation_active_word=-1):
@@ -1128,7 +1129,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
             alpha=int(95*(1-rp/0.45)); glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0)); gd=ImageDraw.Draw(glow); gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8); glow=glow.filter(ImageFilter.GaussianBlur(12)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
-    draw_brand(draw,theme,channel,(q_num-1)/max(1,total)); draw.text((55,1788),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21),fill=_hex_rgb(cfg["muted"],theme["muted"]))
+    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
     return img
 
 def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
@@ -1163,10 +1164,9 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
             draw.text(((WIDTH-tw)/2,sy),line,font=sf,fill=theme["accent"])
             sy+=52
     draw_brand(draw,theme,channel)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=theme["muted"])
     return img
 
-def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1"):
+def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français"):
     theme=THEMES[theme_name]
     ff=_layout(module, style).get("font_family","DejaVu Sans")
     p=ease_back(progress)
@@ -1186,7 +1186,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
         draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
         draw.text(((WIDTH-tw)/2,y),line,font=f,fill="white")
         y+=88
-    sub="Follow SuspenseLingo for the next quiz"
+    cta_subs={"Français":"Abonne-toi à SuspenseLingo !","Anglais":"Follow SuspenseLingo for the next quiz!","Espagnol":"¡Suscríbete a SuspenseLingo!","Arabe":"اشترك في SuspenseLingo!","Allemand":"Abonniere SuspenseLingo!","Italien":"Iscriviti a SuspenseLingo!"}
+    sub=cta_subs.get(str(language),cta_subs["Français"])
     sf=get_font(29,ff); sw=text_width(draw,sub,sf)
     draw.text(((WIDTH-sw)/2,1115),sub,font=sf,fill=(220,228,242))
     draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
@@ -1239,7 +1240,6 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
         yy+=58
     draw_brand(draw,theme,channel,progress)
     sf=get_font(23)
-    draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=sf,fill=theme["muted"])
     return img
 
 
@@ -1284,7 +1284,7 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
                 xx+=ww+space; global_idx+=1
             yy+=text_height(ft,line)+8
     if phase=="countdown" and timer is not None and cfg.get("show_timer"): draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",760)),timer,timer_fraction,"vocab","1")
-    draw_brand(draw,theme,channel,idx/max(1,len(items))); draw.text((55,1860),"QuizVideo Pro  •  Vocabulaire Pro",font=get_font(21,ff),fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
+    draw_brand(draw,theme,channel,idx/max(1,len(items)))
     return img
 
 
@@ -2740,7 +2740,7 @@ if nav=="quiz":
     with c_content:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">CONTENU</div>',unsafe_allow_html=True)
         th_q=st.text_input("Sujet","Culture Générale",key="thq")
-        nb_q=st.slider("Questions",1,15,15,key="nbq")
+        nb_q=st.slider("Questions",1,15,3,key="nbq")
         quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
         voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
         voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
@@ -2764,7 +2764,7 @@ if nav=="quiz":
             st.session_state["cq"] = "SuspenseLingo"
         channel_q=st.text_input("Chaîne","SuspenseLingo",key="cq")
         hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
-        outro_q=st.text_input("CTA final","Quel est ton score ?",key="oq")
+        outro_q=st.text_input("CTA final","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq")
         st.markdown('</div>',unsafe_allow_html=True)
     q_top_ready=bool(st.session_state.get("q_data"))
     topa,topb=st.columns([1,1.65],gap="small")
@@ -3035,6 +3035,13 @@ if nav=="quiz":
                                     ex_mix_words=exp_words
                                     eframes=word_timed_frames(exp_mix,ex_mix_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,prog*3),pulse=0.15*(1-prog),motion=2.0+prog,video_title=th_q,explanation=exp_text,explanation_progress=1.0,explanation_active_word=wi),edur)
                                     frames.extend(eframes)
+                                    # Micro-pause de 0,5 s pour laisser assimiler la bonne réponse.
+                                    pause_audio=os.path.join(tmp,f"exp_pause_{idx}.m4a")
+                                    subprocess.run([get_ffmpeg(),"-y","-i",exp_mix,"-af","apad=pad_dur=0.50","-t",f"{edur+0.50:.3f}","-c:a","aac","-b:a","160k",pause_audio],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+                                    if frames:
+                                        frames.append((frames[-1][0],0.50))
+                                    exp_mix=pause_audio
+                                    concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
                                     out=os.path.join(tmp,f"qfull_{idx}.mp4")
                                     make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                                     clips.append(out)
@@ -3051,7 +3058,7 @@ if nav=="quiz":
                                 synthesize_audio(outro_q,voice_q,oa,tts_rate)
                                 od=audio_duration(oa)
                                 if od>0.15:
-                                    of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p),od/6)
+                                    of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
                                                     for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                                     oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
