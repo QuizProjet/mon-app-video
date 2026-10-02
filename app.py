@@ -199,6 +199,13 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-movegrid [data-testid="stButton"] button{min-height:32px!important;padding:3px 5px!important;font-size:.78rem!important;border-radius:9px!important;}
 .qvp-anim-caption{text-align:center;font-size:.7rem;color:#64748b;margin:3px 0 5px;}
 
+
+/* V21 — interface compacte et workflow linéaire */
+.qvp-studio-header{margin-top:2px!important;margin-bottom:8px!important;}
+.qvp-section-card{padding:9px 12px!important;}
+.qvp-section-title{margin-bottom:6px!important;}
+.qvp-actionbar-v11{margin-top:4px!important;margin-bottom:6px!important;}
+.qvp-preview-sticky{top:8px!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2767,61 +2774,9 @@ if nav=="quiz":
         outro_q=st.text_input("CTA final","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq")
         st.markdown('</div>',unsafe_allow_html=True)
     q_top_ready=bool(st.session_state.get("q_data"))
-    topa,topb=st.columns([1,1.65],gap="small")
-    with topa:
-        if st.button("💾 Enregistrer le style",key="studio_save_top",use_container_width=True):
-            _save_settings(); st.success("✅ Style enregistré.")
-    with topb:
-        q_generate_top_clicked=st.button("🎬 GÉNÉRER LE SHORT QUIZ",key="makeq_topbar",type="primary",use_container_width=True,disabled=not q_top_ready)
-    style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
-    st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
-    left_q, right_q = st.columns([1.18, 0.82], gap="medium")
-    with left_q:
-        with st.container(border=True):
-            render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
-    quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
-    qprefix=_qvp_prefix("quiz", quiz_style_id)
-    bg_mode_q=st.session_state.get(qprefix+"bg_mode", "✨ Automatique")
-    uploaded_bg_q=st.session_state.get(qprefix+"bg_upload")
-    bg_mode_clean_q="Généré automatiquement" if str(bg_mode_q).startswith("✨") else "Image personnalisée" if str(bg_mode_q).startswith("🖼️") else "Aucun"
-    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
-    with right_q:
-        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">Clique directement sur une zone de la vidéo pour la sélectionner.</div></div></div>', unsafe_allow_html=True)
-        if style_q_full.startswith("Style 2"):
-            preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
-        else:
-            preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
-        selected_q=_qvp_selected_element("quiz", quiz_style_id)
-        try:
-            cfg_q=_layout("quiz",quiz_style_id)
-            sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
-            if style_q_full.startswith("Style 2"):
-                demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
-                if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
-                elif preview_state_q=="Q2 + R1": preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
-                else: preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
-            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
-            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
-            else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
-            render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
-            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides. Les réglages sont enregistrés dans le rendu réel.")
-            selected_q=_qvp_quick_controls("quiz",quiz_style_id,selected_q,theme_q,channel_q,sample_bg,preview_state_q,th_q,prefix_key="quickq")
-        except Exception as e:
-            st.caption(f"Aperçu indisponible pour le moment : {e}")
-    # Barre d'actions principale : toujours visible en bas de la zone de travail.
-    aq1,aq2,aq3=st.columns([1,1,1.35])
-    with aq1:
-        if st.button("🎲 Nouvelle variation",key="studio_variation_q",use_container_width=True):
-            st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
-    with aq2:
-        if st.button("💾 Enregistrer",key="studio_save_q",use_container_width=True):
-            _save_settings(); st.success("✅ Style enregistré.")
-    with aq3:
-        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
-        generate_label_q="🎬 GÉNÉRER LE SHORT QUIZ"
-        q_generate_btn_clicked = st.button(generate_label_q,key="makeq_studio",type="secondary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
-        st.markdown('</div>',unsafe_allow_html=True)
-    with st.expander("🎯 CONTENU — Questions / réponses", expanded=False):
+
+    st.markdown("### 1. CONTENU")
+    with st.expander("🎯 ÉTAPE 1 — CONTENU • Questions / réponses", expanded=not bool(st.session_state.get("q_data"))):
         mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
         if mode_q=="🤖 IA Gemini":
             st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
@@ -2903,7 +2858,7 @@ if nav=="quiz":
             mq_exp=st.text_area("Explication",qcur.get("explication",""),height=62,key="manual_q_exp")
             e1,e2,e3=st.columns(3)
             with e1:
-                if st.button("💾 Enregistrer cette question",key="saveqedit",use_container_width=True):
+                if st.button("💾 Enregistrer la question",key="saveqedit",use_container_width=True):
                     st.session_state.q_data[qi]={"question":clean_text(mq_question),"options":[clean_text(mq_a),clean_text(mq_b),clean_text(mq_c),clean_text(mq_d)],"reponse_correcte":mq_correct,"explication":clean_text(mq_exp)}
                     st.session_state.q_source="Questions modifiées manuellement"; st.success("✅ Question enregistrée.")
             with e2:
@@ -2920,162 +2875,212 @@ if nav=="quiz":
                     if saved:
                         st.session_state.q_data=saved; st.session_state.q_source="Questions modifiées manuellement"; st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
                     else: st.error("Aucune question valide à enregistrer.")
-            if (q_generate_btn_clicked or q_generate_top_clicked):
-                try:
-                    with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
-                        with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
-                            clips=[]; total=len(st.session_state.q_data)
 
-                            # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
-                            if clean_text(mot_start_q):
-                                ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(_motivation_text_clean(mot_start_q),voice_q,ma,tts_rate); md=audio_duration(ma)
-                                if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
-                                    mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
+    aq1,aq2,aq3=st.columns([1.0,1.0,1.45],gap="small")
+    with aq1:
+        if st.button("💾 Enregistrer les réglages",key="studio_save_unified_q",use_container_width=True):
+            _save_settings(); st.success("✅ Réglages enregistrés.")
+    with aq2:
+        if st.button("🎲 Nouvelle variation",key="studio_variation_unified_q",use_container_width=True):
+            st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
+    with aq3:
+        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
+        q_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makeq_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
+        st.markdown('</div>',unsafe_allow_html=True)
+    q_generate_top_clicked=False
 
-                            if style_q_full.startswith("Style 2"):
-                                # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
-                                # Les questions apparaissent progressivement : seules les questions déjà atteintes restent visibles.
-                                items=st.session_state.q_data[:15]
-                                total=len(items)
-                                for idx,q in enumerate(items):
-                                    bg_question=bg_q
-                                    corr="ABCD".index(q["reponse_correcte"])
-                                    answer_text=clean_text(q["options"][corr])
-                                    qa_raw=os.path.join(tmp,f"s2_q_{idx}.mp3")
-                                    ans_raw=os.path.join(tmp,f"s2_a_{idx}.mp3")
-                                    q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
-                                    synthesize_audio(answer_text,voice_q,ans_raw,tts_rate)
-                                    qdur=audio_duration(qa_raw); adur=audio_duration(ans_raw)
-                                    qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=prog*.7,video_title=th_q,question_active_word=wi),qdur)
-                                    frames=[(img,dur) for img,dur in qframes]
-                                    cdur=3.12; cd_steps=COUNTDOWN_STEPS
-                                    for j in range(cd_steps):
-                                        t=j/max(1,cd_steps-1); elapsed=t*cdur
-                                        if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
-                                        elif elapsed < 2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                        elif elapsed < 3.0: sec=1; frac=1-((elapsed-2.04)/0.96)
-                                        else: sec=None; frac=0.0
-                                        frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer=sec,timer_fraction=frac,answer_reveal=False,motion=t,video_title=th_q),cdur/cd_steps))
-                                    pop_raw=os.path.join(tmp,f"s2_a_pop_{idx}.m4a")
-                                    sfx_cfg=_layout("quiz","2")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(ans_raw,pop,pop_raw,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                    else:
-                                        pop_raw=ans_raw
-                                    aframes=[]; a_steps=max(3,min(REVEAL_MAX_STEPS,int(adur*3)))
-                                    for j in range(a_steps):
-                                        t=j/max(1,a_steps-1); aframes.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
-                                    frames.extend(aframes)
-                                    audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
-                                    q_with_fx=os.path.join(tmp,f"s2_q_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(qa_raw,whoosh,q_with_fx,0,float(sfx_cfg.get("sfx_volume",0.30))*0.75)
-                                    else:
-                                        q_with_fx=qa_raw
-                                    concat_audio_files([q_with_fx,countdown_sfx,pop_raw],audio)
-                                    out=os.path.join(tmp,f"s2_{idx}.mp4")
-                                    make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
-                                    clips.append(out)
-                                    del frames
-                                    gc.collect()
+    st.markdown("### 2. STYLE & APERÇU")
+    style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
+    st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
+    left_q, right_q = st.columns([1.18, 0.82], gap="medium")
+    with left_q:
+        with st.container(border=True):
+            render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
+    quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
+    qprefix=_qvp_prefix("quiz", quiz_style_id)
+    bg_mode_q=st.session_state.get(qprefix+"bg_mode", "✨ Automatique")
+    uploaded_bg_q=st.session_state.get(qprefix+"bg_upload")
+    bg_mode_clean_q="Généré automatiquement" if str(bg_mode_q).startswith("✨") else "Image personnalisée" if str(bg_mode_q).startswith("🖼️") else "Aucun"
+    bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
+    with right_q:
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">Clique directement sur une zone de la vidéo pour la sélectionner.</div></div></div>', unsafe_allow_html=True)
+        if style_q_full.startswith("Style 2"):
+            preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
+        else:
+            preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
+        selected_q=_qvp_selected_element("quiz", quiz_style_id)
+        try:
+            cfg_q=_layout("quiz",quiz_style_id)
+            sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
+            if style_q_full.startswith("Style 2"):
+                demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
+                if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
+                elif preview_state_q=="Q2 + R1": preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
+                else: preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
+            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
+            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
+            else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
+            render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
+            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides. Les réglages sont enregistrés dans le rendu réel.")
+            selected_q=_qvp_quick_controls("quiz",quiz_style_id,selected_q,theme_q,channel_q,sample_bg,preview_state_q,th_q,prefix_key="quickq")
+        except Exception as e:
+            st.caption(f"Aperçu indisponible pour le moment : {e}")
+        if q_generate_btn_clicked and st.session_state.get("q_data"):
+            try:
+                with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
+                        clips=[]; total=len(st.session_state.q_data)
 
-                            # Style 2 reste entièrement cumulatif : pas de pages d'explication séparées.
-                            else:
-                                # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
-                                for idx,q in enumerate(st.session_state.q_data):
-                                    corr="ABCD".index(q["reponse_correcte"])
-                                    bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
-                                    qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
-                                    q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
-                                    qdur=audio_duration(qa_raw)
-                                    exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
-                                    ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
-                                    exp_words=synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
-                                    edur=audio_duration(ea_raw)
-                                    exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
-                                    sfx_cfg=_layout("quiz","1")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(ea_raw,ding,exp_mix,0,float(sfx_cfg.get("sfx_volume",0.30))*2.1)
-                                    else:
-                                        exp_mix=ea_raw
-                                    q_with_fx=os.path.join(tmp,f"q_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(qa_raw,whoosh,q_with_fx,0,float(sfx_cfg.get("sfx_volume",0.30))*0.75)
-                                    else:
-                                        q_with_fx=qa_raw
-                                    full_audio_raw=os.path.join(tmp,f"question_full_raw_{idx}.m4a")
-                                    concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
-                                    # Fond musical contrôlé depuis l’Éditeur Studio.
-                                    full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
-                                    music_enabled=bool(st.session_state.get("q1_bg_music_enabled",True))
-                                    music_volume=float(st.session_state.get("q1_bg_music_volume",0.15))
-                                    music_style=st.session_state.get("q1_bg_music_style","Suspense léger")
-                                    music_source=st.session_state.get("q1_bg_music_source","Musique générée par QuizVideo Pro")
-                                    uploaded_music=st.session_state.get("q1_bg_music_upload") if music_source=="Ma propre musique" else None
-                                    if music_enabled and music_volume>0:
-                                        if uploaded_music is not None:
-                                            music=prepare_custom_background_music(uploaded_music,audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}")
-                                        else:
-                                            music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style,countdown_start=qdur,countdown_duration=3.12)
-                                        mix_background_music(full_audio_raw,music,full_audio,1.0,music_volume)
-                                    else:
-                                        full_audio=full_audio_raw
-                                    qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
-                                    frames=[(img,dur) for img,dur in qframes]
-                                    cdur=3.12; cd_steps=COUNTDOWN_STEPS
-                                    for j in range(cd_steps):
-                                        t=j/max(1,cd_steps-1); elapsed=t*cdur
-                                        if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
-                                        elif elapsed < 2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                        elif elapsed < 3.0: sec=1; frac=1-((elapsed-2.04)/0.96)
-                                        else: sec=None; frac=0.0
-                                        frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=sec,timer_fraction=frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
-                                    ex_mix_words=exp_words
-                                    eframes=word_timed_frames(exp_mix,ex_mix_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,prog*3),pulse=0.15*(1-prog),motion=2.0+prog,video_title=th_q,explanation=exp_text,explanation_progress=1.0,explanation_active_word=wi),edur)
-                                    frames.extend(eframes)
-                                    # Micro-pause de 0,5 s pour laisser assimiler la bonne réponse.
-                                    pause_audio=os.path.join(tmp,f"exp_pause_{idx}.m4a")
-                                    subprocess.run([get_ffmpeg(),"-y","-i",exp_mix,"-af","apad=pad_dur=0.50","-t",f"{edur+0.50:.3f}","-c:a","aac","-b:a","160k",pause_audio],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-                                    if frames:
-                                        frames.append((frames[-1][0],0.50))
-                                    exp_mix=pause_audio
-                                    concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
-                                    out=os.path.join(tmp,f"qfull_{idx}.mp4")
-                                    make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
-                                    clips.append(out)
+                        # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
+                        if clean_text(mot_start_q):
+                            ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(_motivation_text_clean(mot_start_q),voice_q,ma,tts_rate); md=audio_duration(ma)
+                            if md>0.15:
+                                mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                                mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
-                            # Motivation de fin, avant le CTA existant.
-                            if clean_text(mot_end_q):
-                                ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(_motivation_text_clean(mot_end_q),voice_q,ma,tts_rate); md=audio_duration(ma)
-                                if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
-                                    me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
-                            # CTA très court seulement après le quiz.
-                            if clean_text(outro_q):
-                                oa=os.path.join(tmp,"outro.m4a")
-                                synthesize_audio(outro_q,voice_q,oa,tts_rate)
-                                od=audio_duration(oa)
-                                if od>0.15:
-                                    of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
-                                                    for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
-                                    oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                        if style_q_full.startswith("Style 2"):
+                            # STYLE 2 : une seule page cumulative. Q1 puis R1, Q2 puis R2, etc.
+                            # Les questions apparaissent progressivement : seules les questions déjà atteintes restent visibles.
+                            items=st.session_state.q_data[:15]
+                            total=len(items)
+                            for idx,q in enumerate(items):
+                                bg_question=bg_q
+                                corr="ABCD".index(q["reponse_correcte"])
+                                answer_text=clean_text(q["options"][corr])
+                                qa_raw=os.path.join(tmp,f"s2_q_{idx}.mp3")
+                                ans_raw=os.path.join(tmp,f"s2_a_{idx}.mp3")
+                                q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                synthesize_audio(answer_text,voice_q,ans_raw,tts_rate)
+                                qdur=audio_duration(qa_raw); adur=audio_duration(ans_raw)
+                                qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=False,motion=prog*.7,video_title=th_q,question_active_word=wi),qdur)
+                                frames=[(img,dur) for img,dur in qframes]
+                                cdur=3.12; cd_steps=COUNTDOWN_STEPS
+                                for j in range(cd_steps):
+                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                    if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
+                                    elif elapsed < 2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
+                                    elif elapsed < 3.0: sec=1; frac=1-((elapsed-2.04)/0.96)
+                                    else: sec=None; frac=0.0
+                                    frames.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,timer=sec,timer_fraction=frac,answer_reveal=False,motion=t,video_title=th_q),cdur/cd_steps))
+                                pop_raw=os.path.join(tmp,f"s2_a_pop_{idx}.m4a")
+                                sfx_cfg=_layout("quiz","2")
+                                if sfx_cfg.get("sfx_enabled",True):
+                                    mix_voice_sfx(ans_raw,pop,pop_raw,0,float(sfx_cfg.get("sfx_volume",0.30)))
+                                else:
+                                    pop_raw=ans_raw
+                                aframes=[]; a_steps=max(3,min(REVEAL_MAX_STEPS,int(adur*3)))
+                                for j in range(a_steps):
+                                    t=j/max(1,a_steps-1); aframes.append((draw_style2_frame(items,idx,theme_q,channel_q,bg_question,answer_reveal=True,motion=1.0+t*.5,video_title=th_q),adur/a_steps))
+                                frames.extend(aframes)
+                                audio=os.path.join(tmp,f"s2_full_{idx}.m4a")
+                                q_with_fx=os.path.join(tmp,f"s2_q_fx_{idx}.m4a")
+                                if sfx_cfg.get("sfx_enabled",True):
+                                    mix_voice_sfx(qa_raw,whoosh,q_with_fx,0,float(sfx_cfg.get("sfx_volume",0.30))*0.75)
+                                else:
+                                    q_with_fx=qa_raw
+                                concat_audio_files([q_with_fx,countdown_sfx,pop_raw],audio)
+                                out=os.path.join(tmp,f"s2_{idx}.mp4")
+                                make_segment(save_frames(frames,tmp,f"s2f_{idx}"),audio,out,tmp,1.0)
+                                clips.append(out)
+                                del frames
+                                gc.collect()
 
-                            final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
-                            # Assemblage final robuste : même moteur PTS/audio que le Vocabulaire Style 2.
-                            # Le stream-copy précédent pouvait produire un AAC final corrompu et
-                            # une durée audio différente de la vidéo après l'ajout musique/motivations.
-                            concat_videos_style2(clips,final,tmp)
-                            vd_final=video_duration(final); ad_final=audio_duration(final)
-                            if vd_final <= 0 or ad_final <= 0 or abs(vd_final-ad_final) > 0.08:
-                                raise RuntimeError(f"Synchronisation finale invalide : vidéo {vd_final:.2f}s / audio {ad_final:.2f}s")
-                            with open(final,"rb") as f: data=f.read()
-                            st.success("✅ Short Quiz terminé avec ta mise en page.")
-                            st.video(data)
-                            st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
-                except Exception as e:
-                    st.error(f"Erreur pendant le montage QuizVideo Pro : {e}")
+                        # Style 2 reste entièrement cumulatif : pas de pages d'explication séparées.
+                        else:
+                            # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
+                            for idx,q in enumerate(st.session_state.q_data):
+                                corr="ABCD".index(q["reponse_correcte"])
+                                bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
+                                qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
+                                q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
+                                qdur=audio_duration(qa_raw)
+                                exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
+                                ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
+                                exp_words=synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
+                                edur=audio_duration(ea_raw)
+                                exp_mix=os.path.join(tmp,f"exp_mix_{idx}.m4a")
+                                sfx_cfg=_layout("quiz","1")
+                                if sfx_cfg.get("sfx_enabled",True):
+                                    mix_voice_sfx(ea_raw,ding,exp_mix,0,float(sfx_cfg.get("sfx_volume",0.30))*2.1)
+                                else:
+                                    exp_mix=ea_raw
+                                q_with_fx=os.path.join(tmp,f"q_fx_{idx}.m4a")
+                                if sfx_cfg.get("sfx_enabled",True):
+                                    mix_voice_sfx(qa_raw,whoosh,q_with_fx,0,float(sfx_cfg.get("sfx_volume",0.30))*0.75)
+                                else:
+                                    q_with_fx=qa_raw
+                                full_audio_raw=os.path.join(tmp,f"question_full_raw_{idx}.m4a")
+                                concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
+                                # Fond musical contrôlé depuis l’Éditeur Studio.
+                                full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
+                                music_enabled=bool(st.session_state.get("q1_bg_music_enabled",True))
+                                music_volume=float(st.session_state.get("q1_bg_music_volume",0.15))
+                                music_style=st.session_state.get("q1_bg_music_style","Suspense léger")
+                                music_source=st.session_state.get("q1_bg_music_source","Musique générée par QuizVideo Pro")
+                                uploaded_music=st.session_state.get("q1_bg_music_upload") if music_source=="Ma propre musique" else None
+                                if music_enabled and music_volume>0:
+                                    if uploaded_music is not None:
+                                        music=prepare_custom_background_music(uploaded_music,audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}")
+                                    else:
+                                        music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style,countdown_start=qdur,countdown_duration=3.12)
+                                    mix_background_music(full_audio_raw,music,full_audio,1.0,music_volume)
+                                else:
+                                    full_audio=full_audio_raw
+                                qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
+                                frames=[(img,dur) for img,dur in qframes]
+                                cdur=3.12; cd_steps=COUNTDOWN_STEPS
+                                for j in range(cd_steps):
+                                    t=j/max(1,cd_steps-1); elapsed=t*cdur
+                                    if elapsed < 1.02: sec=3; frac=1-(elapsed/1.02)
+                                    elif elapsed < 2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
+                                    elif elapsed < 3.0: sec=1; frac=1-((elapsed-2.04)/0.96)
+                                    else: sec=None; frac=0.0
+                                    frames.append((draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,timer=sec,timer_fraction=frac,pulse=0.55+0.45*math.sin(t*math.pi*12),motion=1.0+t*1.2,video_title=th_q),cdur/cd_steps))
+                                ex_mix_words=exp_words
+                                eframes=word_timed_frames(exp_mix,ex_mix_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,prog*3),pulse=0.15*(1-prog),motion=2.0+prog,video_title=th_q,explanation=exp_text,explanation_progress=1.0,explanation_active_word=wi),edur)
+                                frames.extend(eframes)
+                                # Micro-pause de 0,5 s pour laisser assimiler la bonne réponse.
+                                pause_audio=os.path.join(tmp,f"exp_pause_{idx}.m4a")
+                                subprocess.run([get_ffmpeg(),"-y","-i",exp_mix,"-af","apad=pad_dur=0.50","-t",f"{edur+0.50:.3f}","-c:a","aac","-b:a","160k",pause_audio],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+                                if frames:
+                                    frames.append((frames[-1][0],0.50))
+                                exp_mix=pause_audio
+                                concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
+                                out=os.path.join(tmp,f"qfull_{idx}.mp4")
+                                make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
+                                clips.append(out)
+
+                        # Motivation de fin, avant le CTA existant.
+                        if clean_text(mot_end_q):
+                            ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(_motivation_text_clean(mot_end_q),voice_q,ma,tts_rate); md=audio_duration(ma)
+                            if md>0.15:
+                                mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
+                                me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
+                        # CTA très court seulement après le quiz.
+                        if clean_text(outro_q):
+                            oa=os.path.join(tmp,"outro.m4a")
+                            synthesize_audio(outro_q,voice_q,oa,tts_rate)
+                            od=audio_duration(oa)
+                            if od>0.15:
+                                of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
+                                                for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
+                                oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+
+                        final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
+                        # Assemblage final robuste : même moteur PTS/audio que le Vocabulaire Style 2.
+                        # Le stream-copy précédent pouvait produire un AAC final corrompu et
+                        # une durée audio différente de la vidéo après l'ajout musique/motivations.
+                        concat_videos_style2(clips,final,tmp)
+                        vd_final=video_duration(final); ad_final=audio_duration(final)
+                        if vd_final <= 0 or ad_final <= 0 or abs(vd_final-ad_final) > 0.08:
+                            raise RuntimeError(f"Synchronisation finale invalide : vidéo {vd_final:.2f}s / audio {ad_final:.2f}s")
+                        with open(final,"rb") as f: data=f.read()
+                        st.success("✅ Short Quiz terminé avec ta mise en page.")
+                        st.video(data)
+                        st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
+            except Exception as e:
+                st.error(f"Erreur pendant le montage QuizVideo Pro : {e}")
 
 else:
     st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
@@ -3103,63 +3108,8 @@ else:
         else:
             outro_v_sub=""
         st.markdown('</div>',unsafe_allow_html=True)
-    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : mot + voix synchronisés → 3 secondes de réflexion (3 → 2 → 1) + ding → traduction révélée progressivement en même temps que sa voix.")
-    left_v, right_v = st.columns([1.18, 0.82], gap="medium")
-    with left_v:
-        with st.container(border=True):
-            render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
-    vocab_style_id="2" if style_v.startswith("Style 2") else "1"
-    vprefix=_qvp_prefix("vocab", vocab_style_id)
-    bg_mode_v=st.session_state.get(vprefix+"bg_mode", "✨ Automatique")
-    uploaded_bg_v=st.session_state.get(vprefix+"bg_upload")
-    bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
-    bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
-    with right_v:
-        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF — VOCABULAIRE</div><div class="qvp-preview-note">Clique directement sur le mot, la traduction, le minuteur ou le tableau.</div></div></div>', unsafe_allow_html=True)
-        if style_v.startswith("Style 2"):
-            preview_state_v=st.radio("État",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
-        else:
-            preview_state_v=st.radio("État",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
-        selected_v=_qvp_selected_element("vocab",vocab_style_id)
-        try:
-            cfg_v=_layout("vocab",vocab_style_id)
-            sample_bg_v=bg_v if isinstance(bg_v,Image.Image) else selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
-            if style_v.startswith("Style 2"):
-                sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
-                active=0 if preview_state_v=="Ligne 1 + réflexion" else 1 if preview_state_v=="Ligne 2 + réflexion + traduction 1" else 2
-                preview_translation_word = 0 if "traduction" in preview_state_v else -1
-                preview_v=draw_vocab_cumulative_frame(
-                    sample_items,active,theme_v,channel_v,sample_bg_v,
-                    timer=3 if "réflexion" in preview_state_v else None,
-                    timer_fraction=.72,
-                    reveal=("traduction" in preview_state_v),
-                    video_title=th_v,
-                    source_active_word=0 if active >= 0 else -1,
-                    translation_active_word=preview_translation_word
-                )
-            else:
-                sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
-            render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
-            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides.")
-            if not style_v.startswith("Style 2"):
-                selected_v=_qvp_quick_controls("vocab",vocab_style_id,selected_v,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v,prefix_key="quickv")
-            else:
-                st.caption(f"🎯 Élément sélectionné : {selected_v} · les réglages du Style 2 restent dans l'Éditeur Studio.")
-        except Exception as e:
-            st.caption(f"Aperçu indisponible pour le moment : {e}")
-    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
-    av1,av2,av3=st.columns([1,1,1.35])
-    with av1:
-        if st.button("🎲 Nouvelle variation",key="studio_variation_v",use_container_width=True):
-            st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
-    with av2:
-        if st.button("💾 Enregistrer",key="studio_save_v",use_container_width=True):
-            _save_settings(); st.success("✅ Style enregistré.")
-    with av3:
-        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
-        v_generate_btn_clicked = st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_top",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
-        st.markdown('</div>',unsafe_allow_html=True)
-    with st.expander("🎯 CONTENU — Mots / traductions", expanded=False):
+    st.markdown("### 1. CONTENU")
+    with st.expander("🎯 ÉTAPE 1 — CONTENU • Mots / traductions", expanded=not bool(st.session_state.get("v_data"))):
         vb1,vb2=st.columns(2)
         with vb1:
             if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
@@ -3215,184 +3165,243 @@ else:
                         st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
                         st.success("✅ Lot IA restauré, 0 quota consommé.")
                     else: st.info("Aucun lot IA en cache.")
-            if v_generate_btn_clicked:
-                try:
-                    with st.spinner("Création du Short Vocabulaire Pro..."):
-                        with tempfile.TemporaryDirectory() as tmp:
-                            tic,ding,pop,whoosh=make_sfx(tmp); clips=[]; items=st.session_state.v_data
-                            countdown_sfx = make_vocab_style2_countdown_sfx(tic,ding,tmp) if style_v.startswith("Style 2") else make_sfx_countdown(tic,ding,tmp)
-                            for idx,item in enumerate(items):
-                                fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
-                                if style_v.startswith("Style 2"):
-                                    # ==========================================================
-                                    # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
-                                    # État unique par ligne :
-                                    # FR progressive -> FR permanent -> réflexion ->
-                                    # traduction progressive -> FR+TR permanent -> ligne suivante.
-                                    # Aucun état ultérieur ne peut effacer une ligne déjà révélée.
-                                    # Français + voix
-                                    # → réflexion 3-2-1 + tic/tac
-                                    # → ding
-                                    # → traduction + voix
-                                    # → ligne conservée dans l'historique
-                                    # ==========================================================
-                                    sfx_cfg=_layout("vocab","2")
 
-                                    # --- 1. VOIX FRANÇAISE + apparition mot par mot ---
-                                    fwords=word_timed_frames_vocab_style2(
-                                        fa,fw,
-                                        lambda wi,prog: draw_vocab_cumulative_frame(
-                                            items,idx,theme_v,channel_v,bg_v,
-                                            reveal=False,motion=prog,
-                                            video_title=th_v,
-                                            source_active_word=wi
-                                        ),
-                                        fd
-                                    )
+    av1,av2,av3=st.columns([1.0,1.0,1.45],gap="small")
+    with av1:
+        if st.button("💾 Enregistrer les réglages",key="studio_save_unified_v",use_container_width=True):
+            _save_settings(); st.success("✅ Réglages enregistrés.")
+    with av2:
+        if st.button("🎲 Nouvelle variation",key="studio_variation_unified_v",use_container_width=True):
+            st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
+    with av3:
+        st.markdown('<div class="qvp-actionbar-v11"><div class="qvp-action-label">ACTION PRINCIPALE</div>',unsafe_allow_html=True)
+        v_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
+        st.markdown('</div>',unsafe_allow_html=True)
 
-                                    word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(
-                                            fa,pop,word_voice_fx,0,
-                                            float(sfx_cfg.get("sfx_volume",0.30))
-                                        )
-                                    else:
-                                        word_voice_fx=fa
+    st.markdown("### 2. STYLE & APERÇU")
+    st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : mot + voix synchronisés → 3 secondes de réflexion (3 → 2 → 1) + ding → traduction révélée progressivement en même temps que sa voix.")
+    left_v, right_v = st.columns([1.18, 0.82], gap="medium")
+    with left_v:
+        with st.container(border=True):
+            render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
+    vocab_style_id="2" if style_v.startswith("Style 2") else "1"
+    vprefix=_qvp_prefix("vocab", vocab_style_id)
+    bg_mode_v=st.session_state.get(vprefix+"bg_mode", "✨ Automatique")
+    uploaded_bg_v=st.session_state.get(vprefix+"bg_upload")
+    bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
+    bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
+    with right_v:
+        st.markdown('<div class="qvp-preview-anchor"></div><div class="qvp-preview-sticky"><div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF — VOCABULAIRE</div><div class="qvp-preview-note">Clique directement sur le mot, la traduction, le minuteur ou le tableau.</div></div></div>', unsafe_allow_html=True)
+        if style_v.startswith("Style 2"):
+            preview_state_v=st.radio("État",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
+        else:
+            preview_state_v=st.radio("État",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
+        selected_v=_qvp_selected_element("vocab",vocab_style_id)
+        try:
+            cfg_v=_layout("vocab",vocab_style_id)
+            sample_bg_v=bg_v if isinstance(bg_v,Image.Image) else selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
+            if style_v.startswith("Style 2"):
+                sample_items=[{"fr":"Bonjour","trad":"Hello"},{"fr":"Merci","trad":"Thank you"},{"fr":"Voyage","trad":"Travel"}]
+                active=0 if preview_state_v=="Ligne 1 + réflexion" else 1 if preview_state_v=="Ligne 2 + réflexion + traduction 1" else 2
+                preview_translation_word = 0 if "traduction" in preview_state_v else -1
+                preview_v=draw_vocab_cumulative_frame(
+                    sample_items,active,theme_v,channel_v,sample_bg_v,
+                    timer=3 if "réflexion" in preview_state_v else None,
+                    timer_fraction=.72,
+                    reveal=("traduction" in preview_state_v),
+                    video_title=th_v,
+                    source_active_word=0 if active >= 0 else -1,
+                    translation_active_word=preview_translation_word
+                )
+            else:
+                sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
+            render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
+            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides.")
+            if not style_v.startswith("Style 2"):
+                selected_v=_qvp_quick_controls("vocab",vocab_style_id,selected_v,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v,prefix_key="quickv")
+            else:
+                st.caption(f"🎯 Élément sélectionné : {selected_v} · les réglages du Style 2 restent dans l'Éditeur Studio.")
+        except Exception as e:
+            st.caption(f"Aperçu indisponible pour le moment : {e}")
+    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
+    if v_generate_btn_clicked and st.session_state.get("v_data"):
+        try:
+            with st.spinner("Création du Short Vocabulaire Pro..."):
+                with tempfile.TemporaryDirectory() as tmp:
+                    tic,ding,pop,whoosh=make_sfx(tmp); clips=[]; items=st.session_state.v_data
+                    countdown_sfx = make_vocab_style2_countdown_sfx(tic,ding,tmp) if style_v.startswith("Style 2") else make_sfx_countdown(tic,ding,tmp)
+                    for idx,item in enumerate(items):
+                        fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
+                        if style_v.startswith("Style 2"):
+                            # ==========================================================
+                            # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
+                            # État unique par ligne :
+                            # FR progressive -> FR permanent -> réflexion ->
+                            # traduction progressive -> FR+TR permanent -> ligne suivante.
+                            # Aucun état ultérieur ne peut effacer une ligne déjà révélée.
+                            # Français + voix
+                            # → réflexion 3-2-1 + tic/tac
+                            # → ding
+                            # → traduction + voix
+                            # → ligne conservée dans l'historique
+                            # ==========================================================
+                            sfx_cfg=_layout("vocab","2")
 
-                                    fr_clip=os.path.join(tmp,f"fr_{idx}_seg.mp4")
-                                    make_vocab_style2_segment(
-                                        save_frames(fwords,tmp,f"vf_{idx}"),
-                                        word_voice_fx,fr_clip,tmp,1.0
-                                    )
+                            # --- 1. VOIX FRANÇAISE + apparition mot par mot ---
+                            fwords=word_timed_frames_vocab_style2(
+                                fa,fw,
+                                lambda wi,prog: draw_vocab_cumulative_frame(
+                                    items,idx,theme_v,channel_v,bg_v,
+                                    reveal=False,motion=prog,
+                                    video_title=th_v,
+                                    source_active_word=wi
+                                ),
+                                fd
+                            )
 
-                                    # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
-                                    # IMPORTANT : le français doit rester affiché pendant toute
-                                    # la réflexion. On verrouille donc la dernière parole FR
-                                    # comme état permanent de cette ligne.
-                                    fr_last_word = max(0, len(fw) - 1)
-                                    reflection_duration=3.55
-                                    cframes=[]
-                                    steps=36
+                            word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True):
+                                mix_voice_sfx(
+                                    fa,pop,word_voice_fx,0,
+                                    float(sfx_cfg.get("sfx_volume",0.30))
+                                )
+                            else:
+                                word_voice_fx=fa
 
-                                    for j in range(steps):
-                                        elapsed=reflection_duration*j/steps
-                                        if elapsed<1.05:
-                                            sec=3
-                                            frac=1-(elapsed/1.05)
-                                        elif elapsed<2.10:
-                                            sec=2
-                                            frac=1-((elapsed-1.05)/1.05)
-                                        elif elapsed<3.15:
-                                            sec=1
-                                            frac=1-((elapsed-2.10)/1.05)
-                                        else:
-                                            sec=None
-                                            frac=0.0
+                            fr_clip=os.path.join(tmp,f"fr_{idx}_seg.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(fwords,tmp,f"vf_{idx}"),
+                                word_voice_fx,fr_clip,tmp,1.0
+                            )
 
-                                        cframes.append((
-                                            draw_vocab_cumulative_frame(
-                                                items,idx,theme_v,channel_v,bg_v,
-                                                timer=sec,
-                                                timer_fraction=max(0.0,frac),
-                                                reveal=False,
-                                                motion=elapsed/reflection_duration,
-                                                video_title=th_v,
-                                                # Le mot français reste visible pendant 3-2-1.
-                                                source_active_word=fr_last_word
-                                            ),
-                                            reflection_duration/steps
-                                        ))
+                            # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
+                            # IMPORTANT : le français doit rester affiché pendant toute
+                            # la réflexion. On verrouille donc la dernière parole FR
+                            # comme état permanent de cette ligne.
+                            fr_last_word = max(0, len(fw) - 1)
+                            reflection_duration=3.55
+                            cframes=[]
+                            steps=36
 
-                                    count_clip=os.path.join(tmp,f"count_{idx}.mp4")
-                                    make_vocab_style2_segment(
-                                        save_frames(cframes,tmp,f"vc_{idx}"),
-                                        countdown_sfx,count_clip,tmp,1.0
-                                    )
-
-                                    # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
-                                    ta=os.path.join(tmp,f"tr_{idx}.mp3")
-                                    tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
-                                    td=audio_duration(ta)
-
-                                    tf=word_timed_frames_vocab_style2(
-                                        ta,tw,
-                                        lambda wi,prog: draw_vocab_cumulative_frame(
-                                            items,idx,theme_v,channel_v,bg_v,
-                                            reveal=True,motion=prog,
-                                            video_title=th_v,
-                                            # Le français reste définitivement visible
-                                            # pendant que la traduction est prononcée.
-                                            source_active_word=fr_last_word,
-                                            translation_active_word=wi
-                                        ),
-                                        td
-                                    )
-
-                                    tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True):
-                                        mix_voice_sfx(
-                                            ta,pop,tr_fx,0,
-                                            float(sfx_cfg.get("sfx_volume",0.30))
-                                        )
-                                    else:
-                                        tr_fx=ta
-
-                                    tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
-                                    make_vocab_style2_segment(
-                                        save_frames(tf,tmp,f"trf_{idx}"),
-                                        tr_fx,tr_clip,tmp,1.0
-                                    )
-
-                                    # On regroupe immédiatement les 3 phases du mot.
-                                    # Cela empêche les petits écarts de timebase de se
-                                    # cumuler sur 15 mots.
-                                    item_clip=os.path.join(tmp,f"item_{idx}.mp4")
-                                    concat_videos_style2(
-                                        [fr_clip,count_clip,tr_clip],
-                                        item_clip,tmp
-                                    )
-                                    clips.append(item_clip)
-
+                            for j in range(steps):
+                                elapsed=reflection_duration*j/steps
+                                if elapsed<1.05:
+                                    sec=3
+                                    frac=1-(elapsed/1.05)
+                                elif elapsed<2.10:
+                                    sec=2
+                                    frac=1-((elapsed-1.05)/1.05)
+                                elif elapsed<3.15:
+                                    sec=1
+                                    frac=1-((elapsed-2.10)/1.05)
                                 else:
-                                    fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
-                                    word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
-                                    sfx_cfg=_layout("vocab","1")
-                                    if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                    else: word_voice_fx=fa
-                                    fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
-                                    cframes=[]
-                                    for j in range(COUNTDOWN_STEPS):
-                                        t=j/max(1,31); elapsed=t*3.12
-                                        if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
-                                        elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                        elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
-                                        else: sec=None; frac=0.0
-                                        cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,frac,1.0),3.12/32))
-                                    co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
-                                    ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                    tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0,translation_active_word=wi),td)
-                                    tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                                    if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                    else: tr_fx=ta
-                                    tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
-                                gc.collect()
-                            oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                            if style_v.startswith("Style 2"):
-                                of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                                    sec=None
+                                    frac=0.0
+
+                                cframes.append((
+                                    draw_vocab_cumulative_frame(
+                                        items,idx,theme_v,channel_v,bg_v,
+                                        timer=sec,
+                                        timer_fraction=max(0.0,frac),
+                                        reveal=False,
+                                        motion=elapsed/reflection_duration,
+                                        video_title=th_v,
+                                        # Le mot français reste visible pendant 3-2-1.
+                                        source_active_word=fr_last_word
+                                    ),
+                                    reflection_duration/steps
+                                ))
+
+                            count_clip=os.path.join(tmp,f"count_{idx}.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(cframes,tmp,f"vc_{idx}"),
+                                countdown_sfx,count_clip,tmp,1.0
+                            )
+
+                            # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
+                            ta=os.path.join(tmp,f"tr_{idx}.mp3")
+                            tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
+                            td=audio_duration(ta)
+
+                            tf=word_timed_frames_vocab_style2(
+                                ta,tw,
+                                lambda wi,prog: draw_vocab_cumulative_frame(
+                                    items,idx,theme_v,channel_v,bg_v,
+                                    reveal=True,motion=prog,
+                                    video_title=th_v,
+                                    # Le français reste définitivement visible
+                                    # pendant que la traduction est prononcée.
+                                    source_active_word=fr_last_word,
+                                    translation_active_word=wi
+                                ),
+                                td
+                            )
+
+                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True):
+                                mix_voice_sfx(
+                                    ta,pop,tr_fx,0,
+                                    float(sfx_cfg.get("sfx_volume",0.30))
+                                )
                             else:
-                                of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
-                            oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                            final=os.path.join(tmp,"vocabulaire_pro.mp4")
-                            if style_v.startswith("Style 2"):
-                                concat_videos_style2(clips,final,tmp)
-                            else:
-                                concat_videos(clips,final,tmp)
-                            with open(final,"rb") as f: data=f.read()
-                            st.success("✅ Short Vocabulaire Pro terminé.")
-                            st.video(data)
-                            st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
-                except MemoryError:
-                    gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
-                except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+                                tr_fx=ta
+
+                            tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(tf,tmp,f"trf_{idx}"),
+                                tr_fx,tr_clip,tmp,1.0
+                            )
+
+                            # On regroupe immédiatement les 3 phases du mot.
+                            # Cela empêche les petits écarts de timebase de se
+                            # cumuler sur 15 mots.
+                            item_clip=os.path.join(tmp,f"item_{idx}.mp4")
+                            concat_videos_style2(
+                                [fr_clip,count_clip,tr_clip],
+                                item_clip,tmp
+                            )
+                            clips.append(item_clip)
+
+                        else:
+                            fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
+                            word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                            sfx_cfg=_layout("vocab","1")
+                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
+                            else: word_voice_fx=fa
+                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
+                            cframes=[]
+                            for j in range(COUNTDOWN_STEPS):
+                                t=j/max(1,31); elapsed=t*3.12
+                                if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
+                                elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
+                                elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
+                                else: sec=None; frac=0.0
+                                cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,frac,1.0),3.12/32))
+                            co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
+                            ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                            tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0,translation_active_word=wi),td)
+                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
+                            else: tr_fx=ta
+                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
+                        gc.collect()
+                    oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
+                    if style_v.startswith("Style 2"):
+                        of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                    else:
+                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                    oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                    final=os.path.join(tmp,"vocabulaire_pro.mp4")
+                    if style_v.startswith("Style 2"):
+                        concat_videos_style2(clips,final,tmp)
+                    else:
+                        concat_videos(clips,final,tmp)
+                    with open(final,"rb") as f: data=f.read()
+                    st.success("✅ Short Vocabulaire Pro terminé.")
+                    st.video(data)
+                    st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+        except MemoryError:
+            gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
+        except Exception as e: st.error(f"Erreur pendant le montage : {e}")
 
 st.markdown('</div>',unsafe_allow_html=True)
