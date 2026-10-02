@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
 # QUIZVIDEO PRO — STUDIO
-# V17 — Intro/outro motivation preserved; Style 1 validated quiz pipeline restored
+# V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 
@@ -234,6 +234,15 @@ QUIZ_LANGUAGES = {
     **VOICES_MAP,
 }
 QUIZ_LANGUAGE_LABELS = {"Français":"français","Anglais":"anglais","Espagnol":"espagnol","Arabe":"arabe","Allemand":"allemand","Italien":"italien"}
+
+QUIZ_MOTIVATION_DEFAULTS = {
+    "Français": {"start":"Prêt ? C'est parti !", "end":"Bravo ! À bientôt pour un nouveau quiz !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
+    "Anglais": {"start":"Ready? Let's go!", "end":"Great job! See you in the next quiz!", "start_label":"READY?", "mid_label":"KEEP GOING", "end_label":"QUIZ COMPLETE", "start_sub":"Test your knowledge!", "end_sub":"See you in the next challenge."},
+    "Espagnol": {"start":"¿Listo? ¡Empezamos!", "end":"¡Bravo! ¡Hasta el próximo quiz!", "start_label":"¿LISTO?", "mid_label":"¡SIGUE!", "end_label":"QUIZ TERMINADO", "start_sub":"¡Pon a prueba tus conocimientos!", "end_sub":"Hasta el próximo desafío."},
+    "Arabe": {"start":"هل أنت مستعد؟ لنبدأ!", "end":"أحسنت! نلتقي في الاختبار القادم!", "start_label":"مستعد؟", "mid_label":"تابع!", "end_label":"انتهى الاختبار", "start_sub":"اختبر معلوماتك!", "end_sub":"إلى التحدي القادم."},
+    "Allemand": {"start":"Bereit? Los geht's!", "end":"Super! Bis zum nächsten Quiz!", "start_label":"BEREIT?", "mid_label":"WEITER!", "end_label":"QUIZ FERTIG", "start_sub":"Teste dein Wissen!", "end_sub":"Bis zur nächsten Herausforderung."},
+    "Italien": {"start":"Pronto? Si parte!", "end":"Bravo! Ci vediamo al prossimo quiz!", "start_label":"PRONTO?", "mid_label":"CONTINUA!", "end_label":"QUIZ COMPLETATO", "start_sub":"Metti alla prova le tue conoscenze!", "end_sub":"Alla prossima sfida."},
+}
 
 # ------------------------- Helpers --------------------------
 def get_ffmpeg():
@@ -1337,11 +1346,24 @@ def make_sfx(tmpdir):
     return tic,ding,pop,whoosh
 
 def make_sfx_countdown(tic,ding,tmpdir):
-    # 3 tics synchronisés avec 3 -> 2 -> 1, puis un ding exactement à la fin.
+    # 3 -> 2 -> 1 avec tic/tac plus présent + pulsation légère, puis ding net.
+    # Le dernier son reste réservé à la révélation / fin du chrono.
     out=os.path.join(tmpdir,"countdown.wav")
-    cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,
+    rate=44100
+    pulse=os.path.join(tmpdir,"countdown_pulse.wav")
+    n=int(rate*3.12)
+    samples=[]
+    for i in range(n):
+        t=i/rate
+        # Trois battements courts, légèrement plus intenses à l'approche de la fin.
+        beat=min([abs(t-x) for x in (0.48,1.48,2.48)])
+        env=math.exp(-beat/0.055)
+        value=(6500+2500*(t/3.12))*math.sin(2*math.pi*72*t)*env
+        samples.append(value)
+    _write_wav_mono(pulse,samples,rate)
+    cmd=[get_ffmpeg(),"-y","-i",tic,"-i",ding,"-i",pulse,
          "-filter_complex",
-         "[0:a]adelay=0|0[a0];[0:a]adelay=1000|1000[a1];[0:a]adelay=2000|2000[a2];[1:a]adelay=3000|3000,volume=0.72[ad];[a0][a1][a2][ad]amix=inputs=4:duration=longest,apad=pad_dur=0.12,atrim=duration=3.12",
+         "[0:a]adelay=0|0,volume=1.15[a0];[0:a]adelay=1000|1000,volume=1.22[a1];[0:a]adelay=2000|2000,volume=1.30[a2];[1:a]adelay=3000|3000,volume=0.82[ad];[2:a]volume=0.55[p];[a0][a1][a2][ad][p]amix=inputs=5:duration=longest,apad=pad_dur=0.12,atrim=duration=3.12",
          "-c:a","pcm_s16le",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True); return out
 
@@ -1407,7 +1429,7 @@ def make_suspense_music(duration,tmpdir,name,volume=0.08):
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     return out
 
-def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense léger"):
+def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense léger",countdown_start=None,countdown_duration=3.12):
     """Fond musical local audible : harmonie + petite mélodie + pulsation douce."""
     duration=max(0.4,float(duration)); out=os.path.join(tmpdir,f"{name}.wav")
     gain=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger"); rate=44100
@@ -1420,7 +1442,11 @@ def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense l
         harmonic=0.44*math.sin(2*math.pi*root*t)+0.25*math.sin(2*math.pi*third*t)+0.16*math.sin(2*math.pi*fifth*t)+0.07*math.sin(2*math.pi*root*2*t)
         melodic=0.24*math.exp(-3.0*phase)*math.sin(2*math.pi*melody[step]*t)
         pulse=0.80+0.20*math.sin(2*math.pi*beat_speed*t)
-        value=(harmonic*pulse+melodic)*0.22*gain
+        tension=1.0
+        if countdown_start is not None and float(countdown_start) <= t <= float(countdown_start)+float(countdown_duration):
+            cp=(t-float(countdown_start))/max(0.1,float(countdown_duration))
+            tension=1.0+0.28*cp+0.10*math.sin(2*math.pi*3*cp)
+        value=(harmonic*pulse+melodic)*0.22*gain*tension
         if i<fi: value*=i/max(1,fi)
         if i>=n-fo: value*=max(0,(n-i)/max(1,fo))
         samples.append(int(max(-32767,min(32767,value*32767))))
@@ -2066,7 +2092,7 @@ def _motivation_icon(draw, theme, kind="start", cx=540, cy=455, size=78, phase=0
             draw.line((sx-10,sy,sx+10,sy),fill=a,width=4)
             draw.line((sx,sy-10,sx,sy+10),fill=a,width=4)
 
-def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phase=0.0,kind="mid"):
+def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phase=0.0,kind="mid",language="Français"):
     """Écran motivation professionnel : intro forte, pause milieu ou fin."""
     theme=THEMES[theme_name]
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.25+0.08*math.sin(float(phase)*math.pi*2))
@@ -2092,8 +2118,9 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
     icon_kind="start" if kind=="start" else "end" if kind=="end" else "mid"
     _motivation_icon(draw,theme,icon_kind,540,485,78,phase)
 
-    labels={"start":"READY?","mid":"KEEP GOING","end":"QUIZ COMPLETE"}
-    label=labels.get(kind,"KEEP GOING")
+    lang_defaults=QUIZ_MOTIVATION_DEFAULTS.get(str(language),QUIZ_MOTIVATION_DEFAULTS["Français"])
+    labels={"start":lang_defaults["start_label"],"mid":lang_defaults["mid_label"],"end":lang_defaults["end_label"]}
+    label=labels.get(kind,lang_defaults["mid_label"])
     lf=get_font(34)
     lw=text_width(draw,label,lf)
     draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
@@ -2110,11 +2137,11 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
         y+=92
 
     if kind=="start":
-        sub="Can you get them all?"
+        sub=lang_defaults["start_sub"]
     elif kind=="end":
-        sub="See you in the next challenge."
+        sub=lang_defaults["end_sub"]
     else:
-        sub="You're doing great — keep going!"
+        sub=lang_defaults["start_sub"]
     sf=get_font(29)
     sw=text_width(draw,sub,sf)
     draw.text(((WIDTH-sw)/2,1110),sub,font=sf,fill=(220,228,242))
@@ -2720,9 +2747,10 @@ if nav=="quiz":
         voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
         st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
         st.markdown("**💬 Messages de motivation**")
-        mot_start_q=st.text_input("Avant le quiz","🔥 Ready? Let’s go!",key="mot_start_q")
-        mot_mid_q=st.text_input("Au milieu","👏 Bravo, continue comme ça !",key="mot_mid_q")
-        mot_end_q=st.text_input("À la fin","🏆 Bravo ! À bientôt pour un nouveau quiz !",key="mot_end_q")
+        mot_defaults=QUIZ_MOTIVATION_DEFAULTS.get(quiz_language,QUIZ_MOTIVATION_DEFAULTS["Français"])
+        mot_start_q=st.text_input("Avant le quiz",mot_defaults["start"],key="mot_start_q")
+        mot_end_q=st.text_input("À la fin",mot_defaults["end"],key="mot_end_q")
+        st.caption("Aucune carte intermédiaire : les questions s'enchaînent sans interruption.")
         st.markdown('</div>',unsafe_allow_html=True)
     with c_style:
         st.markdown('<div class="qvp-section-card"><div class="qvp-section-title">STYLE VIDÉO</div>',unsafe_allow_html=True)
@@ -2901,9 +2929,9 @@ if nav=="quiz":
 
                             # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
                             if clean_text(mot_start_q):
-                                ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(mot_start_q,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(_motivation_text_clean(mot_start_q),voice_q,ma,tts_rate); md=audio_duration(ma)
                                 if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                                    mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
                                     mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
                             if style_q_full.startswith("Style 2"):
@@ -2990,7 +3018,7 @@ if nav=="quiz":
                                         if uploaded_music is not None:
                                             music=prepare_custom_background_music(uploaded_music,audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}")
                                         else:
-                                            music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style)
+                                            music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style,countdown_start=qdur,countdown_duration=3.12)
                                         mix_background_music(full_audio_raw,music,full_audio,1.0,music_volume)
                                     else:
                                         full_audio=full_audio_raw
@@ -3011,18 +3039,11 @@ if nav=="quiz":
                                     make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                                     clips.append(out)
 
-                            # Motivation au milieu, insérée entre les deux moitiés du quiz.
-                            if clean_text(mot_mid_q) and len(st.session_state.q_data)>=2:
-                                mid_pos=1+((len(st.session_state.q_data)-1)//2)
-                                ma=os.path.join(tmp,"mot_mid.m4a"); synthesize_audio(mot_mid_q,voice_q,ma,tts_rate); md=audio_duration(ma)
-                                if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_mid_q,theme_q,channel_q,bg_q,p,kind="mid"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_mid")
-                                    mm=os.path.join(tmp,"mot_mid.mp4"); make_segment(mf,ma,mm,tmp); clips.insert(min(mid_pos,len(clips)),mm)
                             # Motivation de fin, avant le CTA existant.
                             if clean_text(mot_end_q):
-                                ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(mot_end_q,voice_q,ma,tts_rate); md=audio_duration(ma)
+                                ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(_motivation_text_clean(mot_end_q),voice_q,ma,tts_rate); md=audio_duration(ma)
                                 if md>0.15:
-                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end"),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
+                                    mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
                                     me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
                             # CTA très court seulement après le quiz.
                             if clean_text(outro_q):
