@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # ============================================================
 # QUIZVIDEO PRO — STUDIO
 # V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
+# V23 — Stabilisation interface : colonne droite sticky, aperçu live, génération pro. Aucune fonctionnalité vidéo supprimée.
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 
@@ -216,14 +217,27 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-settings-card .qvp-card-sub{font-size:.72rem;color:#64748b;margin:-5px 0 9px;}
 .qvp-settings-card .qvp-section-title{margin-bottom:8px!important;}
 .qvp-settings-card .qvp-content-box{margin-top:0!important;}
-.qvp-preview-column{position:sticky;top:10px;align-self:flex-start;z-index:30;}
+.qvp-preview-column{position:sticky;top:1rem;align-self:flex-start;z-index:30;}
 .qvp-preview-column > div{width:100%;}
+/* V23 — la colonne entière de droite reste visible pendant le défilement. */
+[data-testid="column"]:has(.qvp-preview-anchor){
+  position:sticky!important;
+  top:1rem!important;
+  align-self:flex-start!important;
+  max-height:calc(100vh - 2rem)!important;
+  overflow-y:auto!important;
+  overflow-x:visible!important;
+  scrollbar-gutter:stable;
+  z-index:40!important;
+}
 .qvp-preview-column .qvp-preview-panel{margin-bottom:8px!important;}
 .qvp-preview-column .qvp-preview-stage{padding-top:4px!important;}
 .qvp-preview-column .qvp-selected-card{margin-top:6px!important;}
 .qvp-preview-column .qvp-actionbar-v11{position:static!important;margin-top:9px!important;}
 .qvp-preview-column .qvp-secondary-actions{margin-top:7px;}
-.qvp-preview-column button[kind="primary"]{min-height:46px!important;font-size:.94rem!important;box-shadow:0 10px 24px rgba(91,73,190,.18)!important;}
+.qvp-preview-column button[kind="primary"]{min-height:48px!important;font-size:.96rem!important;box-shadow:0 10px 24px rgba(91,73,190,.18)!important;}
+/* V23 — le bouton principal reste clairement identifiable. */
+.qvp-preview-column button[kind="primary"]{background:linear-gradient(135deg,#6d4aff,#3b82f6)!important;color:#fff!important;border-color:#5b45d6!important;}
 .qvp-main-grid [data-testid="stHorizontalBlock"]{align-items:flex-start!important;}
 .qvp-main-grid{margin-top:4px!important;}
 .qvp-main-grid .qvp-editor-wrap{margin-bottom:0!important;}
@@ -231,54 +245,7 @@ button[kind="primary"]{font-weight:850!important}
 @media (max-width: 900px){
   .block-container{padding-left:.65rem!important;padding-right:.65rem!important;}
   .qvp-preview-column{position:static!important;}
-}
-
-/* V23 — Studio compact : 60/40 réel, densité élevée, moins de blanc */
-.block-container{max-width:1800px!important;padding:0.35rem 1rem 0.55rem!important;}
-.qvp-studio-shell{max-width:none!important;}
-.qvp-studio-header{padding:7px 12px!important;margin:0 0 5px!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(15,23,42,.05)!important;}
-.qvp-studio-header b{font-size:.96rem!important;}
-.qvp-studio-header span{padding:4px 9px!important;font-size:.7rem!important;}
-.qvp-studio-header small{font-size:.66rem!important;}
-.qvp-settings-card{padding:8px 10px!important;margin:0 0 7px!important;border-radius:12px!important;box-shadow:0 3px 12px rgba(15,23,42,.045)!important;}
-.qvp-settings-card .qvp-card-heading{font-size:.77rem!important;margin:0 0 5px!important;}
-.qvp-settings-card .qvp-card-sub{font-size:.66rem!important;margin:-2px 0 5px!important;}
-.qvp-settings-card label{font-size:.72rem!important;}
-.qvp-settings-card [data-testid="stTextInput"],.qvp-settings-card [data-testid="stSelectbox"],.qvp-settings-card [data-testid="stNumberInput"],.qvp-settings-card [data-testid="stTextArea"]{margin-bottom:-2px!important;}
-.qvp-settings-card [data-testid="stHorizontalBlock"]{gap:.32rem!important;margin-bottom:0!important;}
-.qvp-settings-card [data-testid="stVerticalBlock"]{gap:.3rem!important;}
-.qvp-settings-card .stCaption{font-size:.62rem!important;margin:0!important;}
-.qvp-settings-card [data-testid="stExpander"]{border-radius:9px!important;margin:2px 0!important;}
-.qvp-settings-card [data-testid="stExpander"] summary{padding:6px 9px!important;font-size:.74rem!important;}
-.qvp-settings-card [data-testid="stButton"] button{min-height:2.15rem!important;padding:.25rem .55rem!important;font-size:.73rem!important;border-radius:9px!important;}
-.qvp-settings-card [data-testid="stRadio"]{margin-bottom:0!important;}
-.qvp-settings-card [data-testid="stSlider"]{padding-top:0!important;padding-bottom:0!important;}
-.qvp-settings-card textarea{min-height:55px!important;}
-.qvp-main-layout{gap:12px!important;}
-.qvp-preview-column{top:7px!important;}
-.qvp-preview-panel{padding:7px 9px!important;border-radius:13px!important;box-shadow:0 8px 22px rgba(15,23,42,.09)!important;}
-.qvp-preview-title{font-size:.86rem!important;margin-bottom:1px!important;}
-.qvp-preview-note{font-size:.62rem!important;margin-bottom:2px!important;}
-.qvp-preview-stage{padding:2px 0 0!important;margin-bottom:3px!important;}
-.qvp-preview-stage [data-testid="stImage"],.qvp-preview-stage img{max-width:315px!important;}
-.qvp-interactive-note{font-size:.61rem!important;margin:0 0 4px!important;}
-.qvp-selected-card{padding:5px 7px!important;margin:3px 0 5px!important;}
-.qvp-selected-title{font-size:.64rem!important;margin-bottom:3px!important;}
-.qvp-movegrid [data-testid="stButton"] button{min-height:27px!important;padding:1px 3px!important;font-size:.68rem!important;}
-.qvp-actionbar-v11{margin-top:4px!important;padding:5px!important;border-radius:11px!important;}
-.qvp-actionbar-v11 button{min-height:37px!important;font-size:.78rem!important;}
-.qvp-action-label{font-size:.61rem!important;}
-/* Les contrôles de l'éditeur Studio restent complets mais occupent moins de hauteur. */
-.qvp-editor-wrap{padding:5px 7px!important;border-radius:11px!important;}
-.qvp-editor-title{font-size:.86rem!important;margin:1px 0 4px!important;}
-.qvp-editor-subtitle{font-size:.62rem!important;margin:-2px 0 4px!important;}
-.qvp-editor-wrap [data-testid="stTabs"] button{font-size:.68rem!important;min-height:29px!important;padding:3px 6px!important;}
-.qvp-editor-wrap [data-testid="stTabs"] [role="tablist"]{gap:2px!important;}
-@media (min-width:1100px){
-  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor){gap:12px!important;}
-}
-@media (max-width:900px){
-  .qvp-preview-column{position:relative!important;top:auto!important;}
+  [data-testid="column"]:has(.qvp-preview-anchor){position:static!important;max-height:none!important;overflow:visible!important;}
 }
 
 </style>
@@ -2807,7 +2774,6 @@ def render_layout_editor(module, style="1"):
     _save_settings()
 
 
-
 nav=st.session_state.get("module_nav","quiz")
 n1,n2=st.columns(2,gap="small")
 with n1:
@@ -2846,7 +2812,7 @@ if nav=="quiz":
             st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 Messages de motivation</div><div class="qvp-card-sub">Avant et fin restent éditables sans interrompre le rythme du quiz.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 2. Messages de motivation</div><div class="qvp-card-sub">Les messages existants restent éditables ici, sans carte intermédiaire supplémentaire.</div>',unsafe_allow_html=True)
         mot_defaults=QUIZ_MOTIVATION_DEFAULTS.get(quiz_language,QUIZ_MOTIVATION_DEFAULTS["Français"])
         mm1,mm2=st.columns(2,gap="medium")
         with mm1:
@@ -2856,7 +2822,7 @@ if nav=="quiz":
         st.caption("Aucune carte intermédiaire : les questions s'enchaînent sans interruption.")
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 2. CONTENU — Questions / réponses</div>',unsafe_allow_html=True)
+        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Questions / réponses</div>',unsafe_allow_html=True)
         with st.expander("Source, génération et édition des questions", expanded=not bool(st.session_state.get("q_data"))):
             mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
             if mode_q=="🤖 IA Gemini":
@@ -2958,7 +2924,7 @@ if nav=="quiz":
                         else: st.error("Aucune question valide à enregistrer.")
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎨 3. Éditeur Studio — Style V14.0</div><div class="qvp-card-sub">Tous les onglets et réglages existants sont conservés.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎨 4. Éditeur Studio — Style V14.0</div><div class="qvp-card-sub">Tous les onglets et réglages existants sont conservés.</div>',unsafe_allow_html=True)
         style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
         st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
         render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
@@ -2973,7 +2939,7 @@ if nav=="quiz":
 
     with q_main_right:
         st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
-        st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">Clique directement sur une zone de la vidéo pour la sélectionner.</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Aperçu + contrôles + génération restent visibles pendant le défilement. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
         if style_q_full.startswith("Style 2"):
             preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
