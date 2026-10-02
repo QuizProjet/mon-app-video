@@ -25,7 +25,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
 # V23 — Stabilisation interface : colonne droite sticky, aperçu live, génération pro. Aucune fonctionnalité vidéo supprimée.
 # ============================================================
-st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="SuspenseLingo Studio", page_icon="🎬", layout="wide")
 
 st.markdown("""
 <style>
@@ -242,10 +242,52 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-main-grid{margin-top:4px!important;}
 .qvp-main-grid .qvp-editor-wrap{margin-bottom:0!important;}
 .qvp-main-grid .qvp-settings-card:last-child{margin-bottom:0!important;}
+
+/* V24 — contraste + hiérarchie + aperçu droit réellement consultable */
+.qvp-studio-header{
+  background:linear-gradient(135deg,#0b1220,#111c31)!important;
+  border:1px solid #33445f!important;
+  color:#f8fafc!important;
+  box-shadow:0 10px 26px rgba(2,6,23,.20)!important;
+}
+.qvp-studio-header b{color:#ffffff!important;font-weight:900!important;letter-spacing:.02em!important;}
+.qvp-studio-header span{background:#1b2b46!important;border:1px solid #4b6282!important;color:#f8fafc!important;font-weight:850!important;}
+.qvp-studio-header small{color:#b9c7da!important;}
+.qvp-settings-card{border-color:#b8c8dc!important;background:linear-gradient(180deg,#ffffff,#f4f7fb)!important;box-shadow:0 7px 22px rgba(15,23,42,.075)!important;}
+.qvp-settings-card .qvp-card-heading{color:#0b1220!important;}
+.qvp-settings-card .qvp-card-sub{color:#475569!important;}
+.qvp-editor-wrap{border:1px solid #aebfd5!important;background:#fbfdff!important;box-shadow:0 8px 24px rgba(15,23,42,.08)!important;}
+.qvp-editor-title{color:#08111f!important;font-size:1.12rem!important;font-weight:950!important;letter-spacing:.02em!important;}
+.qvp-editor-subtitle{color:#475569!important;}
+.qvp-editor-wrap [data-testid="stTabs"] button{color:#25364d!important;border:1px solid transparent!important;font-weight:800!important;}
+.qvp-editor-wrap [data-testid="stTabs"] [aria-selected="true"]{background:#17263d!important;color:#ffffff!important;border-color:#3f5878!important;}
+.qvp-editor-wrap [data-testid="stTabs"] button:hover{background:#e6edf6!important;color:#0b1220!important;}
+.qvp-editor-wrap label{color:#17263d!important;}
+.qvp-preview-panel{border:1px solid #aebfd5!important;background:linear-gradient(180deg,#f8fbff,#eef3f9)!important;}
+.qvp-preview-title{color:#08111f!important;font-weight:950!important;}
+.qvp-preview-note{color:#475569!important;}
+.qvp-preview-column{min-width:0!important;}
+[data-testid="column"]:has(.qvp-preview-anchor){
+  height:calc(100vh - 2rem)!important;
+  max-height:calc(100vh - 2rem)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:#64748b #e2e8f0!important;
+}
+[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar{width:9px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar-track{background:#e2e8f0!important;border-radius:10px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar-thumb{background:#64748b!important;border-radius:10px!important;border:2px solid #e2e8f0!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) .qvp-preview-panel{position:relative!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) .qvp-click-preview{border:2px solid #8da2bd!important;box-shadow:0 18px 38px rgba(2,6,23,.22)!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) button[kind="primary"]{background:linear-gradient(135deg,#4f46e5,#2563eb)!important;border-color:#3730a3!important;box-shadow:0 12px 28px rgba(37,99,235,.28)!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) button[kind="primary"]:hover{filter:brightness(1.08)!important;}
+
 @media (max-width: 900px){
   .block-container{padding-left:.65rem!important;padding-right:.65rem!important;}
   .qvp-preview-column{position:static!important;}
-  [data-testid="column"]:has(.qvp-preview-anchor){position:static!important;max-height:none!important;overflow:visible!important;}
+  [data-testid="column"]:has(.qvp-preview-anchor){position:static!important;height:auto!important;max-height:none!important;overflow:visible!important;}
 }
 
 </style>
@@ -2544,8 +2586,8 @@ st.sidebar.markdown("""
 <div class="qvp-side-brand">
   <div class="qvp-logo">▶</div>
   <div>
-    <div class="qvp-side-title">QuizVideo Pro</div>
-    <div class="qvp-side-sub">Créez des quiz vidéo captivants</div>
+    <div class="qvp-side-title">SuspenseLingo</div>
+    <div class="qvp-side-sub">Studio de création de quiz vidéo</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -2599,7 +2641,7 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_enabled", True)
         _ss_default(p+"bg_music_volume", 0.15)
         _ss_default(p+"bg_music_style", "Suspense léger")
-        _ss_default(p+"bg_music_source", "Musique générée par QuizVideo Pro")
+        _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • V14.0</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Les réglages sont indépendants pour ce style et sont conservés lorsque tu changes de module.</div>', unsafe_allow_html=True)
@@ -2767,7 +2809,7 @@ def render_layout_editor(module, style="1"):
             with c2:
                 st.slider("Volume",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
             st.caption("0,10–0,15 = fond audible mais secondaire. La voix, le compte à rebours et le ding restent prioritaires.")
-            st.radio("Source", ["Musique générée par QuizVideo Pro","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
+            st.radio("Source", ["Musique générée par SuspenseLingo","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
             if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
                 st.file_uploader("Importer une musique", type=["mp3","wav","m4a","aac","ogg"], key=p+"bg_music_upload")
             st.caption("La musique choisie est intégrée au fichier vidéo final et bouclée si nécessaire.")
@@ -2784,7 +2826,7 @@ with n2:
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
 
     # ===== 60/40 : tous les réglages à gauche / aperçu + actions à droite =====
     q_main_left, q_main_right = st.columns([1.5, 1.0], gap="large")
@@ -2924,11 +2966,8 @@ if nav=="quiz":
                         else: st.error("Aucune question valide à enregistrer.")
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎨 4. Éditeur Studio — Style V14.0</div><div class="qvp-card-sub">Tous les onglets et réglages existants sont conservés.</div>',unsafe_allow_html=True)
         style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
-        st.caption("Style 1 : Question + 4 réponses → minuteur → révélation + explication.  |  Style 2 : même page 9:16 → titre fixe → une seule question active → réflexion → réponses révélées dans l’historique → question suivante au même emplacement.")
         render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
-        st.markdown('</div>',unsafe_allow_html=True)
 
     quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
     qprefix=_qvp_prefix("quiz", quiz_style_id)
@@ -2939,7 +2978,7 @@ if nav=="quiz":
 
     with q_main_right:
         st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
-        st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Aperçu + contrôles + génération restent visibles pendant le défilement. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Colonne de droite indépendante : fais-la défiler pour voir tout l’aperçu et les actions. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
         if style_q_full.startswith("Style 2"):
             preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
@@ -3064,7 +3103,7 @@ if nav=="quiz":
                             music_enabled=bool(st.session_state.get("q1_bg_music_enabled",True))
                             music_volume=float(st.session_state.get("q1_bg_music_volume",0.15))
                             music_style=st.session_state.get("q1_bg_music_style","Suspense léger")
-                            music_source=st.session_state.get("q1_bg_music_source","Musique générée par QuizVideo Pro")
+                            music_source=st.session_state.get("q1_bg_music_source","Musique générée par SuspenseLingo")
                             uploaded_music=st.session_state.get("q1_bg_music_upload") if music_source=="Ma propre musique" else None
                             if music_enabled and music_volume>0:
                                 if uploaded_music is not None:
@@ -3127,10 +3166,10 @@ if nav=="quiz":
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
-            st.error(f"Erreur pendant le montage QuizVideo Pro : {e}")
+            st.error(f"Erreur pendant le montage SuspenseLingo : {e}")
 
 else:
-    st.markdown('<div class="qvp-studio-header"><b>🎬 QuizVideo Pro</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
     v_main_left, v_main_right = st.columns([1.5, 1.0], gap="large")
     with v_main_left:
         st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
@@ -3211,10 +3250,7 @@ else:
                         else: st.info("Aucun lot IA en cache.")
         st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎨 4. Éditeur Studio — Style V14.0</div><div class="qvp-card-sub">Tous les onglets et réglages existants sont conservés.</div>',unsafe_allow_html=True)
-        st.caption("Style 1 : Mot → minuteur → traduction.  |  Style 2 : mot + voix synchronisés → 3 secondes de réflexion (3 → 2 → 1) + ding → traduction révélée progressivement en même temps que sa voix.")
         render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
-        st.markdown('</div>',unsafe_allow_html=True)
 
     vocab_style_id="2" if style_v.startswith("Style 2") else "1"
     vprefix=_qvp_prefix("vocab", vocab_style_id)
