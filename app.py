@@ -3035,7 +3035,13 @@ if nav=="quiz":
                                     oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
                             final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
-                            concat_videos(clips,final,tmp)
+                            # Assemblage final robuste : même moteur PTS/audio que le Vocabulaire Style 2.
+                            # Le stream-copy précédent pouvait produire un AAC final corrompu et
+                            # une durée audio différente de la vidéo après l'ajout musique/motivations.
+                            concat_videos_style2(clips,final,tmp)
+                            vd_final=video_duration(final); ad_final=audio_duration(final)
+                            if vd_final <= 0 or ad_final <= 0 or abs(vd_final-ad_final) > 0.08:
+                                raise RuntimeError(f"Synchronisation finale invalide : vidéo {vd_final:.2f}s / audio {ad_final:.2f}s")
                             with open(final,"rb") as f: data=f.read()
                             st.success("✅ Short Quiz terminé avec ta mise en page.")
                             st.video(data)
