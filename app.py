@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
 # QUIZVIDEO PRO — STUDIO
-# V16 — Quiz Style 1 targeted fixes: question spacing, clean karaoke, audible background music
+# V17 — Intro/outro motivation preserved; Style 1 validated quiz pipeline restored
 # ============================================================
 st.set_page_config(page_title="QuizVideo Pro", page_icon="🎬", layout="wide")
 
@@ -3035,7 +3035,7 @@ if nav=="quiz":
                                     oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
                             final=os.path.join(tmp,"quizvideo_pro_custom.mp4")
-                            concat_videos_precise(clips,final,tmp)
+                            concat_videos(clips,final,tmp)
                             with open(final,"rb") as f: data=f.read()
                             st.success("✅ Short Quiz terminé avec ta mise en page.")
                             st.video(data)
