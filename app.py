@@ -293,6 +293,30 @@ button[kind="primary"]{font-weight:850!important}
     position:static !important;
   }
 }
+
+/* V26 — vrai mode édition : l'aperçu reste devant l'Éditeur Studio.
+   Aucun conteneur à hauteur fixe et aucun scroll interne. */
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) {
+  align-items:flex-start !important;
+}
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child {
+  position:sticky !important;
+  top:1rem !important;
+  align-self:flex-start !important;
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  z-index:80 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child .qvp-preview-column {
+  position:static !important;
+}
+.qvp-preview-anchor {height:1px !important; margin:0 !important; padding:0 !important;}
+@media (max-width: 900px) {
+  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child {
+    position:static !important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -678,7 +702,7 @@ def _load_saved_settings():
 def _save_settings():
     keys=[]
     for k in st.session_state.keys():
-        if k.startswith(("q_","v_")):
+        if k.startswith(("q_","v_","q1_","q2_","v1_","v2_")):
             keys.append(k)
     data={}
     for k in keys:
@@ -754,7 +778,8 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     box_top=yy-18; box_bottom=yy+len(lines)*int(size*1.18)+12
     radius=int(cfg["question_box_radius"])
     box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
-    draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=(6,12,28,218),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
+    if cfg.get("question_frame_enabled", True):
+        draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=(6,12,28,218),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
     global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
@@ -793,7 +818,8 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
-        draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=fill,outline=outline,width=width)
+        if cfg.get("answer_cards_enabled", True):
+            draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=fill,outline=outline,width=width)
         badge_size=max(44,int(cfg["answer_size"]*1.75)); bw=badge_size; bh=badge_size; bx=82+xpad; by=int(y+(card_h-bh)/2)
         badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
         draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
@@ -824,22 +850,26 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         y1=int(cfg["explanation_y"])
     p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
-    cx,cy=98,y1+57
+    box_w=max(420,min(1020,int(cfg.get("explanation_width",964))))
+    center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
+    left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
+    cx,cy=left+40,y1+57
     draw.ellipse((cx-16,cy-22,cx+16,cy+10),outline=primary,width=3)
     draw.line((cx-10,cy+16,cx+10,cy+16),fill=primary,width=3); draw.line((cx-7,cy+23,cx+7,cy+23),fill=primary,width=3)
-    draw.text((145,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
-    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,865)[:5]
+    draw.text((left+87,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
+    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
     if cfg.get("explanation_auto_height", True):
         needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
         box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
     else:
         box_h=int(cfg.get("explanation_h",320))
     y2=min(1710,y1+box_h)
-    draw.rounded_rectangle((58,y1,1022,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=(6,13,28),outline=_hex_rgb(cfg.get("border_color"),primary),width=max(1,int(cfg.get("border_width",2))))
-    draw.rounded_rectangle((58,y1,58+int(964*p),y1+6),radius=3,fill=primary)
+    if cfg.get("explanation_frame_enabled", True):
+        draw.rounded_rectangle((left,y1,right,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=(6,13,28),outline=_hex_rgb(cfg.get("border_color"),primary),width=max(1,int(cfg.get("border_width",2))))
+        draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
     yy=y1+95; global_word=0
     for line in lines:
-        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(WIDTH-totalw)/2
+        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
             # Karaoké explication : changement de couleur uniquement, sans cadre
@@ -2621,7 +2651,8 @@ def render_layout_editor(module, style="1"):
         "question_x":540, "question_y":270 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
         "answer_y":630 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
-        "show_explanation":True, "explanation_y":1160, "explanation_h":320, "explanation_size":31,
+        "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
+        "question_frame_enabled":True, "answer_cards_enabled":True, "explanation_frame_enabled":True,
         "score_y":112, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
@@ -2664,6 +2695,10 @@ def render_layout_editor(module, style="1"):
             c_auto1,c_auto2=st.columns(2)
             with c_auto1: st.checkbox("Explication sous le minuteur",key=p+"explanation_auto_below_timer")
             with c_auto2: st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
+            c_frame1,c_frame2,c_frame3=st.columns(3)
+            with c_frame1: st.checkbox("Cadre de la question",key=p+"question_frame_enabled")
+            with c_frame2: st.checkbox("Cartes des réponses",key=p+"answer_cards_enabled")
+            with c_frame3: st.checkbox("Cadre explication",key=p+"explanation_frame_enabled")
 
     with tabs[1]:
         c1,c2 = st.columns(2)
@@ -2694,7 +2729,8 @@ def render_layout_editor(module, style="1"):
                 st.slider("Réponses — Y",300,1050,key=p+"answer_y")
             if is_quiz and style=="1":
                 st.markdown("**Explication**")
-                st.slider("Explication — Y",950,1450,key=p+"explanation_y")
+                st.slider("Explication — X",0,1080,key=p+"explanation_x")
+                st.slider("Explication — Y",850,1500,key=p+"explanation_y")
             if not is_quiz and style=="2":
                 st.markdown("**⏱️ Minuteur — Style 2**")
                 st.slider("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
@@ -2708,6 +2744,8 @@ def render_layout_editor(module, style="1"):
             st.slider("Taille du texte",22,110,key=p+"question_size")
             st.slider("Largeur",500,1020,key=p+"question_width")
             if is_quiz and style=="1":
+                st.slider("Arrondi du cadre question",0,48,key=p+"question_box_radius")
+            if is_quiz and style=="1":
                 st.markdown("**Réponses**")
                 st.slider("Largeur des cartes",700,1000,key=p+"answer_width")
                 st.slider("Hauteur des cartes",55,140,key=p+"answer_h")
@@ -2717,7 +2755,12 @@ def render_layout_editor(module, style="1"):
             if is_quiz and style=="1":
                 st.slider("Taille du texte des réponses",20,62,key=p+"answer_size")
                 st.slider("Espacement des réponses",4,32,key=p+"answer_gap")
+                st.slider("Arrondi des réponses",0,48,key=p+"answer_radius")
                 st.slider("Taille du compteur",20,72,key=p+"score_size")
+                st.markdown("**Explication**")
+                st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
+                st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
+                st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
@@ -2987,7 +3030,6 @@ if nav=="quiz":
             preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
         else:
             preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
-        selected_q=_qvp_selected_element("quiz", quiz_style_id)
         try:
             cfg_q=_layout("quiz",quiz_style_id)
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
@@ -2999,9 +3041,8 @@ if nav=="quiz":
             elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
             elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
             else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
-            render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,selected_q)
-            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides. Les réglages sont enregistrés dans le rendu réel.")
-            selected_q=_qvp_quick_controls("quiz",quiz_style_id,selected_q,theme_q,channel_q,sample_bg,preview_state_q,th_q,prefix_key="quickq")
+            render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,"")
+            st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
@@ -3271,7 +3312,6 @@ else:
             preview_state_v=st.radio("État",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
         else:
             preview_state_v=st.radio("État",["Mot","Compte à rebours","Traduction"],horizontal=True,key="preview_state_v")
-        selected_v=_qvp_selected_element("vocab",vocab_style_id)
         try:
             cfg_v=_layout("vocab",vocab_style_id)
             sample_bg_v=bg_v if isinstance(bg_v,Image.Image) else selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
@@ -3282,12 +3322,8 @@ else:
                 preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v,source_active_word=0 if active >= 0 else -1,translation_active_word=preview_translation_word)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
-            render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,selected_v)
-            st.caption("Sélectionne un élément ci-dessous puis utilise les commandes rapides.")
-            if not style_v.startswith("Style 2"):
-                selected_v=_qvp_quick_controls("vocab",vocab_style_id,selected_v,theme_v,channel_v,sample_bg_v,preview_state_v,th_v,langue_v,prefix_key="quickv")
-            else:
-                st.caption(f"🎯 Élément sélectionné : {selected_v} · les réglages du Style 2 restent dans l'Éditeur Studio.")
+            render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,"")
+            st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
