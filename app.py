@@ -267,9 +267,9 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-preview-title{color:#08111f!important;font-weight:950!important;}
 .qvp-preview-note{color:#475569!important;}
 .qvp-preview-column{min-width:0!important;}
-/* V24.5 — COLONNE DROITE : sticky + scroll interne jusqu’au dernier élément.
-   Le scroll est porté par le conteneur Streamlit height=900, pas par la colonne.
-   La colonne reste sticky pendant que la zone interne défile. */
+/* V24.6 — COLONNE DROITE : sticky + scroll natif indépendant.
+   Le conteneur Streamlit porte lui-même le scroll ; la colonne reste sticky
+   pendant que l’utilisateur descend dans l’Éditeur Studio à gauche. */
 [data-testid="column"]:has(.qvp-preview-anchor){
   position:sticky!important;
   top:1rem!important;
@@ -277,10 +277,8 @@ button[kind="primary"]{font-weight:850!important}
   z-index:40!important;
   min-width:0!important;
 }
-/* Le conteneur natif créé par st.container(height=900) reste limité à la fenêtre. */
+/* Le conteneur natif créé par st.container(height=760) porte son propre scroll. */
 [data-testid="stVerticalBlockBorderWrapper"]:has(.qvp-preview-anchor){
-  height:calc(100vh - 2rem)!important;
-  max-height:calc(100vh - 2rem)!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
   scrollbar-width:thin!important;
@@ -301,6 +299,22 @@ button[kind="primary"]{font-weight:850!important}
   [data-testid="stVerticalBlockBorderWrapper"]:has(.qvp-preview-anchor){height:auto!important;max-height:none!important;overflow:visible!important;}
 }
 
+
+/* V24.6 — UX cible : l’aperçu reste à l’écran pendant l’édition à gauche.
+   Le scroll appartient au st.container(height=760) ; ne pas le transformer en
+   scroll de colonne, afin que le panneau puisse aller jusqu’au dernier bouton. */
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child {
+  position:sticky !important;
+  top:1rem !important;
+  align-self:flex-start !important;
+  z-index:40 !important;
+  min-width:0 !important;
+}
+@media (max-width: 900px) {
+  [data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child {
+    position:static !important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2988,8 +3002,8 @@ if nav=="quiz":
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
 
     with q_main_right:
-        # V24.5 — vrai conteneur Streamlit défilant : tout le panneau droit est dedans jusqu’au dernier élément.
-        with st.container(height=900, border=False):
+        # V24.6 — vrai conteneur Streamlit défilant : l’aperçu reste en face de l’Éditeur Studio.
+        with st.container(height=760, border=False):
             st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
             st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Colonne de droite indépendante : fais-la défiler pour voir tout l’aperçu et les actions. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
             if style_q_full.startswith("Style 2"):
@@ -3272,9 +3286,9 @@ else:
     bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with v_main_right:
-        # V24.5 — même conteneur natif défilant que pour Quiz, jusqu’au dernier élément.
+        # V24.6 — même conteneur natif défilant pour Vocabulaire.
         # Toutes les fonctions du panneau Vocabulaire restent inchangées.
-        with st.container(height=900, border=False):
+        with st.container(height=760, border=False):
             st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
             st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF — VOCABULAIRE</div><div class="qvp-preview-note">Clique directement sur le mot, la traduction, le minuteur ou le tableau.</div></div>',unsafe_allow_html=True)
             if style_v.startswith("Style 2"):
