@@ -267,7 +267,7 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-preview-title{color:#08111f!important;font-weight:950!important;}
 .qvp-preview-note{color:#475569!important;}
 .qvp-preview-column{min-width:0!important;}
-/* V24.4 — COLONNE DROITE INDÉPENDANTE : sticky + vrai scroll interne.
+/* V24.5 — COLONNE DROITE : sticky + scroll interne jusqu’au dernier élément.
    Le scroll est porté par le conteneur Streamlit height=900, pas par la colonne.
    La colonne reste sticky pendant que la zone interne défile. */
 [data-testid="column"]:has(.qvp-preview-anchor){
@@ -279,6 +279,7 @@ button[kind="primary"]{font-weight:850!important}
 }
 /* Le conteneur natif créé par st.container(height=900) reste limité à la fenêtre. */
 [data-testid="stVerticalBlockBorderWrapper"]:has(.qvp-preview-anchor){
+  height:calc(100vh - 2rem)!important;
   max-height:calc(100vh - 2rem)!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
@@ -2987,7 +2988,7 @@ if nav=="quiz":
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
 
     with q_main_right:
-        # V24.3 — vrai conteneur Streamlit défilant : tout le panneau droit est dedans.
+        # V24.5 — vrai conteneur Streamlit défilant : tout le panneau droit est dedans jusqu’au dernier élément.
         with st.container(height=900, border=False):
             st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
             st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Colonne de droite indépendante : fais-la défiler pour voir tout l’aperçu et les actions. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
@@ -3271,7 +3272,7 @@ else:
     bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
     with v_main_right:
-        # V24.4 — même conteneur natif défilant que pour Quiz.
+        # V24.5 — même conteneur natif défilant que pour Quiz, jusqu’au dernier élément.
         # Toutes les fonctions du panneau Vocabulaire restent inchangées.
         with st.container(height=900, border=False):
             st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
