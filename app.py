@@ -267,27 +267,33 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-preview-title{color:#08111f!important;font-weight:950!important;}
 .qvp-preview-note{color:#475569!important;}
 .qvp-preview-column{min-width:0!important;}
-/* V24.1 — colonne droite sticky, avec contenu interne réellement défilant.
-   La colonne elle-même ne devient PAS le scroll container : cela préserve le sticky. */
+/* V24.2 — panneau droit : sticky + zone de défilement interne GARANTIE.
+   La hauteur est imposée afin que le panneau puisse toujours défiler, même
+   lorsque l'aperçu est plus court que la fenêtre. */
 [data-testid="column"]:has(.qvp-preview-anchor){
   position:sticky!important;
   top:1rem!important;
   align-self:flex-start!important;
   z-index:40!important;
   min-width:0!important;
-  height:auto!important;
-  max-height:none!important;
-  overflow:visible!important;
-}
-[data-testid="column"]:has(.qvp-preview-anchor) > div{
+  height:calc(100vh - 2rem)!important;
   max-height:calc(100vh - 2rem)!important;
+  overflow:hidden!important;
+}
+[data-testid="column"]:has(.qvp-preview-anchor) > div[data-testid="stVerticalBlock"]{
+  height:100%!important;
+  max-height:100%!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
   overscroll-behavior:contain!important;
-  scrollbar-width:thin!important;
-  scrollbar-color:#64748b #e2e8f0!important;
-  padding-right:7px!important;
+  scrollbar-width:auto!important;
+  scrollbar-color:#475569 #dbe4ef!important;
+  padding-right:10px!important;
+  box-sizing:border-box!important;
 }
+[data-testid="column"]:has(.qvp-preview-anchor) > div[data-testid="stVerticalBlock"]::-webkit-scrollbar{width:11px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) > div[data-testid="stVerticalBlock"]::-webkit-scrollbar-track{background:#dbe4ef!important;border-radius:10px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) > div[data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb{background:#475569!important;border-radius:10px!important;border:2px solid #dbe4ef!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar{width:9px!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar-track{background:#e2e8f0!important;border-radius:10px!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar-thumb{background:#64748b!important;border-radius:10px!important;border:2px solid #e2e8f0!important;}
@@ -300,7 +306,7 @@ button[kind="primary"]{font-weight:850!important}
   .block-container{padding-left:.65rem!important;padding-right:.65rem!important;}
   .qvp-preview-column{position:static!important;}
   [data-testid="column"]:has(.qvp-preview-anchor){position:static!important;height:auto!important;max-height:none!important;overflow:visible!important;}
-  [data-testid="column"]:has(.qvp-preview-anchor) > div{max-height:none!important;overflow:visible!important;padding-right:0!important;}
+  [data-testid="column"]:has(.qvp-preview-anchor) > div[data-testid="stVerticalBlock"]{height:auto!important;max-height:none!important;overflow:visible!important;padding-right:0!important;}
 }
 
 </style>
