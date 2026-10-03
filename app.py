@@ -267,18 +267,30 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-preview-title{color:#08111f!important;font-weight:950!important;}
 .qvp-preview-note{color:#475569!important;}
 .qvp-preview-column{min-width:0!important;}
+/* V24.1 — colonne droite sticky, avec contenu interne réellement défilant.
+   La colonne elle-même ne devient PAS le scroll container : cela préserve le sticky. */
 [data-testid="column"]:has(.qvp-preview-anchor){
-  height:calc(100vh - 2rem)!important;
+  position:sticky!important;
+  top:1rem!important;
+  align-self:flex-start!important;
+  z-index:40!important;
+  min-width:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+[data-testid="column"]:has(.qvp-preview-anchor) > div{
   max-height:calc(100vh - 2rem)!important;
   overflow-y:auto!important;
   overflow-x:hidden!important;
   overscroll-behavior:contain!important;
   scrollbar-width:thin!important;
   scrollbar-color:#64748b #e2e8f0!important;
+  padding-right:7px!important;
 }
-[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar{width:9px!important;}
-[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar-track{background:#e2e8f0!important;border-radius:10px!important;}
-[data-testid="column"]:has(.qvp-preview-anchor)::-webkit-scrollbar-thumb{background:#64748b!important;border-radius:10px!important;border:2px solid #e2e8f0!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar{width:9px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar-track{background:#e2e8f0!important;border-radius:10px!important;}
+[data-testid="column"]:has(.qvp-preview-anchor) > div::-webkit-scrollbar-thumb{background:#64748b!important;border-radius:10px!important;border:2px solid #e2e8f0!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) .qvp-preview-panel{position:relative!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) .qvp-click-preview{border:2px solid #8da2bd!important;box-shadow:0 18px 38px rgba(2,6,23,.22)!important;}
 [data-testid="column"]:has(.qvp-preview-anchor) button[kind="primary"]{background:linear-gradient(135deg,#4f46e5,#2563eb)!important;border-color:#3730a3!important;box-shadow:0 12px 28px rgba(37,99,235,.28)!important;}
@@ -288,6 +300,7 @@ button[kind="primary"]{font-weight:850!important}
   .block-container{padding-left:.65rem!important;padding-right:.65rem!important;}
   .qvp-preview-column{position:static!important;}
   [data-testid="column"]:has(.qvp-preview-anchor){position:static!important;height:auto!important;max-height:none!important;overflow:visible!important;}
+  [data-testid="column"]:has(.qvp-preview-anchor) > div{max-height:none!important;overflow:visible!important;padding-right:0!important;}
 }
 
 </style>
