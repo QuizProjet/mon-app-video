@@ -11,6 +11,7 @@ import time
 import random
 import csv
 import io
+import zipfile
 import hashlib
 import gc
 import wave
@@ -759,7 +760,7 @@ def _layout(module="quiz", style=None):
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
         "question_x":540,"question_y":259,"question_size":47,"question_width":900,"question_box_radius":28,
-        "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":True,
+        "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":92,"answer_gap":14,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
         "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
@@ -824,13 +825,29 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
     cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
-    configured_h=int(cfg["answer_h"]); gap=int(cfg["answer_gap"]); start_y=int(cfg["answer_y"]); f_opt=get_font(cfg["answer_size"],ff)
-    badge_size=int(cfg.get("answer_badge_size",54)); padding=int(cfg.get("answer_text_padding",24))
+    configured_h=int(cfg.get("answer_h",92)); gap=int(cfg.get("answer_gap",14)); start_y=int(cfg.get("answer_y",690))
+    base_size=int(cfg.get("answer_size",31)); padding=int(cfg.get("answer_text_padding",24))
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
+    badge_size=max(36,min(72,int(cfg.get("answer_badge_size",54))))
     for i,opt in enumerate(options[:4]):
-        opt_clean=clean_text(opt); lines=wrap_text(opt_clean,f_opt,max(180,right-(left+154)-26))[:2]
+        opt_clean=clean_text(opt)
+        # La carte reste indépendante de la taille du texte. Si nécessaire, seul le texte
+        # se réduit légèrement pour tenir dans la hauteur choisie.
+        f_opt=get_font(base_size,ff)
+        max_text_w=max(180,right-(left+badge_size+70)-padding)
+        lines=wrap_text(opt_clean,f_opt,max_text_w)[:2]
+        if not lines: lines=[""]
+        if not bool(cfg.get("answer_auto_height",False)):
+            fit_size=base_size
+            while fit_size>20:
+                f_try=get_font(fit_size,ff)
+                lines_try=wrap_text(opt_clean,f_try,max_text_w)[:2]
+                text_h_try=sum(text_height(f_try,z) for z in lines_try)+max(0,len(lines_try)-1)*4
+                if text_h_try <= configured_h-2*padding: break
+                fit_size-=1
+            f_opt=get_font(fit_size,ff); lines=wrap_text(opt_clean,f_opt,max_text_w)[:2]
         text_h=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*4
-        card_h=max(configured_h, badge_size+16, text_h+padding*2) if cfg.get("answer_auto_height",True) else configured_h
+        card_h=(max(configured_h,badge_size+16,text_h+padding*2) if bool(cfg.get("answer_auto_height",False)) else configured_h)
         if anim=="Aucune": local=1.0
         else: local=ease_out(clamp((entrance-i*0.07*speed)/(0.48/max(.25,speed))))
         offset=int((1-local)*52*strength) if anim in ("Glissement","Glissement vertical") else 0
@@ -844,14 +861,14 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
-        if cfg.get("answer_cards_enabled", True):
+        if cfg.get("answer_cards_enabled",True):
             draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=fill,outline=outline,width=width)
-        badge_size_eff=max(36,min(72,badge_size)); bw=badge_size_eff; bh=badge_size_eff; bx=82+xpad; by=int(y+(card_h-bh)/2)
+        badge_x=left+10+xpad; badge_y=int(y+(card_h-badge_size)/2)
         badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
-        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size_eff*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
-        lf=get_font(max(18,min(42,int(cfg["answer_size"]*1.02))),ff); letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
-        lh=text_height(lf,letter); draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+(bh-lh)/2-2),letter,font=lf,fill=lc)
-        text_x=154+xpad; maxw=right-text_x-26; ty=y+(card_h-text_h)/2-2
+        draw.rounded_rectangle((badge_x,badge_y,badge_x+badge_size,badge_y+badge_size),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
+        lf=get_font(max(18,min(42,int(base_size*1.02))),ff); letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
+        lh=text_height(lf,letter); draw.text((badge_x+(badge_size-text_width(draw,letter,lf))/2,badge_y+(badge_size-lh)/2-2),letter,font=lf,fill=lc)
+        text_x=badge_x+badge_size+padding; maxw=right-text_x-padding; ty=y+(card_h-text_h)/2-2
         for line in lines:
             draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill=_hex_rgb(cfg["text"],(255,255,255))); ty+=text_height(f_opt,line)+4
         if correct:
@@ -862,7 +879,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
-    if cfg.get("explanation_auto_below_timer_studio", cfg.get("explanation_auto_below_timer", True)):
+    if cfg.get("explanation_auto_below_timer", False):
         timer_size=max(24,int(cfg.get("timer_size",58)))
         if cfg.get("timer_auto_below_answers",True):
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
@@ -883,7 +900,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     draw.line((cx-10,cy+16,cx+10,cy+16),fill=primary,width=3); draw.line((cx-7,cy+23,cx+7,cy+23),fill=primary,width=3)
     draw.text((left+87,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
     f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
-    if cfg.get("explanation_auto_height_studio", cfg.get("explanation_auto_height", True)):
+    if cfg.get("explanation_auto_height", False):
         needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
         box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
     else:
@@ -1266,6 +1283,12 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
         px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if cfg["show_title"]:
         draw_header(draw,theme,q_num,total,video_title,phase)
+    # Halo doré discret derrière la question pour renforcer la hiérarchie visuelle.
+    qcx=int(cfg.get("question_x",540)); qcy=int(cfg.get("question_y",270))+55
+    glow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); gd=ImageDraw.Draw(glow)
+    gr=max(120,min(360,int(cfg.get("question_width",900)*0.28)))
+    gd.ellipse((qcx-gr,qcy-gr//2,qcx+gr,qcy+gr//2),fill=(*_hex_rgb(cfg.get("primary"),theme["accent"]),38))
+    glow=glow.filter(ImageFilter.GaussianBlur(55)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
     _draw_question_rich(draw,question,theme,y=int(cfg["question_y"]),phase=phase,active_word=question_active_word)
     _draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase)
     if timer is not None and cfg["show_timer"]:
@@ -2749,7 +2772,7 @@ def render_export_panel(video_data, base_name, key_prefix):
                     "filename":f"{base_name}_{safe}_{quality}.mp4"
                 }
             st.session_state[export_state_key]={"signature":signature,"files":prepared}
-        st.success("✅ Export prêt. Les 4 téléchargements sont maintenant disponibles ci-dessous.")
+        st.success(f"✅ Export prêt : {len(platforms)} fichier(s) disponible(s) ci-dessous.")
 
     prepared_state=st.session_state.get(export_state_key)
     if prepared_state and prepared_state.get("signature")==signature:
@@ -2837,15 +2860,15 @@ def render_layout_editor(module, style="1"):
         st.checkbox("Afficher l'explication" if is_quiz else "Afficher le titre", key=p+"show_explanation", disabled=not is_quiz) if is_quiz else None
         if is_quiz and style=="1":
             c_auto1,c_auto2=st.columns(2)
-            with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer_studio")
-            with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height_studio")
+            with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
+            with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
 
     with tabs[1]:
         c1,c2 = st.columns(2)
         with c1:
             st.markdown("**Position de l’élément principal**")
             st.slider("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"question_x")
-            st.slider("↕ Y — haut 0 • bas 1920",60,1000,key=p+"question_y")
+            st.slider("↕ Y — haut 0 • bas 1920",60,1500,key=p+"question_y")
             if is_quiz and style=="2":
                 st.markdown("**Historique — Style 2**")
                 st.slider("Historique — X",0,220,key=p+"history_x")
@@ -2868,10 +2891,10 @@ def render_layout_editor(module, style="1"):
                 st.slider("↔ Réponses X — bord gauche du bloc",20,180,key=p+"answer_x")
                 st.slider("↕ Réponses Y — haut du bloc",300,1050,key=p+"answer_y")
             if is_quiz and style=="1":
-                st.markdown("**Explication**")
-                st.slider("↔ Explication X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"explanation_x")
+                st.markdown("**💡 Explication — position libre**")
+                st.slider("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"explanation_x")
             st.caption("📐 Repère vidéo : X = horizontal (0→1080) • Y = vertical (0→1920). Ces valeurs sont des coordonnées vidéo, pas des pixels d’écran.")
-            st.slider("↕ Explication Y — haut 0 • bas 1920",850,1600,key=p+"explanation_y")
+            st.slider("↕ Explication Y — haut 0 • bas 1920",120,1750,key=p+"explanation_y")
             if not is_quiz and style=="2":
                 st.markdown("**⏱️ Minuteur — Style 2**")
                 st.slider("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
@@ -2903,12 +2926,12 @@ def render_layout_editor(module, style="1"):
                 st.slider("Taille du compteur",20,72,key=p+"score_size")
                 st.markdown("**Compteur 1/15 — position indépendante**")
                 st.slider("↔ Compteur X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"score_x")
-                st.slider("↕ Compteur Y — haut 0 • bas 1920",40,300,key=p+"score_y")
+                st.slider("↕ Compteur Y — haut 0 • bas 1920",40,600,key=p+"score_y")
                 st.markdown("**Explication**")
                 st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
                 st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
-                st.caption("Le réglage « Position automatique sous le minuteur » se trouve dans Structure et n’est affiché qu’une seule fois.")
+                st.caption("💡 X = gauche ↔ droite • Y = haut ↕ bas. Désactive l’automatique pour placer l’explication librement.")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
@@ -3153,6 +3176,7 @@ if nav=="quiz":
                         try:
                             prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur le sujet « {th_q} ».
 Varie les connaissances testées et évite toute répétition entre les questions.
+Le sujet demandé est une contrainte stricte : chaque question, ses 4 réponses et son explication doivent appartenir clairement et directement à la thématique « {th_q} ». N'introduis aucun fait hors sujet et ne mélange jamais une autre catégorie.
 Chaque objet doit respecter EXACTEMENT cette structure :
 {{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
 IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
@@ -3174,6 +3198,7 @@ Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
                     else:
                         try:
                             prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur « {th_q} ».
+Le sujet « {th_q} » est une contrainte stricte : toutes les questions, réponses et explications doivent correspondre directement à cette thématique, sans mélange de catégories.
 Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
 Une seule bonne réponse. Retourne uniquement le JSON.'''
                             res_text,_=gemini_generate_text(prompt)
@@ -3233,9 +3258,9 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                 if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
                 elif preview_state_q=="Q2 + R1": preview=draw_style2_frame(demo,1,theme_q,channel_q,sample_bg,timer=2,timer_fraction=.5,video_title=th_q)
                 else: preview=draw_style2_frame(demo,2,theme_q,channel_q,sample_bg,answer_reveal=True,video_title=th_q)
-            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
-            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
-            else: preview=draw_quiz_frame("Quelle est la capitale de la France ?",["Paris","Londres","Rome","Berlin"],theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=0,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation="Paris est la capitale de la France.",explanation_progress=1.0)
+            elif preview_state_q=="Question + réponses": preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
+            elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
+            else: preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=preview_corr,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation=("Mercure est la planète la plus proche du Soleil." if th_q=="Sciences" else "Ottawa est la capitale du Canada." if th_q=="Géographie" else "La Révolution française débute en 1789." if th_q=="Histoire" else "Paris est la capitale de la France."),explanation_progress=1.0)
             render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,"")
             st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
