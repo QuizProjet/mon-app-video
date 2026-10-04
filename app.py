@@ -2648,6 +2648,33 @@ def _ss_default(key, value):
         return
     st.session_state[key]=value
 
+def export_platform_video(video_data, platform, quality, tmpdir):
+    """Crée une copie prête pour la plateforme sans modifier le rendu master."""
+    src=os.path.join(tmpdir, f"export_master_{platform}.mp4")
+    with open(src,"wb") as f: f.write(video_data)
+    if quality == "1080p":
+        width,height,crf=1080,1920,"20"
+    else:
+        width,height,crf=720,1280,"22"
+    out=os.path.join(tmpdir, f"{platform}_{quality}.mp4")
+    vf=f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1"
+    cmd=[get_ffmpeg(),"-y","-i",src,"-vf",vf,"-c:v","libx264","-preset","medium","-crf",crf,"-c:a","aac","-b:a","192k","-movflags","+faststart",out]
+    subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    with open(out,"rb") as f: return f.read()
+
+def render_export_panel(video_data, base_name, key_prefix):
+    st.markdown("### 📥 EXPORTER LA VIDÉO")
+    st.caption("Votre rendu master reste inchangé. Export vertical 9:16 optimisé pour les plateformes sélectionnées.")
+    platforms=st.multiselect("Plateformes",["TikTok","YouTube Shorts","Instagram Reels","Facebook Reels"],default=["TikTok"],key=f"{key_prefix}_platforms")
+    quality=st.radio("Qualité",["720p","1080p"],index=1,horizontal=True,key=f"{key_prefix}_quality")
+    if st.button("📦 Préparer les téléchargements",key=f"{key_prefix}_prepare",type="primary",disabled=not platforms):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for platform in platforms:
+                safe=platform.replace(" ","").replace("Shorts","Short").replace("Reels","Reel")
+                exported=export_platform_video(video_data,safe,quality,tmpdir)
+                filename=f"{base_name}_{safe}_{quality}.mp4"
+                st.download_button(f"⬇️ {platform} — {quality}",data=exported,file_name=filename,mime="video/mp4",key=f"{key_prefix}_dl_{safe}_{quality}")
+
 def render_layout_editor(module, style="1"):
     """Éditeur Studio V14 : indépendant pour chacun des 4 styles."""
     is_quiz = module == "quiz"
@@ -3221,6 +3248,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
+                    render_export_panel(data,"SuspenseLingo_Quiz","export_quiz")
         except Exception as e:
             st.error(f"Erreur pendant le montage SuspenseLingo : {e}")
 
@@ -3527,6 +3555,7 @@ else:
                     st.success("✅ Short Vocabulaire Pro terminé.")
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+                    render_export_panel(data,"SuspenseLingo_Vocabulaire","export_vocab")
         except MemoryError:
             gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
         except Exception as e: st.error(f"Erreur pendant le montage : {e}")
