@@ -342,6 +342,16 @@ THEMES = {
     "Noir Carbone": {"bg": (5, 7, 11), "bg2": (28, 32, 42), "card": (25, 28, 36), "card2": (42, 47, 59), "accent": (112, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 176, 194)},
 }
 
+# V29 — nouvelles palettes premium, sans modifier les thèmes existants.
+THEMES.update({
+    "Midnight Sapphire": {"bg": (5, 9, 24), "bg2": (15, 35, 78), "card": (18, 31, 58), "card2": (31, 55, 96), "accent": (74, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 194, 226)},
+    "Crimson Noir": {"bg": (18, 5, 10), "bg2": (66, 13, 28), "card": (45, 17, 27), "card2": (82, 25, 40), "accent": (255, 92, 112), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (213, 168, 179)},
+    "Royal Violet": {"bg": (11, 6, 24), "bg2": (43, 17, 74), "card": (35, 19, 61), "card2": (63, 31, 98), "accent": (184, 118, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (194, 171, 221)},
+    "Black Gold": {"bg": (8, 7, 5), "bg2": (45, 31, 10), "card": (34, 27, 14), "card2": (67, 48, 20), "accent": (255, 207, 82), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (202, 188, 151)},
+    "Arctic Cyan": {"bg": (4, 13, 22), "bg2": (10, 52, 72), "card": (13, 38, 54), "card2": (20, 65, 86), "accent": (77, 224, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 204, 219)},
+    "Cyber Pink": {"bg": (18, 5, 20), "bg2": (66, 12, 66), "card": (43, 15, 44), "card2": (76, 25, 78), "accent": (255, 105, 214), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (215, 169, 210)},
+})
+
 VOICES_FR = {
     "Henri - Dynamique": "fr-FR-HenriNeural",
     "Vivienne - Energique": "fr-FR-VivienneNeural",
@@ -359,6 +369,15 @@ QUIZ_LANGUAGES = {
     **VOICES_MAP,
 }
 QUIZ_LANGUAGE_LABELS = {"Français":"français","Anglais":"anglais","Espagnol":"espagnol","Arabe":"arabe","Allemand":"allemand","Italien":"italien"}
+
+# V29 — profils de narration. Ils utilisent les voix déjà disponibles et ajoutent une intention claire.
+VOICE_PROFILES = {
+    "🎙️ Suspense — tension progressive": {"rate": "+2%", "prefer": 0},
+    "🔥 Énergique — rythme rapide": {"rate": "+10%", "prefer": 1},
+    "😈 Défi — ton provocateur": {"rate": "+6%", "prefer": 0},
+    "🎯 Animateur Quiz — naturel": {"rate": "+4%", "prefer": 1},
+    "⚡ Intense — pression maximale": {"rate": "+15%", "prefer": 1},
+}
 
 QUIZ_MOTIVATION_DEFAULTS = {
     "Français": {"start":"Prêt ? C'est parti !", "end":"Bravo ! À bientôt pour un nouveau quiz !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
@@ -1564,7 +1583,7 @@ def make_quiz_background_music(duration,tmpdir,name,volume=1.0,style="Suspense l
     """Fond musical local audible : harmonie + petite mélodie + pulsation douce."""
     duration=max(0.4,float(duration)); out=os.path.join(tmpdir,f"{name}.wav")
     gain=max(0.0,min(1.0,float(volume))); style=str(style or "Suspense léger"); rate=44100
-    presets={"Suspense léger":([110,146,174,220],[220,174,146,220],2.2),"Chill":([98,123,147,196],[196,147,123,196],1.8),"Pop légère":([110,138,165,220],[220,165,138,220],2.8)}
+    presets={"Suspense sombre":([55,73,92,110],[110,92,73,110],1.7),"Mystère":([73,92,110,146],[146,110,92,73],1.9),"Tension":([82,110,138,165],[165,138,110,82],2.3),"Défi intense":([92,123,155,196],[196,155,123,92],3.0),"Quiz futuriste":([98,147,196,247],[247,196,147,98],2.7),"Cinématique":([65,87,116,174],[174,116,87,65],2.0),"Suspense léger":([110,146,174,220],[220,174,146,220],2.2),"Chill":([98,123,147,196],[196,147,123,196],1.8),"Pop légère":([110,138,165,220],[220,165,138,220],2.8)}
     chords,melody,beat_speed=presets.get(style,presets["Suspense léger"]); n=int(duration*rate); samples=[]
     fi=int(min(0.35,duration*0.12)*rate); fo=int(min(0.50,duration*0.16)*rate)
     for i in range(n):
@@ -2887,10 +2906,10 @@ def render_layout_editor(module, style="1"):
             st.checkbox("Activer la musique de fond", key=p+"bg_music_enabled")
             c1,c2=st.columns(2)
             with c1:
-                st.selectbox("Ambiance", ["Suspense léger","Chill","Pop légère"], key=p+"bg_music_style")
+                st.selectbox("Ambiance", ["Suspense sombre","Mystère","Tension","Défi intense","Quiz futuriste","Cinématique","Suspense léger","Chill","Pop légère"], key=p+"bg_music_style")
             with c2:
                 st.slider("Volume",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
-            st.caption("0,10–0,15 = fond audible mais secondaire. La voix, le compte à rebours et le ding restent prioritaires.")
+            st.caption("La musique évolue : discrète au départ, tension progressive pendant la réflexion, pression renforcée pendant 3 → 2 → 1, puis impact à la révélation. La voix reste prioritaire.")
             st.radio("Source", ["Musique générée par SuspenseLingo","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
             if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
                 st.file_uploader("Importer une musique", type=["mp3","wav","m4a","aac","ogg"], key=p+"bg_music_upload")
@@ -2923,9 +2942,11 @@ if nav=="quiz":
         else:
             th_q=subject_choice
         quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
+        voice_profile=st.selectbox("🎙️ Profil vocal",list(VOICE_PROFILES),index=0,key="voice_profile_q")
         voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
-        voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
+        voice_q_name=st.selectbox("Voix",voice_options,index=min(VOICE_PROFILES[voice_profile]["prefer"],len(voice_options)-1),key=f"vq_{quiz_language}")
         voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
+        quiz_tts_rate=VOICE_PROFILES[voice_profile]["rate"]
     with g2:
         theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
         style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
@@ -2962,7 +2983,20 @@ if nav=="quiz":
             outro_q=st.text_input("Votre CTA","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq_custom")
         else:
             outro_q=cp
-        st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
+        engagement_presets={
+            "Français":["Quel est ton score ? Écris-le en commentaire !","Combien de bonnes réponses as-tu eues ?","Sans tricher… quel est ton score ?","Quelle question t'a piégé ? 😈"],
+            "Anglais":["What's your score? Write it in the comments!","How many did you get right?","No cheating… what's your score?","Which question tricked you? 😈"],
+            "Espagnol":["¿Cuál es tu puntuación? ¡Escríbela en los comentarios!","¿Cuántas acertaste?","Sin hacer trampa… ¿cuál es tu puntuación?","¿Qué pregunta te engañó? 😈"],
+            "Arabe":["ما نتيجتك؟ اكتبها في التعليقات!","كم إجابة صحيحة حصلت عليها؟","بدون غش… ما نتيجتك؟","أي سؤال خدعك؟ 😈"],
+            "Allemand":["Wie ist dein Ergebnis? Schreib es in die Kommentare!","Wie viele hattest du richtig?","Ohne zu schummeln… wie ist dein Ergebnis?","Welche Frage hat dich erwischt? 😈"],
+            "Italien":["Qual è il tuo punteggio? Scrivilo nei commenti!","Quante ne hai indovinate?","Senza barare… qual è il tuo punteggio?","Quale domanda ti ha ingannato? 😈"]
+        }
+        engagement_choice=st.selectbox("💬 Engagement / score",engagement_presets.get(quiz_language,engagement_presets["Français"])+["Personnalisé"],key="engagement_choice_q")
+        if engagement_choice=="Personnalisé":
+            engagement_q=st.text_input("Votre message d'engagement","Quel est ton score ? Écris-le en commentaire !",key="engagement_custom_q")
+        else:
+            engagement_q=engagement_choice
+        st.caption(f"🎙️ {quiz_language} • {voice_q_name} • {voice_profile} — narration et messages dans cette langue.")
     st.markdown('</div>',unsafe_allow_html=True)
 
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 2. Messages de motivation</div><div class="qvp-card-sub">Les messages existants restent éditables ici, sans carte intermédiaire supplémentaire.</div>',unsafe_allow_html=True)
@@ -3066,40 +3100,11 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
 
         if st.session_state.get("q_data"):
             st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-            st.markdown("### ✏️ Édition manuelle rapide")
-            st.caption("Choisis une question et modifie-la ici. Le grand tableau reste disponible seulement si nécessaire.")
-            qlist=st.session_state.q_data
-            qnum=st.selectbox("Question à modifier",list(range(1,len(qlist)+1)),format_func=lambda n:f"Question {n}",key="manual_q_index")
-            qi=int(qnum)-1; qcur=qlist[qi]; opts=list(qcur.get("options",[]))+["","","",""]
-            m1,m2=st.columns(2)
-            with m1:
-                mq_question=st.text_area("Question",qcur.get("question",""),height=72,key="manual_q_text")
-                mq_a=st.text_input("A",opts[0],key="manual_q_a"); mq_b=st.text_input("B",opts[1],key="manual_q_b")
-            with m2:
-                mq_c=st.text_input("C",opts[2],key="manual_q_c"); mq_d=st.text_input("D",opts[3],key="manual_q_d")
-                cc=qcur.get("reponse_correcte","A") if qcur.get("reponse_correcte","A") in ["A","B","C","D"] else "A"
-                mq_correct=st.selectbox("Bonne réponse",["A","B","C","D"],index=["A","B","C","D"].index(cc),key="manual_q_correct")
-            mq_exp=st.text_area("Explication",qcur.get("explication",""),height=62,key="manual_q_exp")
-            e1,e2,e3=st.columns(3)
-            with e1:
-                if st.button("💾 Enregistrer la question",key="saveqedit",use_container_width=True):
-                    st.session_state.q_data[qi]={"question":clean_text(mq_question),"options":[clean_text(mq_a),clean_text(mq_b),clean_text(mq_c),clean_text(mq_d)],"reponse_correcte":mq_correct,"explication":clean_text(mq_exp)}
-                    st.session_state.q_source="Questions modifiées manuellement"; st.success("✅ Question enregistrée.")
-            with e2:
-                if st.button("↩️ Restaurer le lot IA",key="restoreq",use_container_width=True):
-                    if st.session_state.get("q_ai_cache"):
-                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]; st.session_state.q_source=f"IA • {th_q} • restauré"; st.success("✅ Lot IA restauré, 0 quota consommé.")
-                    else: st.info("Aucun lot IA en cache.")
-            with e3: st.caption(f"{len(qlist)} questions • édition rapide")
-            with st.expander("🧰 Édition avancée — tableau complet",expanded=False):
-                quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
-                edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={"Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),"Question":st.column_config.TextColumn("Question",width="large"),"Explication":st.column_config.TextColumn("Explication",width="large")},hide_index=True)
-                if st.button("💾 Enregistrer le tableau",key="saveqtable",use_container_width=True):
-                    saved=_save_quiz_editor(edited)
-                    if saved:
-                        st.session_state.q_data=saved; st.session_state.q_source="Questions modifiées manuellement"; st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
-                    else: st.error("Aucune question valide à enregistrer.")
+            st.caption("📄 Pour modifier un lot complet, utilise le CSV. Pour les réglages visuels, utilise l'Éditeur Studio.")
     st.markdown('</div>',unsafe_allow_html=True)
+
+    # V29 — le profil vocal choisi pilote la narration du quiz sans modifier le réglage global de vitesse.
+    tts_rate = quiz_tts_rate if "quiz_tts_rate" in locals() else tts_rate
 
     style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
