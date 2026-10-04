@@ -2914,7 +2914,14 @@ if nav=="quiz":
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
     g1,g2=st.columns(2,gap="medium")
     with g1:
-        th_q=st.text_input("Sujet","Culture Générale",key="thq")
+        subject_options=[
+            "Culture générale","Animaux","Géographie","Histoire","Sciences","Technologie","Cinéma & séries","Sport","Musique","Logique & énigmes","Personnalisé"
+        ]
+        subject_choice=st.selectbox("Sujet",subject_options,index=0,key="thq_choice")
+        if subject_choice=="Personnalisé":
+            th_q=st.text_input("Votre sujet","Ex. Capitales du monde",key="thq_custom")
+        else:
+            th_q=subject_choice
         quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
         voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
         voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
@@ -2928,19 +2935,67 @@ if nav=="quiz":
         if st.session_state.get("cq") == "@QuizMaster_Pro":
             st.session_state["cq"] = "SuspenseLingo"
         channel_q=st.text_input("Chaîne","SuspenseLingo",key="cq")
-        hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
+        hook_presets={
+            "Français":["Teste tes connaissances !","Prêt pour le défi ?","Tu penses connaître la réponse ?","Attention, celle-ci est piégeuse !","Seulement les plus forts trouveront !","À toi de jouer !"],
+            "Anglais":["Test your knowledge!","Ready for the challenge?","Do you know the answer?","Careful, this one is tricky!","Only the sharpest will get it!","Your turn!"],
+            "Espagnol":["¡Pon a prueba tus conocimientos!","¿Listo para el desafío?","¿Conoces la respuesta?","¡Cuidado, esta tiene trampa!","¡Solo los más rápidos acertarán!","¡Te toca!"],
+            "Arabe":["اختبر معلوماتك!","هل أنت مستعد للتحدي؟","هل تعرف الإجابة؟","انتبه، هذا السؤال خادع!","فقط الأذكياء سيجيبون بشكل صحيح!","حان دورك!"],
+            "Allemand":["Teste dein Wissen!","Bereit für die Herausforderung?","Kennst du die Antwort?","Vorsicht, diese Frage ist knifflig!","Nur die Besten schaffen es!","Du bist dran!"],
+            "Italien":["Metti alla prova le tue conoscenze!","Pronto per la sfida?","Conosci la risposta?","Attenzione, questa è insidiosa!","Solo i più forti ci riusciranno!","Tocca a te!"]
+        }
+        hp=st.selectbox("Hook court",hook_presets.get(quiz_language,hook_presets["Français"])+["Personnalisé"],key="hq_choice")
+        if hp=="Personnalisé":
+            hook_q=st.text_input("Votre Hook","Teste tes connaissances !",key="hq_custom")
+        else:
+            hook_q=hp
     with g4:
-        outro_q=st.text_input("CTA final","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq")
+        cta_presets={
+            "Français":["Abonne-toi à SuspenseLingo pour le prochain quiz !","Abonne-toi et relève le prochain défi !","Donne ton score en commentaire !","À combien de bonnes réponses es-tu arrivé ?","Suis SuspenseLingo pour d'autres quiz !"],
+            "Anglais":["Subscribe to SuspenseLingo for the next quiz!","Subscribe and take on the next challenge!","Share your score in the comments!","How many did you get right?","Follow SuspenseLingo for more quizzes!"],
+            "Espagnol":["¡Suscríbete a SuspenseLingo para el próximo quiz!","¡Suscríbete y acepta el próximo desafío!","¡Comparte tu puntuación en los comentarios!","¿Cuántas respuestas acertaste?","¡Sigue a SuspenseLingo para más quizzes!"],
+            "Arabe":["اشترك في SuspenseLingo للتحدي القادم!","اشترك وخض التحدي القادم!","اكتب نتيجتك في التعليقات!","كم إجابة صحيحة حصلت عليها؟","تابع SuspenseLingo للمزيد من الاختبارات!"],
+            "Allemand":["Abonniere SuspenseLingo für das nächste Quiz!","Abonniere und stelle dich der nächsten Herausforderung!","Teile dein Ergebnis in den Kommentaren!","Wie viele Antworten hattest du richtig?","Folge SuspenseLingo für weitere Quizze!"],
+            "Italien":["Iscriviti a SuspenseLingo per il prossimo quiz!","Iscriviti e affronta la prossima sfida!","Scrivi il tuo punteggio nei commenti!","Quante risposte hai indovinato?","Segui SuspenseLingo per altri quiz!"]
+        }
+        cp=st.selectbox("CTA final",cta_presets.get(quiz_language,cta_presets["Français"])+["Personnalisé"],key="oq_choice")
+        if cp=="Personnalisé":
+            outro_q=st.text_input("Votre CTA","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq_custom")
+        else:
+            outro_q=cp
         st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
     st.markdown('</div>',unsafe_allow_html=True)
 
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 2. Messages de motivation</div><div class="qvp-card-sub">Les messages existants restent éditables ici, sans carte intermédiaire supplémentaire.</div>',unsafe_allow_html=True)
     mot_defaults=QUIZ_MOTIVATION_DEFAULTS.get(quiz_language,QUIZ_MOTIVATION_DEFAULTS["Français"])
     mm1,mm2=st.columns(2,gap="medium")
+    motivation_presets={
+        "Français":{
+            "start":["Prêt ? C'est parti !","À toi de jouer !","C'est parti pour le défi !","Concentre-toi… la première question arrive !","Voyons si tu peux faire un sans-faute !"],
+            "end":["Bravo ! À bientôt pour un nouveau quiz !","Bien joué ! Rendez-vous pour le prochain défi !","Merci d'avoir joué ! À très vite !","Alors, quel est ton score ? À bientôt !","Prêt pour le prochain quiz ?"]
+        },
+        "Anglais":{"start":["Ready? Let's go!","Your turn!","Let's start the challenge!","Focus… the first question is coming!","Can you get a perfect score?"],"end":["Great job! See you in the next quiz!","Well played! See you for the next challenge!","Thanks for playing! See you soon!","So, what's your score? See you next time!","Ready for the next quiz?"]},
+        "Espagnol":{"start":["¿Listo? ¡Empezamos!","¡Te toca!","¡Comienza el desafío!","Concéntrate… llega la primera pregunta!","¿Puedes conseguir un pleno?"],"end":["¡Bravo! ¡Hasta el próximo quiz!","¡Muy bien! Nos vemos en el próximo desafío!","¡Gracias por jugar! ¡Hasta pronto!","¿Cuál fue tu puntuación? ¡Hasta la próxima!","¿Listo para el próximo quiz?"]},
+        "Arabe":{"start":["هل أنت مستعد؟ هيا نبدأ!","حان دورك!","لنبدأ التحدي!","ركز جيدًا… السؤال الأول قادم!","هل تستطيع الحصول على نتيجة كاملة؟"],"end":["أحسنت! نراك في الاختبار القادم!","عمل رائع! نلتقي في التحدي القادم!","شكرًا لمشاركتك! نراك قريبًا!","ما هي نتيجتك؟ نراك لاحقًا!","هل أنت مستعد للاختبار القادم؟"]},
+        "Allemand":{"start":["Bereit? Los geht's!","Du bist dran!","Starten wir die Herausforderung!","Konzentriere dich… die erste Frage kommt!","Schaffst du eine perfekte Punktzahl?"],"end":["Großartig! Bis zum nächsten Quiz!","Gut gespielt! Bis zur nächsten Herausforderung!","Danke fürs Mitspielen! Bis bald!","Wie ist dein Ergebnis? Bis zum nächsten Mal!","Bereit für das nächste Quiz?"]},
+        "Italien":{"start":["Pronto? Si parte!","Tocca a te!","Inizia la sfida!","Concentrati… arriva la prima domanda!","Riesci a fare punteggio pieno?"],"end":["Bravo! Alla prossima quiz!","Ben fatto! Ci vediamo alla prossima sfida!","Grazie per aver giocato! A presto!","Qual è il tuo punteggio? Alla prossima!","Pronto per il prossimo quiz?"]}
+    }
+    mp=motivation_presets.get(quiz_language,motivation_presets["Français"])
     with mm1:
-        mot_start_q=st.text_input("Avant le quiz",mot_defaults["start"],key="mot_start_q")
+        start_options=mp["start"]+["Personnalisé"]
+        start_default=mot_defaults["start"] if mot_defaults["start"] in start_options else start_options[0]
+        mot_start_choice=st.selectbox("Avant le quiz",start_options,index=start_options.index(start_default),key="mot_start_choice")
+        if mot_start_choice=="Personnalisé":
+            mot_start_q=st.text_input("Votre message avant le quiz",mot_defaults["start"],key="mot_start_custom")
+        else:
+            mot_start_q=mot_start_choice
     with mm2:
-        mot_end_q=st.text_input("À la fin",mot_defaults["end"],key="mot_end_q")
+        end_options=mp["end"]+["Personnalisé"]
+        end_default=mot_defaults["end"] if mot_defaults["end"] in end_options else end_options[0]
+        mot_end_choice=st.selectbox("À la fin",end_options,index=end_options.index(end_default),key="mot_end_choice")
+        if mot_end_choice=="Personnalisé":
+            mot_end_q=st.text_input("Votre message de fin",mot_defaults["end"],key="mot_end_custom")
+        else:
+            mot_end_q=mot_end_choice
     st.caption("Aucune carte intermédiaire : les questions s'enchaînent sans interruption.")
     st.markdown('</div>',unsafe_allow_html=True)
 
