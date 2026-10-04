@@ -3237,6 +3237,16 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
     bg_mode_clean_q="Généré automatiquement" if str(bg_mode_q).startswith("✨") else "Image personnalisée" if str(bg_mode_q).startswith("🖼️") else "Aucun"
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
 
+    
+    # V31.4 — panneau de prévisualisation restauré et réellement visible pendant l’édition.
+    st.markdown("""<style>
+    [data-testid="column"]:has(.qvp-studio-workspace-anchor){
+        position:sticky !important; top:18px !important; align-self:flex-start !important;
+        z-index:30 !important; min-width:0 !important;
+    }
+    .qvp-preview-panel{position:relative !important; z-index:31 !important;}
+    </style>""", unsafe_allow_html=True)
+
     st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu descends dans les réglages.</div>',unsafe_allow_html=True)
     studio_q_left, studio_q_right = st.columns([1.12,0.88], gap="large")
@@ -3261,12 +3271,14 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
             elif preview_state_q=="Question + réponses": preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,motion=0.55,pulse=0.20,video_title=th_q)
             elif preview_state_q=="Compte à rebours": preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,timer=3,timer_fraction=0.72,pulse=0.95,motion=1.25,video_title=th_q)
             else: preview=draw_quiz_frame(preview_q,preview_opts,theme_q,1,max(1,int(nb_q)),channel_q,sample_bg,entrance=1.0,correct_idx=preview_corr,reveal_progress=1.0,pulse=0.15,motion=1.8,video_title=th_q,explanation=("Mercure est la planète la plus proche du Soleil." if th_q=="Sciences" else "Ottawa est la capitale du Canada." if th_q=="Géographie" else "La Révolution française débute en 1789." if th_q=="Histoire" else "Paris est la capitale de la France."),explanation_progress=1.0)
+            st.markdown("#### 👁️ APERÇU INTERACTIF — édition en direct")
             render_clickable_preview(preview,"quiz",quiz_style_id,cfg_q,"")
             st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
-        st.markdown("#### 📱 Aperçu selon la plateforme")
+        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
+        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
         try:
             render_platform_safe_preview(preview if "preview" in locals() else sample_bg, "quiz_platform_safe")
         except Exception as e:
@@ -3532,6 +3544,16 @@ else:
     bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
 
+    
+    # V31.4 — panneau de prévisualisation restauré et réellement visible pendant l’édition.
+    st.markdown("""<style>
+    [data-testid="column"]:has(.qvp-studio-workspace-anchor){
+        position:sticky !important; top:18px !important; align-self:flex-start !important;
+        z-index:30 !important; min-width:0 !important;
+    }
+    .qvp-preview-panel{position:relative !important; z-index:31 !important;}
+    </style>""", unsafe_allow_html=True)
+
     st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu modifies la mise en page.</div>',unsafe_allow_html=True)
     studio_v_left, studio_v_right = st.columns([1.12,0.88], gap="large")
@@ -3556,12 +3578,14 @@ else:
                 preview_v=draw_vocab_cumulative_frame(sample_items,active,theme_v,channel_v,sample_bg_v,timer=3 if "réflexion" in preview_state_v else None,timer_fraction=.72,reveal=("traduction" in preview_state_v),video_title=th_v,source_active_word=0 if active >= 0 else -1,translation_active_word=preview_translation_word)
             else:
                 sample_items=[{"fr":"Bonjour","trad":"Hello"}]; phase_v="mot" if preview_state_v=="Mot" else "countdown" if preview_state_v=="Compte à rebours" else "translation"; preview_v=draw_vocab_frame(sample_items,0,langue_v,theme_v,channel_v,sample_bg_v,phase_v,3,.75,1.0)
+            st.markdown("#### 👁️ APERÇU INTERACTIF — édition en direct")
             render_clickable_preview(preview_v,"vocab",vocab_style_id,cfg_v,"")
             st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
-        st.markdown("#### 📱 Aperçu selon la plateforme")
+        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
+        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
         try:
             render_platform_safe_preview(preview_v if "preview_v" in locals() else sample_bg_v, "vocab_platform_safe")
         except Exception as e:
