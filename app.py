@@ -2682,17 +2682,52 @@ def export_platform_video(video_data, platform, quality, tmpdir):
     with open(out,"rb") as f: return f.read()
 
 def render_export_panel(video_data, base_name, key_prefix):
+    """Export robuste : préparation une seule fois, puis boutons persistants.
+    Les téléchargements ne relancent pas la préparation ni le rendu vidéo.
+    """
     st.markdown("### 📥 EXPORTER LA VIDÉO")
-    st.caption("Votre rendu master reste inchangé. Export vertical 9:16 optimisé pour les plateformes sélectionnées.")
-    platforms=st.multiselect("Plateformes",["TikTok","YouTube Shorts","Instagram Reels","Facebook Reels"],default=["TikTok"],key=f"{key_prefix}_platforms")
+    st.caption("Votre rendu master reste inchangé. Sélectionnez une ou plusieurs plateformes, puis préparez les fichiers.")
+    platform_options=["Toutes les plateformes","TikTok","YouTube Shorts","Instagram Reels","Facebook Reels"]
+    selected=st.multiselect("Plateformes",platform_options,default=["Toutes les plateformes"],key=f"{key_prefix}_platforms")
+    if "Toutes les plateformes" in selected:
+        platforms=["TikTok","YouTube Shorts","Instagram Reels","Facebook Reels"]
+    else:
+        platforms=selected
     quality=st.radio("Qualité",["720p","1080p"],index=1,horizontal=True,key=f"{key_prefix}_quality")
+
+    export_state_key=f"{key_prefix}_prepared_exports"
+    signature=(base_name,quality,tuple(platforms),hash(video_data)) if platforms else None
     if st.button("📦 Préparer les téléchargements",key=f"{key_prefix}_prepare",type="primary",disabled=not platforms):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with st.spinner("Préparation des fichiers…"):
+            prepared={}
+            # Une seule conversion par qualité : les 4 plateformes partagent le même master 9:16.
+            safe0=platforms[0].replace(" ","").replace("Shorts","Short").replace("Reels","Reel")
+            with tempfile.TemporaryDirectory(prefix="sl_export_") as export_tmp:
+                exported=export_platform_video(video_data,safe0,quality,export_tmp)
             for platform in platforms:
                 safe=platform.replace(" ","").replace("Shorts","Short").replace("Reels","Reel")
-                exported=export_platform_video(video_data,safe,quality,tmpdir)
-                filename=f"{base_name}_{safe}_{quality}.mp4"
-                st.download_button(f"⬇️ {platform} — {quality}",data=exported,file_name=filename,mime="video/mp4",key=f"{key_prefix}_dl_{safe}_{quality}")
+                prepared[platform]={
+                    "data":exported,
+                    "filename":f"{base_name}_{safe}_{quality}.mp4"
+                }
+            st.session_state[export_state_key]={"signature":signature,"files":prepared}
+        st.success("✅ Export prêt. Les 4 téléchargements sont maintenant disponibles ci-dessous.")
+
+    prepared_state=st.session_state.get(export_state_key)
+    if prepared_state and prepared_state.get("signature")==signature:
+        st.markdown("#### ⬇️ Téléchargements prêts")
+        for platform in platforms:
+            item=prepared_state["files"].get(platform)
+            if item:
+                st.download_button(
+                    f"⬇️ {platform} — {quality}",
+                    data=item["data"],
+                    file_name=item["filename"],
+                    mime="video/mp4",
+                    key=f"{key_prefix}_dl_{platform.replace(' ','_')}_{quality}",
+                    on_click="ignore",
+                    use_container_width=True,
+                )
 
 def render_layout_editor(module, style="1"):
     """Éditeur Studio V14 : indépendant pour chacun des 4 styles."""
@@ -3286,13 +3321,16 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         if md>0.15:
                             mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
                             me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
-                    # CTA très court seulement après le quiz.
-                    if clean_text(outro_q):
+                    # CTA final + engagement : deux phrases courtes, une seule séquence vocale.
+                    final_cta_text=clean_text(outro_q)
+                    if clean_text(engagement_q) and clean_text(engagement_q) not in final_cta_text:
+                        final_cta_text=(final_cta_text+" "+clean_text(engagement_q)).strip()
+                    if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
-                        synthesize_audio(outro_q,voice_q,oa,tts_rate)
+                        synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
                         od=audio_duration(oa)
                         if od>0.15:
-                            of=save_frames([(draw_hook(outro_q,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
+                            of=save_frames([(draw_hook(final_cta_text,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
                                             for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                             oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
