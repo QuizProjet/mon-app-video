@@ -622,7 +622,7 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
     draw.text((x,y),label,font=tf,fill="white")
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=(WIDTH-bw)//2; radius=int(cfg.get("score_radius",22))
+    by=int(cfg.get("score_y",112)); bw=sw+40; bh=max(42,sh+18); bx=int(cfg.get("score_x",540))-bw//2; bx=max(20,min(WIDTH-20-bw,bx)); radius=int(cfg.get("score_radius",22))
     score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
     draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=radius,fill=score_bg,outline=score_color,width=int(cfg.get("score_border",2)))
     draw.text(((WIDTH-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=score_color)
@@ -759,13 +759,13 @@ def _layout(module="quiz", style=None):
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":42,"title_size":46,
         "question_x":540,"question_y":259,"question_size":47,"question_width":900,"question_box_radius":28,
-        "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,
+        "answer_y":690,"answer_x":80,"answer_width":920,"answer_h":82,"answer_gap":12,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":True,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
-        "timer_auto_below_answers":True,"explanation_auto_below_timer":True,"explanation_auto_height":True,
+        "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
-        "score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
-        "explanation_y":1160,"explanation_h":320,"explanation_size":30,
+        "score_x":540,"score_y":112,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
+        "explanation_x":540,"explanation_y":1160,"explanation_h":320,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
@@ -795,13 +795,15 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
-    size=base_size
-    f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    while len(lines)>2 and size>30:
+    # Priorité à la lisibilité : on essaie d'abord 2 lignes, puis 3 lignes avant de réduire
+    # excessivement la police. La question reste toujours dans son cadre.
+    size=base_size; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
+    while len(lines)>3 and size>32:
         size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    lines=lines[:2]
-    hi=_highlight_words(question); yy=int(cfg["question_y"])
-    box_top=yy-18; box_bottom=yy+len(lines)*int(size*1.18)+12
+    lines=lines[:3]
+    hi=_highlight_words(question); yy=int(cfg["question_y"]);
+    line_h=int(size*1.18)
+    box_top=yy-18; box_bottom=yy+len(lines)*line_h+22
     radius=int(cfg["question_box_radius"])
     box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
     if cfg.get("question_frame_enabled", True):
@@ -811,50 +813,47 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
         x=center_x-totalw/2+int(5*math.sin(phase*math.pi*2*cfg["motion_strength"]))
-        for local_word_index,(w,ww) in enumerate(zip(words,widths)):
-            key=w.strip(".,?!:;()[]«»\"'").lower()
+        for w,ww in zip(words,widths):
             current=(active_word >= 0 and global_word == int(active_word))
-            # Karaoké Style 1 : aucun encadré autour du mot actif.
-            # Le mot prononcé passe simplement du blanc au jaune/or.
             fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255))
             draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
             x+=ww+space; global_word+=1
-        yy+=int(size*1.18)
+        yy+=line_h
     return box_bottom
 
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
     cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
-    card_h=int(cfg["answer_h"]); gap=int(cfg["answer_gap"]); start_y=int(cfg["answer_y"]); f_opt=get_font(cfg["answer_size"],ff)
+    configured_h=int(cfg["answer_h"]); gap=int(cfg["answer_gap"]); start_y=int(cfg["answer_y"]); f_opt=get_font(cfg["answer_size"],ff)
+    badge_size=int(cfg.get("answer_badge_size",54)); padding=int(cfg.get("answer_text_padding",24))
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
     for i,opt in enumerate(options[:4]):
+        opt_clean=clean_text(opt); lines=wrap_text(opt_clean,f_opt,max(180,right-(left+154)-26))[:2]
+        text_h=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*4
+        card_h=max(configured_h, badge_size+16, text_h+padding*2) if cfg.get("answer_auto_height",True) else configured_h
         if anim=="Aucune": local=1.0
         else: local=ease_out(clamp((entrance-i*0.07*speed)/(0.48/max(.25,speed))))
         offset=int((1-local)*52*strength) if anim in ("Glissement","Glissement vertical") else 0
         extra=int(7*ease_back(clamp(reveal_progress))) if correct_idx is not None and i==correct_idx else 0
-        xpad=0
-        if anim in ("Glissement","Glissement vertical"): xpad=int((1-local)*40*strength)
-        elif anim=="Pop": extra += int((1-local)*10*strength)
+        xpad=int((1-local)*40*strength) if anim in ("Glissement","Glissement vertical") else (int((1-local)*10*strength) if anim=="Pop" else 0)
         y=start_y+i*(card_h+gap)+offset+int(2*math.sin((phase+i*.13)*math.pi*2*cfg["motion_strength"]))
         correct=(correct_idx is not None and i==correct_idx)
         if correct:
             fill=_hex_rgb(cfg["correct"],theme["success"]); outline=_hex_rgb(cfg.get("correct"),theme["success"]); width=max(2,int(cfg.get("border_width",2))+1)
-            # Accent discret pour la bonne réponse : halo local
         else:
             fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
         if cfg.get("answer_cards_enabled", True):
             draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=fill,outline=outline,width=width)
-        badge_size=max(44,int(cfg["answer_size"]*1.75)); bw=badge_size; bh=badge_size; bx=82+xpad; by=int(y+(card_h-bh)/2)
+        badge_size_eff=max(36,min(72,badge_size)); bw=badge_size_eff; bh=badge_size_eff; bx=82+xpad; by=int(y+(card_h-bh)/2)
         badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
-        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
+        draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=min(int(badge_size_eff*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
         lf=get_font(max(18,min(42,int(cfg["answer_size"]*1.02))),ff); letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
         lh=text_height(lf,letter); draw.text((bx+(bw-text_width(draw,letter,lf))/2,by+(bh-lh)/2-2),letter,font=lf,fill=lc)
-        text_x=154+xpad; maxw=right-text_x-26; lines=wrap_text(clean_text(opt),f_opt,maxw)[:2]
-        th=sum(text_height(f_opt,z) for z in lines)+max(0,len(lines)-1)*3; ty=y+(card_h-th)/2-2
+        text_x=154+xpad; maxw=right-text_x-26; ty=y+(card_h-text_h)/2-2
         for line in lines:
-            draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill=_hex_rgb(cfg["text"],(255,255,255))); ty+=text_height(f_opt,line)+3
+            draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill=_hex_rgb(cfg["text"],(255,255,255))); ty+=text_height(f_opt,line)+4
         if correct:
             cx=right-38+xpad; cy=y+card_h/2; rr=19
             draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
@@ -1261,10 +1260,8 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.12*math.sin(phase*math.pi*2)))+int(cfg.get("bg_x",0))))
     sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))+int(cfg.get("bg_y",0))))
     img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse)
-    # Style 1 : le décor reste visible mais plus discret derrière les réponses.
-    dim=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dd=ImageDraw.Draw(dim)
-    dd.rounded_rectangle((45,520,1035,1655),radius=48,fill=(0,0,0,38))
-    img=Image.alpha_composite(img.convert("RGBA"),dim).convert("RGB"); draw=ImageDraw.Draw(img)
+    # Pas de grand panneau décoratif fixe : les cadres de chaque élément sont contrôlés séparément dans le Studio.
+    draw=ImageDraw.Draw(img)
     for k in range(9):
         px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if cfg["show_title"]:
@@ -2440,7 +2437,7 @@ def _qvp_prefix(module, style):
 
 def _qvp_selected_element(module, style):
     allowed = {
-        ("quiz", "1"): {"title","question","answers","timer","explanation"},
+        ("quiz", "1"): {"title","question","answers","timer","score","explanation"},
         ("quiz", "2"): {"title","question","timer","history"},
         ("vocab", "1"): {"title","word","translation","timer"},
         ("vocab", "2"): {"title","table","timer"},
@@ -2478,6 +2475,8 @@ def _qvp_adjust(module, style, element, dx=0, dy=0, dsize=0):
         ss[p+key] = val
     if element == "title":
         add("title_x", dx, 0, 1080); add("title_y", dy, 20, 320); add("title_size", dsize, 20, 90)
+    elif element == "score":
+        add("score_x", dx, 0, 1080); add("score_y", dy, 40, 300); add("score_size", dsize, 20, 72)
     elif element in ("question","word"):
         add("question_x", dx, 0, 1080); add("question_y", dy, 60, 1050); add("question_size", dsize, 20, 110)
     elif element == "answers":
@@ -2488,7 +2487,7 @@ def _qvp_adjust(module, style, element, dx=0, dy=0, dsize=0):
         else:
             add("timer_x", dx, 0, 1080); add("timer_y", dy, 200, 1500); add("timer_size", dsize, 24, 150)
     elif element == "explanation":
-        add("explanation_y", dy, 850, 1500); add("explanation_size", dsize, 22, 60)
+        add("explanation_x", dx, 0, 1080); add("explanation_y", dy, 700, 1600); add("explanation_size", dsize, 22, 60)
     elif element == "history":
         add("history_x", dx, 0, 250); add("history_y", dy, 350, 1350); add("history_size", dsize, 18, 54)
     elif element == "translation":
@@ -2504,6 +2503,7 @@ def _qvp_element_boxes(module, style, cfg):
     def add(name,label,x,y,w,h): boxes.append((name,label,float(x),float(y),float(w),float(h)))
     add("title","Titre",cfg.get("title_x",540),cfg.get("title_y",70),900,105)
     if module=="quiz" and str(style)=="1":
+        add("score","Compteur",cfg.get("score_x",540),cfg.get("score_y",112),180,70)
         add("question","Question",cfg.get("question_x",540),cfg.get("question_y",180),cfg.get("question_width",900),210)
         add("answers","Réponses",cfg.get("answer_x",80)+cfg.get("answer_width",920)/2,cfg.get("answer_y",650)+180,cfg.get("answer_width",920),4*(cfg.get("answer_h",78)+cfg.get("answer_gap",12)))
         auto_timer_y = (int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))+max(24,int(cfg.get("timer_size",58)))+22) if cfg.get("timer_auto_below_answers",True) else int(cfg.get("timer_y",1015))
@@ -2779,10 +2779,10 @@ def render_layout_editor(module, style="1"):
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
         "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
         "question_frame_enabled":True, "answer_cards_enabled":True, "explanation_frame_enabled":True,
-        "score_y":112, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "score_x":540, "score_y":112, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
-        "timer_auto_below_answers":True, "explanation_auto_below_timer":True, "explanation_auto_height":True,
+        "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
         "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
@@ -2803,8 +2803,9 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
-    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • V14.0</div>', unsafe_allow_html=True)
-    st.markdown('<div class="qvp-editor-subtitle">Les réglages sont indépendants pour ce style et sont conservés lorsque tu changes de module.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • PRO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="qvp-editor-subtitle">Chaque élément possède ses propres positions, tailles, couleurs et cadres. X = horizontal • Y = vertical • les réglages sont indépendants par style.</div>', unsafe_allow_html=True)
+    st.info("🧭 **Comment lire X/Y :** X déplace de gauche à droite (0 → 1080). Y déplace de haut en bas (0 → 1920). Les coordonnées concernent la vidéo 1080×1920, pas la taille du téléphone affiché.")
     tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
 
     with tabs[0]:
@@ -2825,9 +2826,9 @@ def render_layout_editor(module, style="1"):
     with tabs[1]:
         c1,c2 = st.columns(2)
         with c1:
-            st.markdown("**Élément actif**")
-            st.slider("Question / mot — X",0,1080,key=p+"question_x")
-            st.slider("Question / mot — Y",60,1000,key=p+"question_y")
+            st.markdown("**Position de l’élément principal**")
+            st.slider("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"question_x")
+            st.slider("↕ Y — haut 0 • bas 1920",60,1000,key=p+"question_y")
             if is_quiz and style=="2":
                 st.markdown("**Historique — Style 2**")
                 st.slider("Historique — X",0,220,key=p+"history_x")
@@ -2843,17 +2844,17 @@ def render_layout_editor(module, style="1"):
                 st.slider("Espace entre lignes",0,24,key=p+"table_gap",step=2)
         with c2:
             st.markdown("**Titre**")
-            st.slider("Titre — X",0,1080,value=540,key=p+"title_x") if p+"title_x" not in st.session_state else st.slider("Titre — X",0,1080,key=p+"title_x")
-            st.slider("Titre — Y",20,260,key=p+"title_y")
+            st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
+            st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
             if is_quiz and style=="1":
                 st.markdown("**Réponses — Style 1**")
-                st.slider("Réponses — X",20,180,key=p+"answer_x")
-                st.slider("Réponses — Y",300,1050,key=p+"answer_y")
+                st.slider("↔ Réponses X — bord gauche du bloc",20,180,key=p+"answer_x")
+                st.slider("↕ Réponses Y — haut du bloc",300,1050,key=p+"answer_y")
             if is_quiz and style=="1":
                 st.markdown("**Explication**")
-                st.slider("Explication — X",0,1080,key=p+"explanation_x")
-            st.caption("0 = gauche • 540 = centre • 1080 = droite")
-            st.slider("Explication — Y",850,1500,key=p+"explanation_y")
+                st.slider("↔ Explication X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"explanation_x")
+            st.caption("📐 Repère vidéo : X = horizontal (0→1080) • Y = vertical (0→1920). Ces valeurs sont des coordonnées vidéo, pas des pixels d’écran.")
+            st.slider("↕ Explication Y — haut 0 • bas 1920",850,1600,key=p+"explanation_y")
             if not is_quiz and style=="2":
                 st.markdown("**⏱️ Minuteur — Style 2**")
                 st.slider("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
@@ -2879,11 +2880,19 @@ def render_layout_editor(module, style="1"):
                 st.slider("Taille du texte des réponses",20,62,key=p+"answer_size")
                 st.slider("Espacement des réponses",4,32,key=p+"answer_gap")
                 st.slider("Arrondi des réponses",0,48,key=p+"answer_radius")
+                st.slider("Taille indépendante du badge A/B/C/D",36,72,key=p+"answer_badge_size")
+                st.checkbox("Hauteur automatique des cartes",key=p+"answer_auto_height")
+                st.slider("Marge du texte dans les cartes",12,40,key=p+"answer_text_padding")
                 st.slider("Taille du compteur",20,72,key=p+"score_size")
+                st.markdown("**Compteur 1/15 — position indépendante**")
+                st.slider("↔ Compteur X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"score_x")
+                st.slider("↕ Compteur Y — haut 0 • bas 1920",40,300,key=p+"score_y")
                 st.markdown("**Explication**")
                 st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
                 st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
+                st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
+                st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
