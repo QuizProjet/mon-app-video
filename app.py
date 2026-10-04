@@ -208,6 +208,13 @@ button[kind="primary"]{font-weight:850!important}
 .qvp-actionbar-v11{margin-top:4px!important;margin-bottom:6px!important;}
 .qvp-preview-sticky{top:8px!important;}
 
+/* V27 — vrai poste de travail Studio : éditeur et aperçu côte à côte */
+.qvp-studio-workspace-title{margin:22px 0 10px;font-size:1.05rem;font-weight:800;color:#0f172a;}
+.qvp-studio-workspace-note{margin:0 0 12px;color:#64748b;font-size:.88rem;}
+.qvp-studio-workspace-anchor{height:1px;}
+[data-testid="stHorizontalBlock"]:has(.qvp-studio-workspace-anchor) > [data-testid="column"]:last-child{position:sticky!important;top:82px!important;align-self:flex-start!important;z-index:35!important;}
+@media (max-width:1050px){[data-testid="stHorizontalBlock"]:has(.qvp-studio-workspace-anchor) > [data-testid="column"]:last-child{position:static!important;}}
+
 /* V22 — Studio 60/40 : réglages à gauche, aperçu sticky à droite */
 .block-container{max-width:1700px!important;padding-left:1.2rem!important;padding-right:1.2rem!important;}
 .qvp-studio-shell{max-width:none!important;width:100%!important;}
@@ -2695,10 +2702,6 @@ def render_layout_editor(module, style="1"):
             c_auto1,c_auto2=st.columns(2)
             with c_auto1: st.checkbox("Explication sous le minuteur",key=p+"explanation_auto_below_timer")
             with c_auto2: st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
-            c_frame1,c_frame2,c_frame3=st.columns(3)
-            with c_frame1: st.checkbox("Cadre de la question",key=p+"question_frame_enabled")
-            with c_frame2: st.checkbox("Cartes des réponses",key=p+"answer_cards_enabled")
-            with c_frame3: st.checkbox("Cadre explication",key=p+"explanation_frame_enabled")
 
     with tabs[1]:
         c1,c2 = st.columns(2)
@@ -2730,7 +2733,8 @@ def render_layout_editor(module, style="1"):
             if is_quiz and style=="1":
                 st.markdown("**Explication**")
                 st.slider("Explication — X",0,1080,key=p+"explanation_x")
-                st.slider("Explication — Y",850,1500,key=p+"explanation_y")
+            st.caption("0 = gauche • 540 = centre • 1080 = droite")
+            st.slider("Explication — Y",850,1500,key=p+"explanation_y")
             if not is_quiz and style=="2":
                 st.markdown("**⏱️ Minuteur — Style 2**")
                 st.slider("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
@@ -2784,6 +2788,11 @@ def render_layout_editor(module, style="1"):
             st.color_picker("Bonne réponse / traduction",key=p+"correct")
             st.color_picker("Texte principal",key=p+"text")
             st.color_picker("Texte secondaire",key=p+"muted")
+        st.markdown("**Visibilité des cadres**")
+        vc1,vc2,vc3=st.columns(3)
+        with vc1: st.checkbox("Afficher le cadre de la question",key=p+"question_frame_enabled")
+        with vc2: st.checkbox("Afficher les cartes/cadres des réponses",key=p+"answer_cards_enabled")
+        with vc3: st.checkbox("Afficher le cadre de l'explication",key=p+"explanation_frame_enabled")
         st.markdown("**Bordures**")
         bc1,bc2,bc3=st.columns(3)
         with bc1: st.color_picker("Couleur",key=p+"border_color")
@@ -2874,147 +2883,143 @@ with n2:
 if nav=="quiz":
     st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
 
-    # ===== 60/40 : tous les réglages à gauche / aperçu + actions à droite =====
-    q_main_left, q_main_right = st.columns([1.5, 1.0], gap="large")
-    with q_main_left:
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
-        g1,g2=st.columns(2,gap="medium")
-        with g1:
-            th_q=st.text_input("Sujet","Culture Générale",key="thq")
-            quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
-            voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
-            voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
-            voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
-        with g2:
-            theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
-            style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
-            nb_q=st.slider("Questions",1,15,3,key="nbq")
-        g3,g4=st.columns(2,gap="medium")
-        with g3:
-            if st.session_state.get("cq") == "@QuizMaster_Pro":
-                st.session_state["cq"] = "SuspenseLingo"
-            channel_q=st.text_input("Chaîne","SuspenseLingo",key="cq")
-            hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
-        with g4:
-            outro_q=st.text_input("CTA final","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq")
-            st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
-        st.markdown('</div>',unsafe_allow_html=True)
+    # Paramètres et contenu en pleine largeur.
+    st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
+    g1,g2=st.columns(2,gap="medium")
+    with g1:
+        th_q=st.text_input("Sujet","Culture Générale",key="thq")
+        quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
+        voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
+        voice_q_name=st.selectbox("Voix",voice_options,index=min(1,len(voice_options)-1),key=f"vq_{quiz_language}")
+        voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
+    with g2:
+        theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
+        style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
+        nb_q=st.slider("Questions",1,15,3,key="nbq")
+    g3,g4=st.columns(2,gap="medium")
+    with g3:
+        if st.session_state.get("cq") == "@QuizMaster_Pro":
+            st.session_state["cq"] = "SuspenseLingo"
+        channel_q=st.text_input("Chaîne","SuspenseLingo",key="cq")
+        hook_q=st.text_input("Hook court","Teste tes connaissances !",key="hq")
+    with g4:
+        outro_q=st.text_input("CTA final","Abonne-toi à SuspenseLingo pour le prochain quiz !",key="oq")
+        st.caption(f"🎙️ {quiz_language} • {voice_q_name} — questions, réponses, explications et messages dans cette langue.")
+    st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 2. Messages de motivation</div><div class="qvp-card-sub">Les messages existants restent éditables ici, sans carte intermédiaire supplémentaire.</div>',unsafe_allow_html=True)
-        mot_defaults=QUIZ_MOTIVATION_DEFAULTS.get(quiz_language,QUIZ_MOTIVATION_DEFAULTS["Français"])
-        mm1,mm2=st.columns(2,gap="medium")
-        with mm1:
-            mot_start_q=st.text_input("Avant le quiz",mot_defaults["start"],key="mot_start_q")
-        with mm2:
-            mot_end_q=st.text_input("À la fin",mot_defaults["end"],key="mot_end_q")
-        st.caption("Aucune carte intermédiaire : les questions s'enchaînent sans interruption.")
-        st.markdown('</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">💬 2. Messages de motivation</div><div class="qvp-card-sub">Les messages existants restent éditables ici, sans carte intermédiaire supplémentaire.</div>',unsafe_allow_html=True)
+    mot_defaults=QUIZ_MOTIVATION_DEFAULTS.get(quiz_language,QUIZ_MOTIVATION_DEFAULTS["Français"])
+    mm1,mm2=st.columns(2,gap="medium")
+    with mm1:
+        mot_start_q=st.text_input("Avant le quiz",mot_defaults["start"],key="mot_start_q")
+    with mm2:
+        mot_end_q=st.text_input("À la fin",mot_defaults["end"],key="mot_end_q")
+    st.caption("Aucune carte intermédiaire : les questions s'enchaînent sans interruption.")
+    st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Questions / réponses</div>',unsafe_allow_html=True)
-        with st.expander("Source, génération et édition des questions", expanded=not bool(st.session_state.get("q_data"))):
-            mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
-            if mode_q=="🤖 IA Gemini":
-                st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
-                gen_key=_quiz_generation_key(nb_q,th_q,quiz_language)
-                cached_key=st.session_state.get("q_ai_key")
-                if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
-                    st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
-                bq1,bq2=st.columns(2)
-                with bq1:
-                    if st.button("♻️ Charger / générer ce quiz",key="genq",use_container_width=True):
-                        if cached_key==gen_key and st.session_state.get("q_ai_cache"):
-                            st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
-                            st.session_state.q_source=f"IA • {th_q} • cache"
-                            st.success("✅ Quiz déjà généré : réutilisation du cache, 0 nouvelle requête Gemini.")
-                        elif not api_key:
-                            st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                        else:
-                            try:
-                                prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur le sujet « {th_q} ».
-    Varie les connaissances testées et évite toute répétition entre les questions.
-    Chaque objet doit respecter EXACTEMENT cette structure :
-    {{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
-    IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
-    reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
-    Les 4 options doivent être plausibles et une seule correcte.
-    Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
-                                res_text,_=gemini_generate_text(prompt)
-                                data=normalize_questions(parse_json(res_text))
-                                if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
-                                st.session_state.q_data=data[:nb_q]
-                                st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
-                                st.session_state.q_ai_key=gen_key
-                                st.session_state.q_source=f"IA • {th_q}"
-                                st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
-                            except Exception as e: st.error(f"Erreur Gemini : {e}")
-                with bq2:
-                    if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
-                        if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                        else:
-                            try:
-                                prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur « {th_q} ».
-    Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
-    Une seule bonne réponse. Retourne uniquement le JSON.'''
-                                res_text,_=gemini_generate_text(prompt)
-                                data=normalize_questions(parse_json(res_text))
-                                if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
-                                st.session_state.q_data=data[:nb_q]
-                                st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
-                                st.session_state.q_ai_key=gen_key
-                                st.session_state.q_source=f"IA • {th_q}"
-                                st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
-                            except Exception as e: st.error(f"Erreur Gemini : {e}")
-            else:
-                st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>',unsafe_allow_html=True)
-                st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
-                csv_file=st.file_uploader("Choisir ton fichier CSV",type=["csv"],key="quizcsv")
-                if csv_file is not None:
-                    try:
-                        imported=parse_quiz_csv(csv_file); st.session_state.q_data=imported; st.session_state.q_source="CSV manuel"
-                        st.success(f"✅ {len(imported)} questions importées.")
-                        st.dataframe([{"#":i+1,"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"]} for i,q in enumerate(imported)], use_container_width=True, hide_index=True)
-                    except Exception as e: st.error(f"CSV invalide : {e}")
+    st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Questions / réponses</div>',unsafe_allow_html=True)
+    with st.expander("Source, génération et édition des questions", expanded=not bool(st.session_state.get("q_data"))):
+        mode_q=st.radio("Source du contenu",["🤖 IA Gemini","📄 CSV"],horizontal=True,key="mode_q")
+        if mode_q=="🤖 IA Gemini":
+            st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
+            gen_key=_quiz_generation_key(nb_q,th_q,quiz_language)
+            cached_key=st.session_state.get("q_ai_key")
+            if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
+                st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
+            bq1,bq2=st.columns(2)
+            with bq1:
+                if st.button("♻️ Charger / générer ce quiz",key="genq",use_container_width=True):
+                    if cached_key==gen_key and st.session_state.get("q_ai_cache"):
+                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]
+                        st.session_state.q_source=f"IA • {th_q} • cache"
+                        st.success("✅ Quiz déjà généré : réutilisation du cache, 0 nouvelle requête Gemini.")
+                    elif not api_key:
+                        st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Tu es un créateur expert de quiz Shorts. Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur le sujet « {th_q} ».
+Varie les connaissances testées et évite toute répétition entre les questions.
+Chaque objet doit respecter EXACTEMENT cette structure :
+{{"question":"...","options":["réponse A","réponse B","réponse C","réponse D"],"reponse_correcte":"A","explication":"..."}}
+IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
+reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
+Les 4 options doivent être plausibles et une seule correcte.
+Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=normalize_questions(parse_json(res_text))
+                            if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                            st.session_state.q_data=data[:nb_q]
+                            st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                            st.session_state.q_ai_key=gen_key
+                            st.session_state.q_source=f"IA • {th_q}"
+                            st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+            with bq2:
+                if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
+                    if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur « {th_q} ».
+Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
+Une seule bonne réponse. Retourne uniquement le JSON.'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=normalize_questions(parse_json(res_text))
+                            if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
+                            st.session_state.q_data=data[:nb_q]
+                            st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
+                            st.session_state.q_ai_key=gen_key
+                            st.session_state.q_source=f"IA • {th_q}"
+                            st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+        else:
+            st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>',unsafe_allow_html=True)
+            st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
+            csv_file=st.file_uploader("Choisir ton fichier CSV",type=["csv"],key="quizcsv")
+            if csv_file is not None:
+                try:
+                    imported=parse_quiz_csv(csv_file); st.session_state.q_data=imported; st.session_state.q_source="CSV manuel"
+                    st.success(f"✅ {len(imported)} questions importées.")
+                    st.dataframe([{"#":i+1,"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"]} for i,q in enumerate(imported)], use_container_width=True, hide_index=True)
+                except Exception as e: st.error(f"CSV invalide : {e}")
 
-            if st.session_state.get("q_data"):
-                st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
-                st.markdown("### ✏️ Édition manuelle rapide")
-                st.caption("Choisis une question et modifie-la ici. Le grand tableau reste disponible seulement si nécessaire.")
-                qlist=st.session_state.q_data
-                qnum=st.selectbox("Question à modifier",list(range(1,len(qlist)+1)),format_func=lambda n:f"Question {n}",key="manual_q_index")
-                qi=int(qnum)-1; qcur=qlist[qi]; opts=list(qcur.get("options",[]))+["","","",""]
-                m1,m2=st.columns(2)
-                with m1:
-                    mq_question=st.text_area("Question",qcur.get("question",""),height=72,key="manual_q_text")
-                    mq_a=st.text_input("A",opts[0],key="manual_q_a"); mq_b=st.text_input("B",opts[1],key="manual_q_b")
-                with m2:
-                    mq_c=st.text_input("C",opts[2],key="manual_q_c"); mq_d=st.text_input("D",opts[3],key="manual_q_d")
-                    cc=qcur.get("reponse_correcte","A") if qcur.get("reponse_correcte","A") in ["A","B","C","D"] else "A"
-                    mq_correct=st.selectbox("Bonne réponse",["A","B","C","D"],index=["A","B","C","D"].index(cc),key="manual_q_correct")
-                mq_exp=st.text_area("Explication",qcur.get("explication",""),height=62,key="manual_q_exp")
-                e1,e2,e3=st.columns(3)
-                with e1:
-                    if st.button("💾 Enregistrer la question",key="saveqedit",use_container_width=True):
-                        st.session_state.q_data[qi]={"question":clean_text(mq_question),"options":[clean_text(mq_a),clean_text(mq_b),clean_text(mq_c),clean_text(mq_d)],"reponse_correcte":mq_correct,"explication":clean_text(mq_exp)}
-                        st.session_state.q_source="Questions modifiées manuellement"; st.success("✅ Question enregistrée.")
-                with e2:
-                    if st.button("↩️ Restaurer le lot IA",key="restoreq",use_container_width=True):
-                        if st.session_state.get("q_ai_cache"):
-                            st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]; st.session_state.q_source=f"IA • {th_q} • restauré"; st.success("✅ Lot IA restauré, 0 quota consommé.")
-                        else: st.info("Aucun lot IA en cache.")
-                with e3: st.caption(f"{len(qlist)} questions • édition rapide")
-                with st.expander("🧰 Édition avancée — tableau complet",expanded=False):
-                    quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
-                    edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={"Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),"Question":st.column_config.TextColumn("Question",width="large"),"Explication":st.column_config.TextColumn("Explication",width="large")},hide_index=True)
-                    if st.button("💾 Enregistrer le tableau",key="saveqtable",use_container_width=True):
-                        saved=_save_quiz_editor(edited)
-                        if saved:
-                            st.session_state.q_data=saved; st.session_state.q_source="Questions modifiées manuellement"; st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
-                        else: st.error("Aucune question valide à enregistrer.")
-        st.markdown('</div>',unsafe_allow_html=True)
+        if st.session_state.get("q_data"):
+            st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
+            st.markdown("### ✏️ Édition manuelle rapide")
+            st.caption("Choisis une question et modifie-la ici. Le grand tableau reste disponible seulement si nécessaire.")
+            qlist=st.session_state.q_data
+            qnum=st.selectbox("Question à modifier",list(range(1,len(qlist)+1)),format_func=lambda n:f"Question {n}",key="manual_q_index")
+            qi=int(qnum)-1; qcur=qlist[qi]; opts=list(qcur.get("options",[]))+["","","",""]
+            m1,m2=st.columns(2)
+            with m1:
+                mq_question=st.text_area("Question",qcur.get("question",""),height=72,key="manual_q_text")
+                mq_a=st.text_input("A",opts[0],key="manual_q_a"); mq_b=st.text_input("B",opts[1],key="manual_q_b")
+            with m2:
+                mq_c=st.text_input("C",opts[2],key="manual_q_c"); mq_d=st.text_input("D",opts[3],key="manual_q_d")
+                cc=qcur.get("reponse_correcte","A") if qcur.get("reponse_correcte","A") in ["A","B","C","D"] else "A"
+                mq_correct=st.selectbox("Bonne réponse",["A","B","C","D"],index=["A","B","C","D"].index(cc),key="manual_q_correct")
+            mq_exp=st.text_area("Explication",qcur.get("explication",""),height=62,key="manual_q_exp")
+            e1,e2,e3=st.columns(3)
+            with e1:
+                if st.button("💾 Enregistrer la question",key="saveqedit",use_container_width=True):
+                    st.session_state.q_data[qi]={"question":clean_text(mq_question),"options":[clean_text(mq_a),clean_text(mq_b),clean_text(mq_c),clean_text(mq_d)],"reponse_correcte":mq_correct,"explication":clean_text(mq_exp)}
+                    st.session_state.q_source="Questions modifiées manuellement"; st.success("✅ Question enregistrée.")
+            with e2:
+                if st.button("↩️ Restaurer le lot IA",key="restoreq",use_container_width=True):
+                    if st.session_state.get("q_ai_cache"):
+                        st.session_state.q_data=[dict(x) for x in st.session_state.q_ai_cache]; st.session_state.q_source=f"IA • {th_q} • restauré"; st.success("✅ Lot IA restauré, 0 quota consommé.")
+                    else: st.info("Aucun lot IA en cache.")
+            with e3: st.caption(f"{len(qlist)} questions • édition rapide")
+            with st.expander("🧰 Édition avancée — tableau complet",expanded=False):
+                quiz_rows=[{"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"],"Explication":q.get("explication","")} for q in st.session_state.q_data]
+                edited=st.data_editor(quiz_rows,num_rows="dynamic",use_container_width=True,key="quiz_editor",column_config={"Bonne":st.column_config.SelectboxColumn("Bonne",options=["A","B","C","D"],required=True),"Question":st.column_config.TextColumn("Question",width="large"),"Explication":st.column_config.TextColumn("Explication",width="large")},hide_index=True)
+                if st.button("💾 Enregistrer le tableau",key="saveqtable",use_container_width=True):
+                    saved=_save_quiz_editor(edited)
+                    if saved:
+                        st.session_state.q_data=saved; st.session_state.q_source="Questions modifiées manuellement"; st.success(f"✅ {len(saved)} question(s) enregistrée(s), sans appel Gemini.")
+                    else: st.error("Aucune question valide à enregistrer.")
+    st.markdown('</div>',unsafe_allow_html=True)
 
-        style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
-        render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
-
+    style_q_full="Style 1 — 4 réponses + révélation" if style_q.startswith("Style 1") else "Style 2 — questions/réponses cumulatives"
     quiz_style_id="2" if style_q_full.startswith("Style 2") else "1"
     qprefix=_qvp_prefix("quiz", quiz_style_id)
     bg_mode_q=st.session_state.get(qprefix+"bg_mode", "✨ Automatique")
@@ -3022,9 +3027,14 @@ if nav=="quiz":
     bg_mode_clean_q="Généré automatiquement" if str(bg_mode_q).startswith("✨") else "Image personnalisée" if str(bg_mode_q).startswith("🖼️") else "Aucun"
     bg_q=selected_video_background(theme_q,th_q,bg_mode_clean_q,uploaded_bg_q)
 
-    with q_main_right:
+    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu descends dans les réglages.</div>',unsafe_allow_html=True)
+    studio_q_left, studio_q_right = st.columns([1.12,0.88], gap="large")
+    with studio_q_left:
+        render_layout_editor("quiz", "2" if style_q_full.startswith("Style 2") else "1")
+    with studio_q_right:
+        st.markdown('<div class="qvp-studio-workspace-anchor"></div>',unsafe_allow_html=True)
         # V25 — aperçu permanent en face de l’Éditeur Studio.
-        st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
         st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF</div><div class="qvp-preview-note">📌 Aperçu toujours visible en face de l’Éditeur Studio. ⚡ Toute modification de l’Éditeur Studio recalcule automatiquement l’aperçu.</div></div>',unsafe_allow_html=True)
         if style_q_full.startswith("Style 2"):
             preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key="preview_state_q")
@@ -3055,6 +3065,7 @@ if nav=="quiz":
         with s2:
             if st.button("🎲 Nouvelle variation",key="studio_variation_unified_q",use_container_width=True):
                 st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
+
 
     if q_generate_btn_clicked and st.session_state.get("q_data"):
         try:
@@ -3215,87 +3226,84 @@ if nav=="quiz":
 
 else:
     st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
-    v_main_left, v_main_right = st.columns([1.5, 1.0], gap="large")
-    with v_main_left:
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
-        v1,v2=st.columns(2,gap="medium")
-        with v1:
-            th_v=st.text_input("Sujet","Voyage",key="thv")
-            nb_v=st.slider("Mots",1,15,15,key="nbv")
-            langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
-        with v2:
-            voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
-            voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-            theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
-            style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],key="stylev_compact")
-        v3,v4=st.columns(2,gap="medium")
-        with v3:
-            channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
-            hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
-        with v4:
-            outro_v=st.text_input("Message de fin","Abonne-toi pour un nouveau mot !",key="ov")
-            if style_v.startswith("Style 2"):
-                outro_v_sub=st.text_input("Sous-message de fin (facultatif)","Nouveau mot demain 👋",key="ov_sub")
-            else:
-                outro_v_sub=""
-        st.markdown('</div>',unsafe_allow_html=True)
+    # Paramètres et contenu en pleine largeur.
+    st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
+    v1,v2=st.columns(2,gap="medium")
+    with v1:
+        th_v=st.text_input("Sujet","Voyage",key="thv")
+        nb_v=st.slider("Mots",1,15,15,key="nbv")
+        langue_v=st.selectbox("Langue cible",list(VOICES_MAP),key="lv")
+    with v2:
+        voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
+        voice_tr=VOICES_MAP[langue_v][voice_tr_name]
+        theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
+        style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],key="stylev_compact")
+    v3,v4=st.columns(2,gap="medium")
+    with v3:
+        channel_v=st.text_input("Chaîne","@LingoPulse_Daily",key="cv")
+        hook_v=st.text_input("Hook","Apprends ces mots !",key="hv")
+    with v4:
+        outro_v=st.text_input("Message de fin","Abonne-toi pour un nouveau mot !",key="ov")
+        if style_v.startswith("Style 2"):
+            outro_v_sub=st.text_input("Sous-message de fin (facultatif)","Nouveau mot demain 👋",key="ov_sub")
+        else:
+            outro_v_sub=""
+    st.markdown('</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Mots / traductions</div>',unsafe_allow_html=True)
-        vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
-        with st.expander("Source, génération et édition des mots", expanded=not bool(st.session_state.get("v_data"))):
-            vb1,vb2=st.columns(2)
-            with vb1:
-                if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
-                    if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
-                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
-                        st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
-                    elif not api_key:
-                        st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                    else:
-                        try:
-                            prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
-                            res_text,_=gemini_generate_text(prompt)
-                            data=parse_json(res_text)[:nb_v]
-                            if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                            st.session_state.v_data=data
-                            st.session_state.v_ai_cache=[dict(x) for x in data]
-                            st.session_state.v_ai_key=vg_key
-                            st.success("✅ Vocabulaire généré et mis en cache.")
-                        except Exception as e: st.error(f"Erreur Gemini : {e}")
-            with vb2:
-                if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
-                    if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                    else:
-                        try:
-                            prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
-                            res_text,_=gemini_generate_text(prompt)
-                            data=parse_json(res_text)[:nb_v]
-                            if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                            st.session_state.v_data=data
-                            st.session_state.v_ai_cache=[dict(x) for x in data]
-                            st.session_state.v_ai_key=vg_key
-                            st.success("✅ Nouveau lot vocabulaire généré.")
-                        except Exception as e: st.error(f"Erreur Gemini : {e}")
-            if st.session_state.get("v_data"):
-                st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
-                st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
-                vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
-                edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={"Français":st.column_config.TextColumn("Français",width="medium"),"Traduction":st.column_config.TextColumn("Traduction",width="medium")},hide_index=True)
-                ve1,ve2=st.columns(2)
-                with ve1:
-                    if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
-                        saved=_save_vocab_editor(edited_v)
-                        if saved:
-                            st.session_state.v_data=saved; st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
-                        else: st.error("Aucun mot valide à enregistrer.")
-                with ve2:
-                    if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
-                        if st.session_state.get("v_ai_cache"):
-                            st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]; st.success("✅ Lot IA restauré, 0 quota consommé.")
-                        else: st.info("Aucun lot IA en cache.")
-        st.markdown('</div>',unsafe_allow_html=True)
-
-        render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
+    st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Mots / traductions</div>',unsafe_allow_html=True)
+    vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
+    with st.expander("Source, génération et édition des mots", expanded=not bool(st.session_state.get("v_data"))):
+        vb1,vb2=st.columns(2)
+        with vb1:
+            if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
+                if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
+                    st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
+                    st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
+                elif not api_key:
+                    st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=parse_json(res_text)[:nb_v]
+                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                        st.session_state.v_data=data
+                        st.session_state.v_ai_cache=[dict(x) for x in data]
+                        st.session_state.v_ai_key=vg_key
+                        st.success("✅ Vocabulaire généré et mis en cache.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        with vb2:
+            if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
+                if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                else:
+                    try:
+                        prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
+                        res_text,_=gemini_generate_text(prompt)
+                        data=parse_json(res_text)[:nb_v]
+                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                        st.session_state.v_data=data
+                        st.session_state.v_ai_cache=[dict(x) for x in data]
+                        st.session_state.v_ai_key=vg_key
+                        st.success("✅ Nouveau lot vocabulaire généré.")
+                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        if st.session_state.get("v_data"):
+            st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
+            st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
+            vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
+            edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={"Français":st.column_config.TextColumn("Français",width="medium"),"Traduction":st.column_config.TextColumn("Traduction",width="medium")},hide_index=True)
+            ve1,ve2=st.columns(2)
+            with ve1:
+                if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
+                    saved=_save_vocab_editor(edited_v)
+                    if saved:
+                        st.session_state.v_data=saved; st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
+                    else: st.error("Aucun mot valide à enregistrer.")
+            with ve2:
+                if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
+                    if st.session_state.get("v_ai_cache"):
+                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]; st.success("✅ Lot IA restauré, 0 quota consommé.")
+                    else: st.info("Aucun lot IA en cache.")
+    st.markdown('</div>',unsafe_allow_html=True)
 
     vocab_style_id="2" if style_v.startswith("Style 2") else "1"
     vprefix=_qvp_prefix("vocab", vocab_style_id)
@@ -3303,10 +3311,16 @@ else:
     uploaded_bg_v=st.session_state.get(vprefix+"bg_upload")
     bg_mode_clean_v="Généré automatiquement" if str(bg_mode_v).startswith("✨") else "Image personnalisée" if str(bg_mode_v).startswith("🖼️") else "Aucun"
     bg_v=selected_video_background(theme_v,th_v,bg_mode_clean_v,uploaded_bg_v)
-    with v_main_right:
+
+    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu modifies la mise en page.</div>',unsafe_allow_html=True)
+    studio_v_left, studio_v_right = st.columns([1.12,0.88], gap="large")
+    with studio_v_left:
+        render_layout_editor("vocab", "2" if style_v.startswith("Style 2") else "1")
+    with studio_v_right:
+        st.markdown('<div class="qvp-studio-workspace-anchor"></div>',unsafe_allow_html=True)
         # V25 — aperçu permanent en face de l’Éditeur Studio (Vocabulaire).
         # Toutes les fonctions du panneau Vocabulaire restent inchangées.
-        st.markdown('<div class="qvp-preview-column"><div class="qvp-preview-anchor"></div></div>',unsafe_allow_html=True)
         st.markdown('<div class="qvp-preview-panel"><div class="qvp-preview-title">👁️ APERÇU INTERACTIF — VOCABULAIRE</div><div class="qvp-preview-note">Clique directement sur le mot, la traduction, le minuteur ou le tableau.</div></div>',unsafe_allow_html=True)
         if style_v.startswith("Style 2"):
             preview_state_v=st.radio("État",["Ligne 1 + réflexion","Ligne 2 + réflexion + traduction 1","Ligne 3 + réflexion + traductions 1–2"],horizontal=True,key="preview_state_v")
@@ -3336,184 +3350,185 @@ else:
             if st.button("🎲 Nouvelle variation",key="studio_variation_unified_v",use_container_width=True):
                 st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
 
-        if v_generate_btn_clicked and st.session_state.get("v_data"):
-            try:
-                with st.spinner("Création du Short Vocabulaire Pro..."):
-                    with tempfile.TemporaryDirectory() as tmp:
-                        tic,ding,pop,whoosh=make_sfx(tmp); clips=[]; items=st.session_state.v_data
-                        countdown_sfx = make_vocab_style2_countdown_sfx(tic,ding,tmp) if style_v.startswith("Style 2") else make_sfx_countdown(tic,ding,tmp)
-                        for idx,item in enumerate(items):
-                            fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
-                            if style_v.startswith("Style 2"):
-                                # ==========================================================
-                                # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
-                                # État unique par ligne :
-                                # FR progressive -> FR permanent -> réflexion ->
-                                # traduction progressive -> FR+TR permanent -> ligne suivante.
-                                # Aucun état ultérieur ne peut effacer une ligne déjà révélée.
-                                # Français + voix
-                                # → réflexion 3-2-1 + tic/tac
-                                # → ding
-                                # → traduction + voix
-                                # → ligne conservée dans l'historique
-                                # ==========================================================
-                                sfx_cfg=_layout("vocab","2")
 
-                                # --- 1. VOIX FRANÇAISE + apparition mot par mot ---
-                                fwords=word_timed_frames_vocab_style2(
-                                    fa,fw,
-                                    lambda wi,prog: draw_vocab_cumulative_frame(
-                                        items,idx,theme_v,channel_v,bg_v,
-                                        reveal=False,motion=prog,
-                                        video_title=th_v,
-                                        source_active_word=wi
-                                    ),
-                                    fd
+    if v_generate_btn_clicked and st.session_state.get("v_data"):
+        try:
+            with st.spinner("Création du Short Vocabulaire Pro..."):
+                with tempfile.TemporaryDirectory() as tmp:
+                    tic,ding,pop,whoosh=make_sfx(tmp); clips=[]; items=st.session_state.v_data
+                    countdown_sfx = make_vocab_style2_countdown_sfx(tic,ding,tmp) if style_v.startswith("Style 2") else make_sfx_countdown(tic,ding,tmp)
+                    for idx,item in enumerate(items):
+                        fa=os.path.join(tmp,f"fr_{idx}.mp3"); fw=synthesize_audio(item['fr'],VOICES_FR["Henri - Dynamique"],fa,tts_rate); fd=audio_duration(fa)
+                        if style_v.startswith("Style 2"):
+                            # ==========================================================
+                            # VOCABULAIRE STYLE 2 — SÉQUENCE PRO
+                            # État unique par ligne :
+                            # FR progressive -> FR permanent -> réflexion ->
+                            # traduction progressive -> FR+TR permanent -> ligne suivante.
+                            # Aucun état ultérieur ne peut effacer une ligne déjà révélée.
+                            # Français + voix
+                            # → réflexion 3-2-1 + tic/tac
+                            # → ding
+                            # → traduction + voix
+                            # → ligne conservée dans l'historique
+                            # ==========================================================
+                            sfx_cfg=_layout("vocab","2")
+
+                            # --- 1. VOIX FRANÇAISE + apparition mot par mot ---
+                            fwords=word_timed_frames_vocab_style2(
+                                fa,fw,
+                                lambda wi,prog: draw_vocab_cumulative_frame(
+                                    items,idx,theme_v,channel_v,bg_v,
+                                    reveal=False,motion=prog,
+                                    video_title=th_v,
+                                    source_active_word=wi
+                                ),
+                                fd
+                            )
+
+                            word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True):
+                                mix_voice_sfx(
+                                    fa,pop,word_voice_fx,0,
+                                    float(sfx_cfg.get("sfx_volume",0.30))
                                 )
-
-                                word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
-                                if sfx_cfg.get("sfx_enabled",True):
-                                    mix_voice_sfx(
-                                        fa,pop,word_voice_fx,0,
-                                        float(sfx_cfg.get("sfx_volume",0.30))
-                                    )
-                                else:
-                                    word_voice_fx=fa
-
-                                fr_clip=os.path.join(tmp,f"fr_{idx}_seg.mp4")
-                                make_vocab_style2_segment(
-                                    save_frames(fwords,tmp,f"vf_{idx}"),
-                                    word_voice_fx,fr_clip,tmp,1.0
-                                )
-
-                                # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
-                                # IMPORTANT : le français doit rester affiché pendant toute
-                                # la réflexion. On verrouille donc la dernière parole FR
-                                # comme état permanent de cette ligne.
-                                fr_last_word = max(0, len(fw) - 1)
-                                reflection_duration=3.55
-                                cframes=[]
-                                steps=36
-
-                                for j in range(steps):
-                                    elapsed=reflection_duration*j/steps
-                                    if elapsed<1.05:
-                                        sec=3
-                                        frac=1-(elapsed/1.05)
-                                    elif elapsed<2.10:
-                                        sec=2
-                                        frac=1-((elapsed-1.05)/1.05)
-                                    elif elapsed<3.15:
-                                        sec=1
-                                        frac=1-((elapsed-2.10)/1.05)
-                                    else:
-                                        sec=None
-                                        frac=0.0
-
-                                    cframes.append((
-                                        draw_vocab_cumulative_frame(
-                                            items,idx,theme_v,channel_v,bg_v,
-                                            timer=sec,
-                                            timer_fraction=max(0.0,frac),
-                                            reveal=False,
-                                            motion=elapsed/reflection_duration,
-                                            video_title=th_v,
-                                            # Le mot français reste visible pendant 3-2-1.
-                                            source_active_word=fr_last_word
-                                        ),
-                                        reflection_duration/steps
-                                    ))
-
-                                count_clip=os.path.join(tmp,f"count_{idx}.mp4")
-                                make_vocab_style2_segment(
-                                    save_frames(cframes,tmp,f"vc_{idx}"),
-                                    countdown_sfx,count_clip,tmp,1.0
-                                )
-
-                                # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
-                                ta=os.path.join(tmp,f"tr_{idx}.mp3")
-                                tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
-                                td=audio_duration(ta)
-
-                                tf=word_timed_frames_vocab_style2(
-                                    ta,tw,
-                                    lambda wi,prog: draw_vocab_cumulative_frame(
-                                        items,idx,theme_v,channel_v,bg_v,
-                                        reveal=True,motion=prog,
-                                        video_title=th_v,
-                                        # Le français reste définitivement visible
-                                        # pendant que la traduction est prononcée.
-                                        source_active_word=fr_last_word,
-                                        translation_active_word=wi
-                                    ),
-                                    td
-                                )
-
-                                tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                                if sfx_cfg.get("sfx_enabled",True):
-                                    mix_voice_sfx(
-                                        ta,pop,tr_fx,0,
-                                        float(sfx_cfg.get("sfx_volume",0.30))
-                                    )
-                                else:
-                                    tr_fx=ta
-
-                                tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
-                                make_vocab_style2_segment(
-                                    save_frames(tf,tmp,f"trf_{idx}"),
-                                    tr_fx,tr_clip,tmp,1.0
-                                )
-
-                                # On regroupe immédiatement les 3 phases du mot.
-                                # Cela empêche les petits écarts de timebase de se
-                                # cumuler sur 15 mots.
-                                item_clip=os.path.join(tmp,f"item_{idx}.mp4")
-                                concat_videos_style2(
-                                    [fr_clip,count_clip,tr_clip],
-                                    item_clip,tmp
-                                )
-                                clips.append(item_clip)
-
                             else:
-                                fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
-                                word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
-                                sfx_cfg=_layout("vocab","1")
-                                if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                else: word_voice_fx=fa
-                                fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
-                                cframes=[]
-                                for j in range(COUNTDOWN_STEPS):
-                                    t=j/max(1,31); elapsed=t*3.12
-                                    if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
-                                    elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                    elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
-                                    else: sec=None; frac=0.0
-                                    cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,frac,1.0),3.12/32))
-                                co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
-                                ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                                tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0,translation_active_word=wi),td)
-                                tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                                if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                                else: tr_fx=ta
-                                tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
-                            gc.collect()
-                        oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                        if style_v.startswith("Style 2"):
-                            of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
-                        else:
-                            of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
-                        oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                        final=os.path.join(tmp,"vocabulaire_pro.mp4")
-                        if style_v.startswith("Style 2"):
-                            concat_videos_style2(clips,final,tmp)
-                        else:
-                            concat_videos(clips,final,tmp)
-                        with open(final,"rb") as f: data=f.read()
-                        st.success("✅ Short Vocabulaire Pro terminé.")
-                        st.video(data)
-                        st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
-            except MemoryError:
-                gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
-            except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+                                word_voice_fx=fa
 
-    st.markdown('</div>',unsafe_allow_html=True)
+                            fr_clip=os.path.join(tmp,f"fr_{idx}_seg.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(fwords,tmp,f"vf_{idx}"),
+                                word_voice_fx,fr_clip,tmp,1.0
+                            )
+
+                            # --- 2. RÉFLEXION : 3-2-1 + TIC/TAC + DING ---
+                            # IMPORTANT : le français doit rester affiché pendant toute
+                            # la réflexion. On verrouille donc la dernière parole FR
+                            # comme état permanent de cette ligne.
+                            fr_last_word = max(0, len(fw) - 1)
+                            reflection_duration=3.55
+                            cframes=[]
+                            steps=36
+
+                            for j in range(steps):
+                                elapsed=reflection_duration*j/steps
+                                if elapsed<1.05:
+                                    sec=3
+                                    frac=1-(elapsed/1.05)
+                                elif elapsed<2.10:
+                                    sec=2
+                                    frac=1-((elapsed-1.05)/1.05)
+                                elif elapsed<3.15:
+                                    sec=1
+                                    frac=1-((elapsed-2.10)/1.05)
+                                else:
+                                    sec=None
+                                    frac=0.0
+
+                                cframes.append((
+                                    draw_vocab_cumulative_frame(
+                                        items,idx,theme_v,channel_v,bg_v,
+                                        timer=sec,
+                                        timer_fraction=max(0.0,frac),
+                                        reveal=False,
+                                        motion=elapsed/reflection_duration,
+                                        video_title=th_v,
+                                        # Le mot français reste visible pendant 3-2-1.
+                                        source_active_word=fr_last_word
+                                    ),
+                                    reflection_duration/steps
+                                ))
+
+                            count_clip=os.path.join(tmp,f"count_{idx}.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(cframes,tmp,f"vc_{idx}"),
+                                countdown_sfx,count_clip,tmp,1.0
+                            )
+
+                            # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
+                            ta=os.path.join(tmp,f"tr_{idx}.mp3")
+                            tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
+                            td=audio_duration(ta)
+
+                            tf=word_timed_frames_vocab_style2(
+                                ta,tw,
+                                lambda wi,prog: draw_vocab_cumulative_frame(
+                                    items,idx,theme_v,channel_v,bg_v,
+                                    reveal=True,motion=prog,
+                                    video_title=th_v,
+                                    # Le français reste définitivement visible
+                                    # pendant que la traduction est prononcée.
+                                    source_active_word=fr_last_word,
+                                    translation_active_word=wi
+                                ),
+                                td
+                            )
+
+                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True):
+                                mix_voice_sfx(
+                                    ta,pop,tr_fx,0,
+                                    float(sfx_cfg.get("sfx_volume",0.30))
+                                )
+                            else:
+                                tr_fx=ta
+
+                            tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
+                            make_vocab_style2_segment(
+                                save_frames(tf,tmp,f"trf_{idx}"),
+                                tr_fx,tr_clip,tmp,1.0
+                            )
+
+                            # On regroupe immédiatement les 3 phases du mot.
+                            # Cela empêche les petits écarts de timebase de se
+                            # cumuler sur 15 mots.
+                            item_clip=os.path.join(tmp,f"item_{idx}.mp4")
+                            concat_videos_style2(
+                                [fr_clip,count_clip,tr_clip],
+                                item_clip,tmp
+                            )
+                            clips.append(item_clip)
+
+                        else:
+                            fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
+                            word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
+                            sfx_cfg=_layout("vocab","1")
+                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
+                            else: word_voice_fx=fa
+                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
+                            cframes=[]
+                            for j in range(COUNTDOWN_STEPS):
+                                t=j/max(1,31); elapsed=t*3.12
+                                if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
+                                elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
+                                elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
+                                else: sec=None; frac=0.0
+                                cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,frac,1.0),3.12/32))
+                            co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
+                            ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
+                            tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0,translation_active_word=wi),td)
+                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
+                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
+                            else: tr_fx=ta
+                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
+                        gc.collect()
+                    oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
+                    if style_v.startswith("Style 2"):
+                        of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                    else:
+                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                    oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
+                    final=os.path.join(tmp,"vocabulaire_pro.mp4")
+                    if style_v.startswith("Style 2"):
+                        concat_videos_style2(clips,final,tmp)
+                    else:
+                        concat_videos(clips,final,tmp)
+                    with open(final,"rb") as f: data=f.read()
+                    st.success("✅ Short Vocabulaire Pro terminé.")
+                    st.video(data)
+                    st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
+        except MemoryError:
+            gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
+        except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+
+st.markdown('</div>',unsafe_allow_html=True)
