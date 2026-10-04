@@ -2754,6 +2754,14 @@ def render_export_panel(video_data, base_name, key_prefix):
     prepared_state=st.session_state.get(export_state_key)
     if prepared_state and prepared_state.get("signature")==signature:
         st.markdown("#### ⬇️ Téléchargements prêts")
+        if len(platforms) > 1:
+            zip_buf=io.BytesIO()
+            with zipfile.ZipFile(zip_buf,"w",compression=zipfile.ZIP_DEFLATED) as zf:
+                for platform in platforms:
+                    item=prepared_state["files"].get(platform)
+                    if item:
+                        zf.writestr(item["filename"],item["data"])
+            st.download_button("📦 Télécharger toutes les plateformes (ZIP)",data=zip_buf.getvalue(),file_name=f"{base_name}_Toutes_les_plateformes.zip",mime="application/zip",key=f"{key_prefix}_dl_all_zip",on_click="ignore",use_container_width=True)
         for platform in platforms:
             item=prepared_state["files"].get(platform)
             if item:
@@ -2891,7 +2899,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
                 st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
-                st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
+                st.caption("Le réglage « Position automatique sous le minuteur » se trouve dans Structure et n’est affiché qu’une seule fois.")
                 st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
@@ -3396,10 +3404,10 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     if vd_final <= 0 or ad_final <= 0 or abs(vd_final-ad_final) > 0.08:
                         raise RuntimeError(f"Synchronisation finale invalide : vidéo {vd_final:.2f}s / audio {ad_final:.2f}s")
                     with open(final,"rb") as f: data=f.read()
+                    st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
-                    render_export_panel(data,"SuspenseLingo_Quiz","export_quiz")
         except Exception as e:
             st.error(f"Erreur pendant le montage SuspenseLingo : {e}")
 
@@ -3709,12 +3717,18 @@ else:
                     else:
                         concat_videos(clips,final,tmp)
                     with open(final,"rb") as f: data=f.read()
+                    st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
-                    render_export_panel(data,"SuspenseLingo_Vocabulaire","export_vocab")
         except MemoryError:
             gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
         except Exception as e: st.error(f"Erreur pendant le montage : {e}")
+
+# Export persistant : placé après le rendu pour rester disponible après chaque rerun Streamlit.
+if st.session_state.get("last_quiz_video_data"):
+    render_export_panel(st.session_state["last_quiz_video_data"],"SuspenseLingo_Quiz","export_quiz_persist")
+if st.session_state.get("last_vocab_video_data"):
+    render_export_panel(st.session_state["last_vocab_video_data"],"SuspenseLingo_Vocabulaire","export_vocab_persist")
 
 st.markdown('</div>',unsafe_allow_html=True)
