@@ -862,7 +862,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
-    if cfg.get("explanation_auto_below_timer", True):
+    if cfg.get("explanation_auto_below_timer_studio", cfg.get("explanation_auto_below_timer", True)):
         timer_size=max(24,int(cfg.get("timer_size",58)))
         if cfg.get("timer_auto_below_answers",True):
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
@@ -883,7 +883,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     draw.line((cx-10,cy+16,cx+10,cy+16),fill=primary,width=3); draw.line((cx-7,cy+23,cx+7,cy+23),fill=primary,width=3)
     draw.text((left+87,y1+32),"EXPLICATION",font=get_font(min(36,int(cfg["explanation_size"]*.95))),fill=primary)
     f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
-    if cfg.get("explanation_auto_height", True):
+    if cfg.get("explanation_auto_height_studio", cfg.get("explanation_auto_height", True)):
         needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
         box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
     else:
@@ -2754,26 +2754,35 @@ def render_export_panel(video_data, base_name, key_prefix):
     prepared_state=st.session_state.get(export_state_key)
     if prepared_state and prepared_state.get("signature")==signature:
         st.markdown("#### ⬇️ Téléchargements prêts")
+        files_to_download=prepared_state["files"]
         if len(platforms) > 1:
             zip_buf=io.BytesIO()
-            with zipfile.ZipFile(zip_buf,"w",compression=zipfile.ZIP_DEFLATED) as zf:
+            with zipfile.ZipFile(zip_buf,mode="w",compression=zipfile.ZIP_DEFLATED) as zf:
                 for platform in platforms:
-                    item=prepared_state["files"].get(platform)
+                    item=files_to_download.get(platform)
                     if item:
                         zf.writestr(item["filename"],item["data"])
-            st.download_button("📦 Télécharger toutes les plateformes (ZIP)",data=zip_buf.getvalue(),file_name=f"{base_name}_Toutes_les_plateformes.zip",mime="application/zip",key=f"{key_prefix}_dl_all_zip",on_click="ignore",use_container_width=True)
+            st.download_button("📦 Télécharger toutes les plateformes (ZIP)",data=zip_buf.getvalue(),file_name=f"{base_name}_Toutes_les_plateformes.zip",mime="application/zip",key=f"{key_prefix}_dl_all_zip",use_container_width=True)
         for platform in platforms:
-            item=prepared_state["files"].get(platform)
+            item=files_to_download.get(platform)
             if item:
-                st.download_button(
-                    f"⬇️ {platform} — {quality}",
-                    data=item["data"],
-                    file_name=item["filename"],
-                    mime="video/mp4",
-                    key=f"{key_prefix}_dl_{platform.replace(' ','_')}_{quality}",
-                    on_click="ignore",
-                    use_container_width=True,
-                )
+                st.download_button(f"⬇️ {platform} — {quality}",data=item["data"],file_name=item["filename"],mime="video/mp4",key=f"{key_prefix}_dl_{platform.replace(' ','_')}_{quality}",use_container_width=True)
+
+    # En 1080p, le master est déjà le fichier vertical final : téléchargement direct.
+    elif platforms and quality=="1080p" and video_data:
+        st.markdown("#### ⚡ Téléchargement direct")
+        direct_files={}
+        for platform in platforms:
+            safe=platform.replace(" ","").replace("Shorts","Short").replace("Reels","Reel")
+            direct_files[platform]={"data":video_data,"filename":f"{base_name}_{safe}_1080p.mp4"}
+        if len(platforms)>1:
+            zip_buf=io.BytesIO()
+            with zipfile.ZipFile(zip_buf,mode="w",compression=zipfile.ZIP_DEFLATED) as zf:
+                for item in direct_files.values():
+                    zf.writestr(item["filename"],item["data"])
+            st.download_button("📦 Télécharger toutes les plateformes (ZIP)",data=zip_buf.getvalue(),file_name=f"{base_name}_Toutes_les_plateformes.zip",mime="application/zip",key=f"{key_prefix}_dl_all_direct",use_container_width=True)
+        for platform,item in direct_files.items():
+            st.download_button(f"⬇️ {platform} — 1080p",data=item["data"],file_name=item["filename"],mime="video/mp4",key=f"{key_prefix}_dl_direct_{platform.replace(' ','_')}",use_container_width=True)
 
 def render_layout_editor(module, style="1"):
     """Éditeur Studio V14 : indépendant pour chacun des 4 styles."""
@@ -2828,8 +2837,8 @@ def render_layout_editor(module, style="1"):
         st.checkbox("Afficher l'explication" if is_quiz else "Afficher le titre", key=p+"show_explanation", disabled=not is_quiz) if is_quiz else None
         if is_quiz and style=="1":
             c_auto1,c_auto2=st.columns(2)
-            with c_auto1: st.checkbox("Explication sous le minuteur",key=p+"explanation_auto_below_timer")
-            with c_auto2: st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
+            with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer_studio")
+            with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height_studio")
 
     with tabs[1]:
         c1,c2 = st.columns(2)
@@ -2900,7 +2909,6 @@ def render_layout_editor(module, style="1"):
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
                 st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
                 st.caption("Le réglage « Position automatique sous le minuteur » se trouve dans Structure et n’est affiché qu’une seule fois.")
-                st.checkbox("Hauteur automatique",key=p+"explanation_auto_height")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
                 st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
