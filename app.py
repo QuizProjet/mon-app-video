@@ -592,15 +592,7 @@ def draw_lightning_icon(draw, theme, cx, cy, size=28):
          (cx+int(.60*r),cy-int(.18*r)),(cx+int(.05*r),cy-int(.18*r))]
     draw.polygon(pts,fill=a)
 
-def draw_brand(draw, theme, channel, progress=None, safe=False):
-    if safe:
-        if channel:
-            draw.text((55, 1470), clean_text(channel), font=get_font(28), fill=theme["muted"])
-        if progress is not None:
-            x, y, w, h = 55, 1510, 970, 10
-            draw.rounded_rectangle((x,y,x+w,y+h), radius=5, fill=(65,70,85))
-            draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=5, fill=theme["accent"])
-        return
+def draw_brand(draw, theme, channel, progress=None):
     if channel:
         draw.text((55, 1810), clean_text(channel), font=get_font(28), fill=theme["muted"])
     if progress is not None:
@@ -756,38 +748,6 @@ def _save_settings():
 
 _load_saved_settings()
 
-def _auto_safe_quiz_cfg(cfg):
-    """Disposition automatique professionnelle pour Quiz Style 1.
-    Utilise une zone commune sûre aux plateformes verticales afin d'éviter que
-    question, réponses, minuteur, explication et branding soient masqués par l'UI.
-    Les réglages manuels restent disponibles en désactivant l'option dans Studio.
-    """
-    c=dict(cfg)
-    if not bool(c.get("auto_safe_layout", True)):
-        return c
-    # Zone commune volontairement conservatrice : compatible avec les zones
-    # d'interface les plus agressives des plateformes verticales.
-    c["title_x"]=540
-    c["title_y"]=62
-    c["score_x"]=540
-    c["score_y"]=126
-    c["question_x"]=540
-    c["question_width"]=840
-    c["question_y"]=285
-    c["answer_x"]=105
-    c["answer_width"]=870
-    c["answer_y"]=660
-    c["answer_h"]=80
-    c["answer_gap"]=12
-    c["timer_x"]=540
-    c["timer_y"]=1100
-    c["explanation_x"]=540
-    c["explanation_width"]=840
-    c["explanation_y"]=1195
-    c["explanation_h"]=245
-    return c
-
-
 def _layout(module="quiz", style=None):
     """Réglages visuels persistants, séparés par éditeur/style."""
     if module == "vocab":
@@ -830,8 +790,6 @@ def _layout(module="quiz", style=None):
         if key not in st.session_state and legacy_prefix+k in st.session_state:
             st.session_state[key]=st.session_state[legacy_prefix+k]
         out[k]=st.session_state.get(key,v)
-    if module == "quiz" and str(style or "1").lower() in ("1", "style1"):
-        out=_auto_safe_quiz_cfg(out)
     return out
 
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1):
@@ -1341,7 +1299,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
             alpha=int(95*(1-rp/0.45)); glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0)); gd=ImageDraw.Draw(glow); gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8); glow=glow.filter(ImageFilter.GaussianBlur(12)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
-    draw_brand(draw,theme,channel,(q_num-1)/max(1,total),safe=True)
+    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
     return img
 
 def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
@@ -2608,10 +2566,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 def render_platform_safe_preview(image, key_prefix="platform_preview"):
-    """Aperçu plateforme propre : zones discrètes + zone centrale recommandée.
-    Le visuel de la vidéo reste lisible ; les indications techniques sont reportées
-    sous l'image au lieu d'être imprimées en gros sur le rendu.
-    """
+    """Aperçu plateforme discret : ne modifie jamais la mise en page réelle du quiz."""
     profiles={
         "TikTok":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"TikTok"},
         "Instagram Reels":{"top":0.09,"bottom":0.18,"left":0.03,"right":0.16,"label":"Instagram Reels"},
@@ -2624,30 +2579,26 @@ def render_platform_safe_preview(image, key_prefix="platform_preview"):
     with c2:
         show=st.checkbox("Afficher les zones",value=True,key=f"{key_prefix}_show")
     profile=profiles[platform]
+    st.caption("Les zones sont indicatives : elles montrent uniquement les emplacements où l'interface de la plateforme peut recouvrir le contenu.")
     canvas=image.convert("RGBA").resize((360,640),Image.Resampling.LANCZOS)
     if show:
         ov=Image.new("RGBA",canvas.size,(0,0,0,0)); d=ImageDraw.Draw(ov); W,H=canvas.size
         top=int(H*profile["top"]); bottom=int(H*(1-profile["bottom"])); left=int(W*profile["left"]); right=int(W*(1-profile["right"]))
-        # Voiles très légers : ils indiquent le risque sans transformer l'aperçu en écran technique.
-        d.rectangle((0,0,W,top),fill=(220,45,65,28))
-        d.rectangle((0,bottom,W,H),fill=(220,45,65,34))
-        d.rectangle((0,top,left,bottom),fill=(220,45,65,20))
-        d.rectangle((right,top,W,bottom),fill=(220,45,65,34))
-        # Limites de la zone recommandée.
-        d.rounded_rectangle((left,top,right,bottom),radius=5,outline=(255,205,64,185),width=2)
-        # Petits repères visuels uniquement dans les coins.
-        mark=(255,205,64,210); m=10
+        d.rectangle((0,0,W,top),fill=(220,45,65,24))
+        d.rectangle((0,bottom,W,H),fill=(220,45,65,28))
+        d.rectangle((0,top,left,bottom),fill=(220,45,65,16))
+        d.rectangle((right,top,W,bottom),fill=(220,45,65,28))
+        d.rounded_rectangle((left,top,right,bottom),radius=5,outline=(255,205,64,180),width=2)
+        mark=(255,205,64,205); m=9
         for x1,y1,dx,dy in [(left,top,1,1),(right,top,-1,1),(left,bottom,1,-1),(right,bottom,-1,-1)]:
-            d.line((x1,y1,x1+dx*m,y1),fill=mark,width=3); d.line((x1,y1,x1,y1+dy*m),fill=mark,width=3)
+            d.line((x1,y1,x1+dx*m,y1),fill=mark,width=3)
+            d.line((x1,y1,x1,y1+dy*m),fill=mark,width=3)
         canvas=Image.alpha_composite(canvas,ov).convert("RGB")
     st.image(canvas,width=360)
     if show:
         st.caption(f"🛡️ {profile['label']} — rouge très léger = interface potentielle • cadre doré = zone recommandée")
     else:
         st.caption(f"👁️ Aperçu propre — {profile['label']} sans les zones techniques")
-    if st.session_state.get("q1_auto_safe_layout", True) and key_prefix.startswith("quiz"):
-        st.caption("✨ Disposition automatique activée : le quiz est recentré pour rester dans la zone sûre.")
-
 
 def _qvp_quick_controls(module, style, selected, theme_name, channel, bg, state, title, language="Anglais", prefix_key="qvp"):
     """Barre compacte d'édition rapide sous l'aperçu. Ne remplace pas l'Éditeur Studio."""
@@ -2861,7 +2812,6 @@ def render_layout_editor(module, style="1"):
     defaults = {
         "font_family":"Lato", "show_title":True, "title_x":540, "title_y":42 if is_quiz else 70, "title_size":46 if is_quiz else 34,
         "question_x":540, "question_y":270 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
-        "auto_safe_layout":True,
         "answer_y":630 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
         "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
@@ -2911,9 +2861,6 @@ def render_layout_editor(module, style="1"):
             with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
 
     with tabs[1]:
-        if is_quiz and style=="1":
-            st.checkbox("✨ Disposition automatique sécurisée pour TikTok / Reels / Shorts", key=p+"auto_safe_layout")
-            st.caption("Le Studio place automatiquement les éléments dans une zone centrale sûre. Désactive cette option uniquement si tu veux un placement manuel.")
         c1,c2 = st.columns(2)
         with c1:
             st.markdown("**Position de l’élément principal**")
