@@ -2542,6 +2542,44 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
+def render_platform_safe_preview(image, key_prefix="platform_preview"):
+    """Aperçu vertical avec zones de sécurité indicatives par plateforme."""
+    profiles={
+        "TikTok":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"TikTok"},
+        "Instagram Reels":{"top":0.09,"bottom":0.18,"left":0.03,"right":0.16,"label":"Instagram Reels"},
+        "YouTube Shorts":{"top":0.08,"bottom":0.14,"left":0.03,"right":0.12,"label":"YouTube Shorts"},
+        "Facebook Reels":{"top":0.09,"bottom":0.17,"left":0.03,"right":0.15,"label":"Facebook Reels"},
+    }
+    c1,c2=st.columns([1.35,0.9],gap="small")
+    with c1:
+        platform=st.selectbox("📱 Plateforme à prévisualiser",list(profiles),key=f"{key_prefix}_platform")
+    with c2:
+        show=st.checkbox("Afficher les zones",value=True,key=f"{key_prefix}_show")
+    profile=profiles[platform]
+    st.caption("Les zones colorées sont indicatives : elles représentent les emplacements où l'interface de la plateforme peut recouvrir le contenu.")
+    canvas=image.convert("RGBA").resize((360,640),Image.Resampling.LANCZOS)
+    if show:
+        ov=Image.new("RGBA",canvas.size,(0,0,0,0)); d=ImageDraw.Draw(ov); W,H=canvas.size
+        zones=[
+            (0,0,W,int(H*profile["top"]),"ZONE À ÉVITER • HAUT"),
+            (0,int(H*(1-profile["bottom"])),W,H,"ZONE À ÉVITER • BAS"),
+            (0,int(H*profile["top"]),int(W*profile["left"]),int(H*(1-profile["bottom"])),""),
+            (int(W*(1-profile["right"])),int(H*profile["top"]),W,int(H*(1-profile["bottom"])),"ZONE UI"),
+        ]
+        for x1,y1,x2,y2,label in zones:
+            d.rectangle((x1,y1,x2,y2),fill=(220,45,65,72),outline=(255,110,125,180),width=2)
+            if label:
+                try:
+                    tw=max(150, min(250, int(d.textlength(label))+18))
+                    d.rounded_rectangle((x1+8,y1+8,x1+tw,y1+31),radius=7,fill=(25,25,30,205))
+                    d.text((x1+14,y1+13),label,fill=(255,255,255,235))
+                except Exception:
+                    pass
+        d.rectangle((int(W*profile["left"]),int(H*profile["top"]),int(W*(1-profile["right"])),int(H*(1-profile["bottom"]))),outline=(255,255,255,115),width=2)
+        canvas=Image.alpha_composite(canvas,ov).convert("RGB")
+    st.image(canvas,width=360)
+    st.caption(f"🛡️ Zone de contenu recommandée pour {profile['label']} : garde la question et les réponses dans le cadre central.")
+
 def _qvp_quick_controls(module, style, selected, theme_name, channel, bg, state, title, language="Anglais", prefix_key="qvp"):
     """Barre compacte d'édition rapide sous l'aperçu. Ne remplace pas l'Éditeur Studio."""
     allowed = list(_qvp_element_boxes(module, style, _layout(module, style)))
@@ -2650,7 +2688,7 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.caption("🧠 Quiz TikTok Pro  •  🗣️ Vocabulaire Pro")
+st.sidebar.caption("🧠 SuspenseLingo Studio V30  •  🗣️ Vocabulaire Pro")
 st.sidebar.markdown("""
 <div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
@@ -3178,6 +3216,12 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
+        st.markdown("#### 📱 Aperçu selon la plateforme")
+        try:
+            render_platform_safe_preview(preview if "preview" in locals() else sample_bg, "quiz_platform_safe")
+        except Exception as e:
+            st.caption(f"Aperçu plateforme indisponible : {e}")
+
         # Action principale immédiatement sous l'aperçu et les commandes rapides.
         q_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makeq_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
         s1,s2=st.columns(2,gap="small")
@@ -3466,6 +3510,12 @@ else:
             st.caption("⚡ Aperçu en direct : modifie l'Éditeur Studio à gauche et le rendu se recalcule automatiquement. L'Éditeur Studio est l'unique panneau de réglage.")
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
+
+        st.markdown("#### 📱 Aperçu selon la plateforme")
+        try:
+            render_platform_safe_preview(preview_v if "preview_v" in locals() else sample_bg_v, "vocab_platform_safe")
+        except Exception as e:
+            st.caption(f"Aperçu plateforme indisponible : {e}")
 
         v_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
         s1,s2=st.columns(2,gap="small")
