@@ -336,7 +336,7 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    "Bleu Nuit & Or": {"bg": (11, 16, 33), "bg2": (21, 28, 51), "card": (21, 28, 51), "card2": (30, 41, 59), "accent": (245, 158, 11), "success": (16, 185, 129), "danger": (255, 83, 99), "muted": (226, 232, 240)},
+    "Bleu Nuit & Or": {"bg": (11, 16, 33), "bg2": (21, 29, 51), "card": (21, 28, 51), "card2": (30, 41, 59), "accent": (245, 158, 11), "success": (16, 185, 129), "danger": (255, 83, 99), "muted": (226, 232, 240)},
     "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
     "Violet Neon": {"bg": (12, 7, 25), "bg2": (50, 17, 72), "card": (43, 22, 65), "card2": (72, 35, 100), "accent": (239, 93, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 171, 222)},
     "Emeraude Mint": {"bg": (4, 18, 15), "bg2": (8, 61, 48), "card": (13, 48, 37), "card2": (21, 75, 57), "accent": (74, 231, 178), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (160, 202, 186)},
@@ -639,52 +639,51 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
-    """Header Option 1 Bleu Nuit & Or : marque à gauche, titre centré, compteur à droite.
-    Les coordonnées restent pilotées par l'Éditeur Studio pour préserver les réglages existants.
-    """
+    """En-tête fidèle à la maquette Bleu Nuit & Or / CSS Option 1."""
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
-    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255)
-    left, top, right, bottom = 35, 120, WIDTH-35, 235
+    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
+    left, top, right, bottom = 40, 120, WIDTH-40, 235
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
 
-    # Logo/nom de chaîne : conserve les contrôles Logo X/Y/taille de l'Éditeur.
+    # Marque à gauche — position/taille restent pilotables depuis l'éditeur.
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
         bf=get_font(int(cfg.get("brand_size",28)),ff)
-        bx=int(cfg.get("brand_x",55)); by=int(cfg.get("brand_y",150))
-        # Le nom passé à draw_brand est également rendu plus bas ; ici on ne dessine
-        # le logo que dans le header si sa position est dans la bande d'en-tête.
-        if 110 <= by <= 210:
-            if cfg.get("brand_bg_enabled",False):
-                tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
-                draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
-            draw.text((bx,by),brand,font=bf,fill=gold)
+        bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",150))
+        if cfg.get("brand_bg_enabled",False):
+            tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
+            draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
+        draw.text((bx,by),brand,font=bf,fill=gold)
 
-    # Titre centré.
+    # Titre central.
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(int(cfg.get("title_size",46)),ff); label=f"QUIZ {title.upper()}"; tw=text_width(draw,label,tf); th=text_height(tf,label)
-    tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",150))
+    tf=get_font(int(cfg.get("title_size",46)),ff)
+    label=f"QUIZ {title.upper()}"
+    tw=text_width(draw,label,tf); th=text_height(tf,label)
+    tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",145))
     ty=max(top+12,min(bottom-th-10,ty))
-    draw.text((tx+2,ty+3),label,font=tf,fill=(0,0,0)); draw.text((tx,ty),label,font=tf,fill=white)
+    draw.text((tx+2,ty+3),label,font=tf,fill=black)
+    draw.text((tx,ty),label,font=tf,fill=white)
 
-    # Compteur pill doré à droite.
+    # Compteur doré à droite.
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    bw=max(92,sw+34); bh=max(46,sh+16); bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
+    bw=max(116,sw+34); bh=max(54,sh+16)
+    bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
     bx=max(left+10,min(right-bw-10,bx)); by=max(top+10,min(bottom-bh-10,by))
-    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=bh//2,fill=gold)
-    draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=(0,0,0))
+    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=12,fill=gold)
+    draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=black)
 
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
     """Chronomètres Studio Pro. Option 1 utilise un cercle Bleu Nuit + bordure Or."""
     frac=clamp(fraction); style=str(style or "Double cercle")
     if color == (245,158,11):
+        # Option 1 : badge circulaire fixe, exactement comme la spécification CSS.
         bg=(30,41,59)
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(245,158,11),width=4)
-        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=(245,158,11),width=max(4,int(r*.10)))
         tf=get_font(text_size); ts=str(timer if timer is not None else ""); th=text_height(tf,ts)
         draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=(245,158,11))
         if label:
@@ -807,14 +806,15 @@ def _save_settings():
 
 _load_saved_settings()
 
+# V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
 # V31.10 — preset géométrique du visuel approuvé « Bleu Nuit & Or ».
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
 if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
         "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
-        "q1_answer_x": 80, "q1_answer_y": 600, "q1_answer_width": 920, "q1_answer_h": 90, "q1_answer_gap": 16,
+        "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
         "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
-        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 62, "q1_timer_text_size": 55,
+        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 64, "q1_timer_text_size": 55,
         "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
         "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
         "q1_explanation_size": 30,
@@ -826,7 +826,7 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_answer_frame_bg_enabled": True, "q1_answer_border_enabled": True,
         "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
         "q1_score_x": 965, "q1_score_y": 148, "q1_score_size": 31,
-        "q1_brand_x": 55, "q1_brand_y": 150, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+        "q1_brand_x": 70, "q1_brand_y": 150, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
     }
     for _k, _v in _blue_gold_preset.items():
         st.session_state[_k] = _v
