@@ -1117,17 +1117,59 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     ff=cfg.get("font_family","DejaVu Sans")
     table_ff=cfg.get("table_font_family",ff)
 
-    if cfg.get("show_title",True):
-        title=clean_text(video_title or "Vocabulaire")
-        tf=get_font(int(cfg.get("title_size",34)),ff)
-        tw=text_width(draw,title,tf)
-        tx=int(cfg.get("title_x",540))-tw/2
-        draw.text((tx,int(cfg.get("title_y",70))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+    # V31.25 — Vocabulaire Style 2 : mise en page visuelle validée
+    # (header SuspenseLingo + titre + compteur), puis tableau cumulatif.
+    # Cette couche ne change PAS la mécanique cumulative : elle ne fait qu'habiller
+    # le rendu final et reste entièrement à l'intérieur de la zone sûre.
+    auto=bool(cfg.get("social_auto_layout",False))
+    safe_left=int(cfg.get("social_safe_left",40)) if auto else 40
+    safe_right=int(cfg.get("social_safe_right",WIDTH-40)) if auto else WIDTH-40
+    safe_top=int(cfg.get("social_safe_top",120)) if auto else 120
+    header_y=max(safe_top+8, int(cfg.get("header_y",120)))
+    header_h=int(cfg.get("header_h",74))
+    header_bottom=min(HEIGHT-220, header_y+header_h)
+    header_left=safe_left
+    header_right=safe_right
+    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
+    draw.rounded_rectangle((header_left,header_y,header_right,header_bottom),radius=20,fill=navy,outline=border,width=2)
+
+    # Logo/nom à gauche.
+    if bool(cfg.get("brand_show",True)):
+        brand=clean_text(channel) or "SuspenseLingo"
+        bf=get_font(int(cfg.get("brand_size",28)),ff)
+        bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",139))
+        bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
+        bx=max(header_left+16,min(header_right-bw-170,bx))
+        by=max(header_y+10,min(header_bottom-bh-8,by))
+        if cfg.get("brand_bg_enabled",False):
+            pad=8
+            draw.rounded_rectangle((bx-pad,by-pad,bx+bw+pad,by+bh+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
+        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+
+    # Titre central.
+    title=clean_text(video_title or "Vocabulaire")
+    tf=get_font(int(cfg.get("title_size",34)),ff)
+    label=title.upper()[:24]
+    tw=text_width(draw,label,tf); th=text_height(tf,label)
+    tx=(header_left+header_right-tw)//2
+    ty=max(header_y+10,min(header_bottom-th-8,header_y+19))
+    draw.text((tx+2,ty+2),label,font=tf,fill=dark)
+    draw.text((tx,ty),label,font=tf,fill=white)
+
+    # Compteur 1/15, 2/15... dans un pill doré à droite.
+    score=f"{active_idx+1}/{total}"
+    sf=get_font(int(cfg.get("score_size",31)),ff)
+    sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    pill_w=max(86,sw+30); pill_h=max(48,sh+18)
+    px=header_right-pill_w-14; py=header_y+(header_h-pill_h)//2
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
+    draw.text((px+(pill_w-sw)//2,py+(pill_h-sh)//2-1),score,font=sf,fill=(15,23,42))
 
     # Pour 15 lignes, on réduit automatiquement la hauteur si nécessaire afin
     # que le tableau reste entièrement visible et ne touche jamais le footer.
     x=int(cfg.get("table_x",70))
     y0=int(cfg.get("table_y",350))
+    y0=max(y0,header_bottom+28)
     w=int(cfg.get("table_width",940))
     configured_rh=int(cfg.get("table_row_h",82))
     gap=int(cfg.get("table_gap",6))
@@ -2735,7 +2777,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.24 — Style 2 Quiz : structure cumulative exacte Q1 → Q2+R1 → Q3+R1/R2.
+# V31.25 — Style 2 Quiz : structure cumulative exacte Q1 → Q2+R1 → Q3+R1/R2.
 # V31.18 — correction définitive Streamlit : le moteur de rendu ne modifie plus les clés des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
@@ -3151,7 +3193,7 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
-    # V31.24 — calcul avant création des widgets.
+    # V31.25 — calcul avant création des widgets.
     # Style 1 Quiz reste strictement sur son preset validé V31.18/V31.19.
     # Les trois autres styles utilisent une protection additive qui conserve
     # leur géométrie et ne corrige que les débordements.
@@ -3159,7 +3201,7 @@ def render_layout_editor(module, style="1"):
         st.session_state[p+"social_auto_layout"] = True
     if p+"social_platform" not in st.session_state:
         st.session_state[p+"social_platform"] = "Universel"
-    # V31.24 : activation initiale des 4 protections. Une seule fois pour
+    # V31.25 : activation initiale des 4 protections. Une seule fois pour
     # ne pas réactiver le mode automatique après que l'utilisateur l'a désactivé.
     if not st.session_state.get("_social_auto_layout_v31_24_migrated", False):
         for _mod,_style in (("quiz","1"),("quiz","2"),("vocab","1"),("vocab","2")):
