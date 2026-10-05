@@ -3263,6 +3263,35 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         try:
             cfg_q=_layout("quiz",quiz_style_id)
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
+
+            # V31.4 FIX — restaurer les données du quiz utilisées par l’aperçu Style 1.
+            # Une ancienne révision avait supprimé ces trois affectations : le rendu
+            # tombait alors dans l’exception et l’aperçu plateforme affichait seulement
+            # le fond. Aucun réglage Studio ni aucune autre fonctionnalité n’est modifié.
+            _preview_items = st.session_state.get("q_data") or []
+            if _preview_items:
+                _p0 = _preview_items[0] or {}
+                preview_q = clean_text(_p0.get("question", "Quelle planète est la plus proche du Soleil ?"))
+                preview_opts = list(_p0.get("options", []) or [])[:4]
+                while len(preview_opts) < 4:
+                    preview_opts.append(["Vénus", "Mercure", "Mars", "Jupiter"][len(preview_opts)])
+                _rc = str(_p0.get("reponse_correcte", "B")).strip().upper()
+                if _rc[:1] in "ABCD":
+                    preview_corr = "ABCD".index(_rc[:1])
+                else:
+                    preview_corr = next((i for i,v in enumerate(preview_opts) if clean_text(v).lower()==clean_text(_rc).lower()), 0)
+            else:
+                preview_q = {
+                    "Sciences": "Quelle planète est la plus proche du Soleil ?",
+                    "Géographie": "Quelle est la capitale du Canada ?",
+                    "Histoire": "En quelle année débute la Révolution française ?",
+                }.get(th_q, "Quelle est la capitale de la France ?")
+                preview_opts = {
+                    "Sciences": ["Vénus", "Mercure", "Mars", "Jupiter"],
+                    "Géographie": ["Toronto", "Montréal", "Ottawa", "Québec"],
+                    "Histoire": ["1776", "1789", "1815", "1848"],
+                }.get(th_q, ["Paris", "Londres", "Rome", "Berlin"])
+                preview_corr = {"Sciences": 1, "Géographie": 2, "Histoire": 1}.get(th_q, 0)
             if style_q_full.startswith("Style 2"):
                 demo=[{"question":"Quelle est la capitale de la France ?","options":["Paris","Londres","Rome","Berlin"],"reponse_correcte":"A"},{"question":"Quelle est la capitale de l'Espagne ?","options":["Paris","Madrid","Rome","Lisbonne"],"reponse_correcte":"B"},{"question":"Quelle est la capitale de l'Italie ?","options":["Milan","Paris","Rome","Madrid"],"reponse_correcte":"C"}]
                 if preview_state_q=="Q1 + minuteur": preview=draw_style2_frame(demo,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,video_title=th_q)
