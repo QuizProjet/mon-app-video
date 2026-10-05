@@ -682,54 +682,44 @@ def _highlight_words(question):
     candidates=[w.strip(".,?!:;()[]«»\"'") for w in words if len(w.strip(".,?!:;()[]«»\"'"))>=5 and w.lower().strip(".,?!:;()[]«»\"'") not in stop]
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
-def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
-    """En-tête fidèle à la maquette Bleu Nuit & Or / CSS Option 1."""
-    cfg=_layout("quiz", "1")
-    ff=cfg.get("font_family","DejaVu Sans")
+def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
+    """V31.29 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
+    Les trois zones ont la même largeur et restent dans la zone sûre.
+    """
+    ff=cfg.get("font_family","Lato")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
-    auto=bool(cfg.get("social_auto_layout",False))
-    if auto:
-        left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
-    else:
-        left, right = 40, WIDTH-40
-    top=int(cfg.get("header_y",120))
-    header_h=int(cfg.get("header_h",74)); bottom=top+header_h
+    left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
+    top=int(cfg.get("social_safe_top",120)); header_h=74; bottom=min(int(cfg.get("social_safe_bottom",HEIGHT-220)),top+header_h)
+    left=max(20,min(left,WIDTH-100)); right=max(left+100,min(right,WIDTH-20))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
-
-    # Marque à gauche — position/taille restent pilotables depuis l'éditeur.
+    third=(right-left)/3.0
+    # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",28)),ff)
-        bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",150))
-        if auto:
-            bx=max(left+16,min(right-text_width(draw,brand,bf)-16,bx))
-            by=max(top+12,min(bottom-text_height(bf,brand)-10,by))
-        if cfg.get("brand_bg_enabled",False):
-            tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
-            draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
-        draw.text((bx,by),brand,font=bf,fill=gold)
-
-    # Titre central.
+        bf=get_font(28,ff); bh=text_height(bf,brand)
+        bx=left+18; by=top+(header_h-bh)//2
+        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+    # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(int(cfg.get("title_size",46)),ff)
-    label=f"QUIZ {title.upper()}"
-    tw=text_width(draw,label,tf); th=text_height(tf,label)
-    tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",145))
-    ty=max(top+12,min(bottom-th-10,ty))
-    draw.text((tx+2,ty+3),label,font=tf,fill=black)
-    draw.text((tx,ty),label,font=tf,fill=white)
+    tf=get_font(38,ff); th=text_height(tf,title)
+    center_x=left+third*1.5; max_tw=int(third-24)
+    while text_width(draw,title,tf)>max_tw and tf.size>24:
+        tf=get_font(tf.size-1,ff); th=text_height(tf,title)
+    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(header_h-th)//2
+    draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
+    # Zone 3 : compteur
+    score=f"{q_num}/{total}"; sf=get_font(31,ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    pill_w=max(86,sw+28); pill_h=max(46,sh+14); cx=left+third*2.5
+    px=cx-pill_w/2; py=top+(header_h-pill_h)/2
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
+    draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
+    return top, bottom
 
-    # Compteur doré à droite.
-    sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    bw=max(116,sw+34); bh=max(54,sh+16)
-    bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
-    # Le compteur est lui aussi entièrement contenu dans le header sûr.
-    bx=max(left+10,min(right-bw-10,bx)); by=max(top+10,min(bottom-bh-10,by))
-    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=12,fill=gold)
-    draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=black)
-
+def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
+    cfg=_layout("quiz", "1")
+    return draw_unified_header(draw,cfg,q_num,total,title)
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
     """Chronomètres Studio Pro. Option 1 utilise un cercle Bleu Nuit + bordure Or."""
@@ -1121,50 +1111,9 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     # (header SuspenseLingo + titre + compteur), puis tableau cumulatif.
     # Cette couche ne change PAS la mécanique cumulative : elle ne fait qu'habiller
     # le rendu final et reste entièrement à l'intérieur de la zone sûre.
-    auto=bool(cfg.get("social_auto_layout",False))
-    safe_left=int(cfg.get("social_safe_left",40)) if auto else 40
-    safe_right=int(cfg.get("social_safe_right",WIDTH-40)) if auto else WIDTH-40
-    safe_top=int(cfg.get("social_safe_top",120)) if auto else 120
-    header_y=max(safe_top+8, int(cfg.get("header_y",120)))
-    header_h=74
-    header_bottom=min(safe_bottom-20, header_y+header_h)
-    header_left=safe_left
-    header_right=safe_right
-    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
-    draw.rounded_rectangle((header_left,header_y,header_right,header_bottom),radius=20,fill=navy,outline=border,width=2)
-
-    # Logo/nom à gauche.
-    if bool(cfg.get("brand_show",True)):
-        brand="SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",28)),ff)
-        bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",139))
-        bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
-        bx=max(header_left+16,min(header_right-bw-170,bx))
-        by=max(header_y+10,min(header_bottom-bh-8,by))
-        if cfg.get("brand_bg_enabled",False):
-            pad=8
-            draw.rounded_rectangle((bx-pad,by-pad,bx+bw+pad,by+bh+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
-        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
-
-    # Titre central.
-    title=clean_text(video_title or "Vocabulaire")
-    tf=get_font(int(cfg.get("title_size",38)),ff)
-    label=title.upper()[:24]
-    tw=text_width(draw,label,tf); th=text_height(tf,label)
-    tx=(header_left+header_right-tw)//2
-    ty=max(header_y+10,min(header_bottom-th-8,header_y+19))
-    draw.text((tx+2,ty+2),label,font=tf,fill=dark)
-    draw.text((tx,ty),label,font=tf,fill=white)
-
-    # Compteur 1/15, 2/15... dans un pill doré à droite.
-    score=f"{active_idx+1}/{total}"
-    sf=get_font(int(cfg.get("score_size",31)),ff)
-    sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    pill_w=max(86,sw+30); pill_h=max(48,sh+18)
-    px=header_right-pill_w-14; py=header_y+(header_h-pill_h)//2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
-    draw.text((px+(pill_w-sw)//2,py+(pill_h-sh)//2-1),score,font=sf,fill=(15,23,42))
-
+    safe_left,safe_top=40,120
+    safe_right,safe_bottom=WIDTH-40,HEIGHT-220
+    draw_unified_header(draw,cfg,active_idx+1,total,video_title or "Vocabulaire")
     # Pour 15 lignes, on réduit automatiquement la hauteur si nécessaire afin
     # que le tableau reste entièrement visible et ne touche jamais le footer.
     x=int(cfg.get("table_x",70))
@@ -1397,61 +1346,9 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     img=add_top_glow(base,theme,1.0+0.10*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]; ff=cfg.get("font_family","Lato")
 
-    # V31.27 — même langage visuel que Style 1 : un seul entête, zones sûres,
-    # nom de l'application à gauche, titre au centre, compteur à droite.
-    auto=bool(cfg.get("social_auto_layout",False))
-    safe_left=int(cfg.get("social_safe_left",40)) if auto else 40
-    safe_right=int(cfg.get("social_safe_right",WIDTH-40)) if auto else WIDTH-40
-    safe_top=int(cfg.get("social_safe_top",120)) if auto else 120
-    safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220)) if auto else HEIGHT-220
-    header_y=max(safe_top+8,int(cfg.get("header_y",safe_top+12)))
-    header_h=min(74,max(60,int(cfg.get("header_h",74))))
-    header_bottom=min(safe_bottom-20,header_y+header_h)
-    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
-    draw.rounded_rectangle((safe_left,header_y,safe_right,header_bottom),radius=20,fill=navy,outline=border,width=2)
-
-    # V31.28 — en-tête en 3 zones de largeur égale :
-    # LOGO | TITRE | COMPTEUR. Les trois éléments restent sur une seule ligne
-    # et sont centrés verticalement dans le même gabarit de 74 px.
-    header_center_y = header_y + header_h / 2
-    slot_w = (safe_right - safe_left) / 3.0
-    left_center = safe_left + slot_w / 2.0
-    center_center = safe_left + slot_w * 1.5
-    right_center = safe_left + slot_w * 2.5
-
-    if bool(cfg.get("brand_show",True)):
-        brand="SuspenseLingo"
-        bf=get_font(28,ff)
-        bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
-        # Le logo est centré dans le tiers gauche, sans empiéter sur le titre.
-        bx=int(left_center-bw/2)
-        by=int(header_center_y-bh/2-1)
-        bx=max(safe_left+12,min(safe_left+slot_w-bw-12,bx))
-        by=max(header_y+8,min(header_bottom-bh-8,by))
-        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
-
-    if cfg.get("show_title",True):
-        title=clean_text(video_title or "Culture Générale")
-        tf=get_font(38,ff)
-        tw=text_width(draw,title,tf); th=text_height(tf,title)
-        # Le titre est centré dans le tiers central, sans chevaucher logo/compteur.
-        tx=int(center_center-tw/2)
-        tx=max(int(safe_left+slot_w+10),min(int(safe_left+2*slot_w-tw-10),tx))
-        ty=int(header_center_y-th/2-1)
-        ty=max(header_y+8,min(header_bottom-th-8,ty))
-        draw.text((tx+2,ty+2),title,font=tf,fill=dark)
-        draw.text((tx,ty),title,font=tf,fill=_hex_rgb(cfg.get("text"),white))
-
-    score=f"{active_idx+1}/{total}"
-    sf=get_font(31,ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    pill_w=max(86,sw+30); pill_h=max(48,sh+18)
-    # Le compteur est centré dans le tiers droit, sur la même ligne que logo/titre.
-    px=int(right_center-pill_w/2); py=int(header_center_y-pill_h/2)
-    px=max(int(safe_left+2*slot_w+10),min(int(safe_right-pill_w-10),px))
-    py=max(header_y+8,min(header_bottom-pill_h-8,py))
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
-    draw.text((px+(pill_w-sw)//2,py+(pill_h-sh)//2-1),score,font=sf,fill=dark)
-
+    safe_left,safe_top=40,120
+    safe_right,safe_bottom=WIDTH-40,HEIGHT-220
+    header_y,header_bottom=draw_unified_header(draw,cfg,active_idx+1,total,video_title or "Culture Générale")
     # Question active : toujours dans la même zone, largeur entièrement sûre.
     q=clean_text(active.get("question",""))
     if cfg.get("animation")=="Machine à écrire":
@@ -1554,7 +1451,6 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
     # Le nom SuspenseLingo est rendu une seule fois dans le header; ici on garde uniquement la barre de progression.
-    draw_brand(draw,theme,None,(q_num-1)/max(1,total))
     return img
 
 def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
@@ -1674,10 +1570,7 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
     alpha=int(clamp(cfg.get("bg_opacity",18),0,90))
     if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
     img=add_top_glow(base,theme); draw=ImageDraw.Draw(img)
-    title=f"VOCABULAIRE • {idx+1}/{len(items)}"; tf=get_font(int(cfg.get("title_size",34)),ff)
-    if cfg.get("show_title",True):
-        draw.rounded_rectangle((55,int(cfg.get("title_y",70)),430,int(cfg.get("title_y",70))+65),radius=26,fill=_hex_rgb(cfg.get("answer"),theme["card"]),outline=_hex_rgb(cfg.get("primary"),theme["accent"]),width=2)
-        draw.text((75,int(cfg.get("title_y",70))+13),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+    draw_unified_header(draw,cfg,idx+1,len(items),"Vocabulaire")
     item=items[idx]; fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")); p=ease_out(entrance)
     if cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*p))]
     elif cfg.get("animation")=="Glissement vertical": fr=" "*0+fr
@@ -1709,7 +1602,6 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
                 xx+=ww+space; global_idx+=1
             yy+=text_height(ft,line)+8
     if phase=="countdown" and timer is not None and cfg.get("show_timer"): draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",760)),timer,timer_fraction,"vocab","1")
-    draw_brand(draw,theme,channel,idx/max(1,len(items)))
     return img
 
 
@@ -3460,7 +3352,14 @@ def render_layout_editor(module, style="1"):
                 st.info("Le minuteur du Style 2 est positionné dans la cellule de traduction. Utilise les réglages X/Y juste au-dessus pour l’ajuster.")
             else:
                 st.slider("Position X",0,1080,key=p+"timer_x")
-                st.slider("Position Y",250,1450,key=p+"timer_y")
+                # V31.29: normaliser toute ancienne valeur avant le slider pour éviter ValueAboveMax/BelowMin.
+                timer_y_key=p+"timer_y"
+                if timer_y_key not in st.session_state:
+                    st.session_state[timer_y_key]=1110
+                else:
+                    try: st.session_state[timer_y_key]=max(250,min(1450,int(st.session_state[timer_y_key])))
+                    except Exception: st.session_state[timer_y_key]=1110
+                st.slider("Position Y",250,1450,key=timer_y_key)
                 st.slider("Taille",28,140,key=p+"timer_size")
         with c2:
             st.selectbox("Style",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style")
@@ -4302,4 +4201,3 @@ if st.session_state.get("last_vocab_video_data"):
     render_export_panel(st.session_state["last_vocab_video_data"],"SuspenseLingo_Vocabulaire","export_vocab_persist")
 
 st.markdown('</div>',unsafe_allow_html=True)
-
