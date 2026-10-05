@@ -3387,7 +3387,7 @@ def render_layout_editor(module, style="1"):
                 st.caption("💡 X = gauche ↔ droite • Y = haut ↕ bas. Désactive l’automatique pour placer l’explication librement.")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
-                st.slider("Hauteur d'une ligne",55,110,key=p+"history_row_h")
+                st.slider("Hauteur d'une ligne",40,110,key=p+"history_row_h")
                 st.slider("Taille du texte historique",20,52,key=p+"history_size")
             elif not is_quiz and style=="2":
                 st.caption("Tableau cumulatif optimisé pour 1 à 15 lignes. À partir de 12 lignes, la hauteur et la taille du texte s'adaptent automatiquement.")
