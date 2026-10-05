@@ -1117,7 +1117,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     ff=cfg.get("font_family","DejaVu Sans")
     table_ff=cfg.get("table_font_family",ff)
 
-    # V31.25 — Vocabulaire Style 2 : mise en page visuelle validée
+    # V31.26 — Vocabulaire Style 2 : mise en page visuelle validée
     # (header SuspenseLingo + titre + compteur), puis tableau cumulatif.
     # Cette couche ne change PAS la mécanique cumulative : elle ne fait qu'habiller
     # le rendu final et reste entièrement à l'intérieur de la zone sûre.
@@ -1135,7 +1135,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
 
     # Logo/nom à gauche.
     if bool(cfg.get("brand_show",True)):
-        brand=clean_text(channel) or "SuspenseLingo"
+        brand="SuspenseLingo"
         bf=get_font(int(cfg.get("brand_size",28)),ff)
         bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",139))
         bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
@@ -1377,98 +1377,114 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                 timer_text_size,None,20,tc,0.12
             )
 
-    draw_brand(draw,theme,channel,active_idx/max(1,total))
+    # V31.26: un seul branding dans l'entête. Ne pas rappeler draw_brand() ici
+    # (sinon un second logo apparaît sous le tableau).
     return img
 
 
 def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, timer=None, timer_fraction=1.0, answer_reveal=False, motion=0.0, video_title="Culture Générale", question_active_word=-1):
-    """Quiz Style 2 : titre fixe + une seule question active au même emplacement.
-    Séquence exacte : Q1 + minuteur → Q2 + R1 → Q3 + R1/R2.
-    Après la révélation de la réponse courante, elle entre dans l'historique ;
-    la question suivante remplace la précédente au même emplacement.
+    """Quiz Style 2 : même écran 9:16, titre fixe, une seule question active.
+    Séquence : Q1 + minuteur → Q2 + R1 → Q3 + R1/R2.
+    Les réponses précédentes restent dans l'historique et la question active
+    reprend toujours exactement la même zone.
     """
     cfg=_layout("quiz", "2"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",16),0,90))
-    if alpha: base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
+    if alpha:
+        base=Image.alpha_composite(base.convert("RGBA"),Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha))).convert("RGB")
     img=add_top_glow(base,theme,1.0+0.10*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]; ff=cfg.get("font_family","Lato")
 
-    # Titre fixe et discret.
+    # V31.26 — même langage visuel que Style 1 : un seul entête, zones sûres,
+    # nom de l'application à gauche, titre au centre, compteur à droite.
+    auto=bool(cfg.get("social_auto_layout",False))
+    safe_left=int(cfg.get("social_safe_left",40)) if auto else 40
+    safe_right=int(cfg.get("social_safe_right",WIDTH-40)) if auto else WIDTH-40
+    safe_top=int(cfg.get("social_safe_top",120)) if auto else 120
+    safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220)) if auto else HEIGHT-220
+    header_y=max(safe_top+8,int(cfg.get("header_y",safe_top+12)))
+    header_h=min(74,max(60,int(cfg.get("header_h",74))))
+    header_bottom=min(safe_bottom-20,header_y+header_h)
+    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
+    draw.rounded_rectangle((safe_left,header_y,safe_right,header_bottom),radius=20,fill=navy,outline=border,width=2)
+
+    if bool(cfg.get("brand_show",True)):
+        brand="SuspenseLingo"
+        bf=get_font(int(cfg.get("brand_size",28)),ff)
+        bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
+        bx=max(safe_left+16,min(safe_right-bw-170,int(cfg.get("brand_x",safe_left+22))))
+        by=max(header_y+10,min(header_bottom-bh-8,int(cfg.get("brand_y",header_y+20))))
+        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+
     if cfg.get("show_title",True):
         title=clean_text(video_title or "Culture Générale")
-        tf=get_font(int(cfg.get("title_size",46)),ff); tw=text_width(draw,title,tf)
-        tx=int(cfg.get("title_x",540))-tw/2
-        draw.text((tx+2,int(cfg.get("title_y",42))+3),title,font=tf,fill=(0,0,0))
-        draw.text((tx,int(cfg.get("title_y",42))),title,font=tf,fill=_hex_rgb(cfg.get("text"),(255,255,255)))
+        tf=get_font(int(cfg.get("title_size",38)),ff); tw=text_width(draw,title,tf); th=text_height(tf,title)
+        tx=int(cfg.get("title_x",(safe_left+safe_right)//2))-tw//2
+        tx=max(safe_left+150,min(safe_right-170-tw,tx))
+        ty=max(header_y+10,min(header_bottom-th-8,int(cfg.get("title_y",header_y+19))))
+        draw.text((tx+2,ty+2),title,font=tf,fill=dark)
+        draw.text((tx,ty),title,font=tf,fill=_hex_rgb(cfg.get("text"),white))
 
-    # Question active : pleine largeur utile, dans la zone supérieure.
+    score=f"{active_idx+1}/{total}"
+    sf=get_font(int(cfg.get("score_size",31)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    pill_w=max(86,sw+30); pill_h=max(48,sh+18)
+    px=safe_right-pill_w-14; py=header_y+(header_h-pill_h)//2
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
+    draw.text((px+(pill_w-sw)//2,py+(pill_h-sh)//2-1),score,font=sf,fill=dark)
+
+    # Question active : toujours dans la même zone, largeur entièrement sûre.
     q=clean_text(active.get("question",""))
     if cfg.get("animation")=="Machine à écrire":
-        # Eviter qu'une nouvelle question reste bloquée à une seule lettre au tout premier frame.
-        reveal_chars=max(3,int(len(q)*clamp(motion)))
-        q=q[:min(len(q),reveal_chars)]
+        reveal_chars=max(3,int(len(q)*clamp(motion))); q=q[:min(len(q),reveal_chars)]
     qf=get_font(int(cfg.get("question_size",50)),ff)
-    qx=int(cfg.get("question_x",540)); qy=int(cfg.get("question_y",150)); maxw=int(cfg.get("question_width",920))
+    qx=int(cfg.get("question_x",(safe_left+safe_right)//2)); qy=int(cfg.get("question_y",header_bottom+28))
+    maxw=min(int(cfg.get("question_width",safe_right-safe_left)),safe_right-safe_left-20)
+    if auto: qx=(safe_left+safe_right)//2; qy=max(header_bottom+28,qy)
     prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*70) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
     lines=wrap_text(q,qf,maxw)[:3]
-    line_h=max(42,int(qf.size*1.10)); box_h=max(112,len(lines)*line_h+54); box_w=min(1000,max(620,maxw+40))
-    bx1=max(30,qx-box_w//2); bx2=min(WIDTH-30,qx+box_w//2); by1=max(110,qy-28); by2=min(720,by1+box_h)
+    line_h=max(42,int(qf.size*1.10)); box_h=max(112,len(lines)*line_h+54); box_w=min(safe_right-safe_left,max(620,maxw+40))
+    bx1=max(safe_left,qx-box_w//2); bx2=min(safe_right,qx+box_w//2); by1=max(header_bottom+16,qy-28); by2=min(760,by1+box_h)
     draw.rounded_rectangle((bx1,by1,bx2,by2),radius=int(cfg.get("border_radius",22)),fill=(5,14,31),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("primary"),theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
     q_draw_y=by1+20; global_q_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,qf) for w in words]; space=text_width(draw," ",qf); totalw=sum(widths)+space*max(0,len(words)-1); xx=qx-totalw/2+dx
         for word,ww in zip(words,widths):
             current=(question_active_word>=0 and global_q_word==int(question_active_word))
-            draw.text((xx+2,q_draw_y+3),word,font=qf,fill=(0,0,0)); draw.text((xx,q_draw_y),word,font=qf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),(255,255,255)))
+            draw.text((xx+2,q_draw_y+3),word,font=qf,fill=(0,0,0)); draw.text((xx,q_draw_y),word,font=qf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else _hex_rgb(cfg.get("text"),white))
             xx+=ww+space; global_q_word+=1
         q_draw_y+=line_h
 
-    # Historique déjà révélé. On réserve une vraie zone pour lui sous le minuteur.
     hist=[(i,items[i]) for i in range(active_idx)]
     if answer_reveal: hist.append((active_idx,active))
-
     timer_cy=None
     if timer is not None and cfg.get("show_timer",True):
-        # Le minuteur suit la vraie hauteur de la question et reste proche de l'action.
-        timer_cy=max(by2+78,int(cfg.get("timer_y",430)))
-        if hist:
-            timer_cy=min(timer_cy,780)
-        draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(timer_cy),timer,timer_fraction,"quiz","2")
+        timer_cy=max(by2+70,int(cfg.get("timer_y",by2+78)))
+        timer_cy=min(timer_cy,safe_bottom-360)
+        draw_inline_timer(draw,theme,int(cfg.get("timer_x",(safe_left+safe_right)//2)),int(timer_cy),timer,timer_fraction,"quiz","2")
 
     if hist:
-        hx=int(cfg.get("history_x",80)); hw=int(cfg.get("history_width",920));
-        # 15 réponses doivent pouvoir rester visibles sans dépasser le canevas.
-        hy_base=int(cfg.get("history_y",690))
-        if timer_cy is not None:
-            hy=max(hy_base,timer_cy+110)
-        else:
-            hy=max(hy_base,by2+42)
-        available=max(260,1710-hy)
-        shown=hist[-15:]
-        hg=max(5,int(cfg.get("history_gap",8)))
-        rh_cfg=max(46,int(cfg.get("history_row_h",74)))
+        hx=int(cfg.get("history_x",safe_left)); hw=min(int(cfg.get("history_width",safe_right-safe_left)),safe_right-safe_left)
+        hx=max(safe_left,min(hx,safe_right-hw))
+        hy_base=int(cfg.get("history_y",690)); hy=max(hy_base,(timer_cy+105 if timer_cy is not None else by2+42))
+        available=max(260,safe_bottom-30-hy); shown=hist[-15:]
+        hg=max(5,int(cfg.get("history_gap",8))); rh_cfg=max(46,int(cfg.get("history_row_h",74)))
         rh=max(40,min(rh_cfg,int((available-max(25,len(shown)-1)*hg)/max(1,len(shown)))))
-        hsize_cfg=max(20,int(cfg.get("history_size",29)))
-        hsize=max(20,min(hsize_cfg,int(34*74/max(46,rh))))
-        hfs=get_font(hsize,ff)
-        label_f=get_font(max(18,int(hsize*.68)),ff)
+        hsize_cfg=max(20,int(cfg.get("history_size",29))); hsize=max(20,min(hsize_cfg,int(34*74/max(46,rh))))
+        hfs=get_font(hsize,ff); label_f=get_font(max(18,int(hsize*.68)),ff)
         draw.text((hx,hy-32),"HISTORIQUE DES RÉPONSES",font=label_f,fill=_hex_rgb(cfg.get("muted"),theme["muted"]))
         row_bg=_hex_rgb(cfg.get("answer"),theme["card2"])
         for pos,(i,item) in enumerate(shown):
-            ry=hy+pos*(rh+hg)
-            muted=tuple(int(c*.72) for c in row_bg)
+            ry=hy+pos*(rh+hg); muted=tuple(int(c*.72) for c in row_bg)
             draw.rounded_rectangle((hx,ry,hx+hw,ry+rh),radius=min(int(cfg.get("border_radius",18)),max(8,rh//4)),fill=muted,outline=tuple(int(c*.72) for c in _hex_rgb(cfg.get("border_color"),(140,155,180))),width=max(1,int(cfg.get("border_width",2))))
             opts=item.get("options",[]); rc=clean_text(item.get("reponse_correcte","A")).upper()[:1]
             try: ans=clean_text(opts["ABCD".index(rc)])
             except Exception: ans=""
             rf=get_font(max(18,int(hsize*.70)),ff)
             draw.text((hx+18,ry+(rh-text_height(rf,"R1"))/2-2),f"R{i+1}",font=rf,fill=_hex_rgb(cfg.get("primary"),theme["accent"]))
-            lines2=wrap_text("✓ "+ans,hfs,hw-120)[:2]
-            ty=ry+(rh-len(lines2)*text_height(hfs))/2-2
+            lines2=wrap_text("✓ "+ans,hfs,hw-120)[:2]; ty=ry+(rh-len(lines2)*text_height(hfs))/2-2
             for line in lines2:
                 tw=text_width(draw,line,hfs); draw.text((hx+hw/2-tw/2,ty),line,font=hfs,fill=_hex_rgb(cfg.get("correct"),theme["success"])); ty+=text_height(hfs,line)+2
-    draw_brand(draw,theme,channel,active_idx/max(1,total))
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0, question_active_word=-1, explanation_active_word=-1):
@@ -3659,7 +3675,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
     .qvp-preview-panel{position:relative !important; z-index:31 !important;}
     </style>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO • PRO — aperçu en temps réel</div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu descends dans les réglages.</div>',unsafe_allow_html=True)
     studio_q_left, studio_q_right = st.columns([1.12,0.88], gap="large")
     with studio_q_left:
@@ -3693,7 +3709,13 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                 }
                 preview_q,preview_opts,preview_corr,preview_expl=samples.get(th_q,samples["Culture générale"])
             if style_q_full.startswith("Style 2"):
-                items=live_data[:3] if live_data else [{"question":preview_q,"options":preview_opts,"reponse_correcte":chr(65+preview_corr)}]
+                items=list(live_data[:3]) if live_data else []
+                preview_samples=[
+                    {"question":preview_q,"options":preview_opts,"reponse_correcte":chr(65+preview_corr)},
+                    {"question":"Quelle planète est la plus proche du Soleil ?","options":["Vénus","Mercure","Mars","Jupiter"],"reponse_correcte":"B"},
+                    {"question":"Quel est le plus grand océan du monde ?","options":["Atlantique","Indien","Arctique","Pacifique"],"reponse_correcte":"D"},
+                ]
+                while len(items)<3: items.append(preview_samples[len(items)])
                 if preview_state_q=="Q1 + minuteur":
                     # État 1 : Q1 active, aucun historique.
                     preview=draw_style2_frame(items,0,theme_q,channel_q,sample_bg,timer=3,timer_fraction=.72,answer_reveal=False,video_title=th_q)
@@ -3997,7 +4019,7 @@ else:
     .qvp-preview-panel{position:relative !important; z-index:31 !important;}
     </style>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO — aperçu en temps réel</div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-workspace-title">🎨 ÉDITEUR STUDIO • PRO — aperçu en temps réel</div>',unsafe_allow_html=True)
     st.markdown('<div class="qvp-studio-workspace-note">Sur ordinateur, l’Éditeur Studio et l’Aperçu Interactif commencent exactement au même niveau. L’aperçu reste visible pendant que tu modifies la mise en page.</div>',unsafe_allow_html=True)
     studio_v_left, studio_v_right = st.columns([1.12,0.88], gap="large")
     with studio_v_left:
