@@ -369,19 +369,46 @@ VOICES_MAP = {
 # Le rendu vidéo actuel reste PIL/Pillow ; cette classe sert de contrat visuel commun
 # pour les wrappers Streamlit/HTML sans remplacer le moteur vidéo existant.
 BLUE_GOLD_PREVIEW_CSS = r"""
-.quiz-preview { width: 1080px; aspect-ratio: 9 / 16; background:#0B1021; color:#FFFFFF; }
-.quiz-header { background:#151D33; border:2px solid #2B3960; border-radius:20px; display:flex; align-items:center; justify-content:space-between; }
+/* Bleu Nuit & Or — preview 9:16, largeur fluide et safe-zone haute */
+.video-canvas, .quiz-preview {
+    width: 100%;
+    max-width: 1080px;
+    aspect-ratio: 9 / 16;
+    box-sizing: border-box;
+    background: #0B1021;
+    color: #FFFFFF;
+    padding: 170px 40px 200px 40px;
+    overflow: hidden;
+}
+.quiz-header {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    background:#151D33; border:2px solid #2B3960; border-radius:20px;
+    display:flex; align-items:center; justify-content:space-between;
+}
 .quiz-header .brand { color:#F59E0B; font-weight:700; }
 .quiz-header .title { color:#FFFFFF; font-weight:700; text-align:center; }
 .quiz-header .counter { background:#F59E0B; color:#000000; border-radius:9999px; font-weight:800; }
-.question-card { background:#151C33; border:2px solid #334155; border-radius:24px; padding:20px; color:#FFFFFF; font-weight:700; text-align:center; }
-.option-item { background:#1E293B; border:2px solid #334155; border-radius:20px; color:#E2E8F0; }
+.question-card {
+    width:100%; box-sizing:border-box; max-width:100%;
+    background:#151C33; border:2px solid #334155; border-radius:24px;
+    padding:20px; color:#FFFFFF; font-weight:700; text-align:center;
+    font-size:clamp(1rem, 2.5vw, 1.3rem);
+    overflow-wrap:anywhere; word-break:normal;
+}
+.options-list { width:100%; box-sizing:border-box; max-width:100%; display:flex; flex-direction:column; }
+.option-item {
+    width:100%; box-sizing:border-box; max-width:100%;
+    background:#1E293B; border:2px solid #334155; border-radius:20px; color:#E2E8F0;
+    overflow-wrap:anywhere; word-break:normal;
+}
 .option-item .letter { background:#F59E0B; color:#000000; border-radius:9999px; font-weight:800; }
 .option-correct { background:#10B981; border-color:#34D399; color:#FFFFFF; }
 .option-correct .letter { background:#FFFFFF; color:#059669; }
 .option-correct .checkmark { color:#FFFFFF; }
 .timer-badge { background:#1E293B; border:4px solid #F59E0B; color:#F59E0B; border-radius:9999px; text-align:center; }
-.explanation-card { background:#0F172A; border:2px solid #F59E0B; border-radius:20px; color:#F8FAFC; text-align:center; }
+.explanation-card { width:100%; box-sizing:border-box; max-width:100%; background:#0F172A; border:2px solid #F59E0B; border-radius:20px; color:#F8FAFC; text-align:center; }
 .explanation-card .title { color:#F59E0B; font-weight:800; }
 """
 
@@ -2704,7 +2731,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.14 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
+# V31.15 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
 SOCIAL_SAFE_PROFILES = {
