@@ -653,9 +653,8 @@ def draw_lightning_icon(draw, theme, cx, cy, size=28):
          (cx+int(.60*r),cy-int(.18*r)),(cx+int(.05*r),cy-int(.18*r))]
     draw.polygon(pts,fill=a)
 
-def draw_brand(draw, theme, channel, progress=None, module="quiz", style="1"):
-    """Marque + progression, avec le même système de zone sûre que le style courant."""
-    cfg=_layout(module, style)
+def draw_brand(draw, theme, channel, progress=None):
+    cfg=_layout("quiz", "1")
     if channel and bool(cfg.get("brand_show",True)):
         text=clean_text(channel) or "SuspenseLingo"
         f=get_font(int(cfg.get("brand_size",28)),cfg.get("font_family","DejaVu Sans"))
@@ -665,17 +664,15 @@ def draw_brand(draw, theme, channel, progress=None, module="quiz", style="1"):
             pad=10; bg=_hex_rgb(cfg.get("brand_bg"),(7,13,28))
             draw.rounded_rectangle((x-pad,y-pad,x+tw+pad,y+th+pad),radius=12,fill=bg)
         draw.text((x,y),text,font=f,fill=_hex_rgb(cfg.get("brand_color"),(255,255,255)))
-    # Barre de progression : largeur/position issues du preset social du style courant.
+    # Progress bar remains at the bottom, separate from the brand.
     if progress is not None:
+        cfg=_layout("quiz", "1")
+        safe_y=int(cfg.get("social_progress_y",1695))
         safe_auto=bool(cfg.get("social_auto_layout",False))
-        if safe_auto:
-            safe_y=int(cfg.get("social_progress_y",1695))
-            x=int(cfg.get("social_safe_left",32)); right=int(cfg.get("social_safe_right",874))
-            w=max(120,right-x)
-        else:
-            safe_y=int(cfg.get("social_progress_y",1695))
-            x=55; w=970
-        y=safe_y; h=12
+        x=32 if safe_auto else 55
+        w=(874-32) if safe_auto else 970
+        y=safe_y
+        h=12
         draw.rounded_rectangle((x,y,x+w,y+h), radius=6, fill=(65,70,85))
         draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=6, fill=theme["accent"])
 
@@ -863,7 +860,6 @@ def _save_settings():
 
 _load_saved_settings()
 
-# V31.22 — protection sociale active par défaut pour les 4 styles; preset calculé avant widgets.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
 # V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
@@ -914,8 +910,6 @@ def _layout(module="quiz", style=None):
         "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
         "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
-        # V31.22 : la protection sociale est active par défaut pour les 4 styles.
-        # L'utilisateur peut toujours la désactiver pour reprendre le placement manuel.
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
@@ -1140,10 +1134,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     split=int(cfg.get("table_split",540))
     radius=int(cfg.get("table_radius",16))
 
-    if cfg.get("social_auto_layout",False):
-        bottom_limit=int(cfg.get("social_safe_bottom",1775))-24
-    else:
-        bottom_limit=1775
+    bottom_limit=1775
     max_rh=(bottom_limit-y0-gap*(total-1))//total
     effective_rh=max(58,min(configured_rh,int(max_rh))) if total>=12 else configured_rh
 
@@ -1344,7 +1335,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                 timer_text_size,None,20,tc,0.12
             )
 
-    draw_brand(draw,theme,channel,active_idx/max(1,total),module="vocab",style="2")
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
     return img
 
 
@@ -1435,7 +1426,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
             ty=ry+(rh-len(lines2)*text_height(hfs))/2-2
             for line in lines2:
                 tw=text_width(draw,line,hfs); draw.text((hx+hw/2-tw/2,ty),line,font=hfs,fill=_hex_rgb(cfg.get("correct"),theme["success"])); ty+=text_height(hfs,line)+2
-    draw_brand(draw,theme,channel,active_idx/max(1,total),module="quiz",style="2")
+    draw_brand(draw,theme,channel,active_idx/max(1,total))
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0, question_active_word=-1, explanation_active_word=-1):
@@ -1477,7 +1468,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
     # Le nom SuspenseLingo est rendu une seule fois dans le header; ici on garde uniquement la barre de progression.
-    draw_brand(draw,theme,None,(q_num-1)/max(1,total),module="quiz",style="1")
+    draw_brand(draw,theme,None,(q_num-1)/max(1,total))
     return img
 
 def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
@@ -1511,7 +1502,7 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
             tw=text_width(draw,line,sf)
             draw.text(((WIDTH-tw)/2,sy),line,font=sf,fill=theme["accent"])
             sy+=52
-    draw_brand(draw,theme,channel,module="vocab",style="2")
+    draw_brand(draw,theme,channel)
     return img
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français"):
@@ -1586,7 +1577,7 @@ def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_fil
             draw.text((x,yy),w,font=f,fill=col)
             x+=ww+space; idx+=1
         yy+=58
-    draw_brand(draw,theme,channel,progress,module="quiz",style="1")
+    draw_brand(draw,theme,channel,progress)
     sf=get_font(23)
     return img
 
@@ -1604,12 +1595,7 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
     item=items[idx]; fr=clean_text(item.get("fr","")); tr=clean_text(item.get("trad","")); p=ease_out(entrance)
     if cfg.get("animation")=="Machine à écrire": fr=fr[:max(1,int(len(fr)*p))]
     elif cfg.get("animation")=="Glissement vertical": fr=" "*0+fr
-    qx=int(cfg.get("question_x",540)); y=int(cfg.get("question_y",500))
-    max_source_w=max(420,int(cfg.get("question_width",850)))
-    source_size=int(cfg.get("question_size",58))
-    while source_size>30 and text_width(draw,fr,get_font(source_size,ff))>max_source_w:
-        source_size-=2
-    fbig=get_font(source_size,ff)
+    fbig=get_font(int(cfg.get("question_size",58)),ff); qx=int(cfg.get("question_x",540)); y=int(cfg.get("question_y",500))
     # Mot/phrase source : mot actuellement prononcé mis en évidence sans masquer le reste.
     words_src=fr.split()
     if len(words_src)>1 and source_active_word>=0:
@@ -1637,7 +1623,7 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
                 xx+=ww+space; global_idx+=1
             yy+=text_height(ft,line)+8
     if phase=="countdown" and timer is not None and cfg.get("show_timer"): draw_inline_timer(draw,theme,int(cfg.get("timer_x",540)),int(cfg.get("timer_y",760)),timer,timer_fraction,"vocab","1")
-    draw_brand(draw,theme,channel,idx/max(1,len(items)),module="vocab",style="1")
+    draw_brand(draw,theme,channel,idx/max(1,len(items)))
     return img
 
 
@@ -2749,7 +2735,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.20 — zones sûres automatiques pour les 4 styles, sans toucher au moteur audio/vidéo.
+# V31.23 — Style 2 Quiz : structure cumulative exacte Q1 → Q2+R1 → Q3+R1/R2.
 # V31.18 — correction définitive Streamlit : le moteur de rendu ne modifie plus les clés des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
@@ -2765,122 +2751,130 @@ SOCIAL_SAFE_PROFILES["Universel"] = {
 }
 
 def apply_social_auto_layout(module="quiz", style="1"):
-    """Applique un preset social au style courant sans modifier les widgets après création.
-
-    Style 1 Quiz garde le preset Bleu Nuit & Or approuvé. Les trois autres styles
-    reçoivent chacun un preset dédié : la géométrie reste propre à leur identité.
-    """
-    module=str(module); style=str(style)
-    p=("q2_" if module=="quiz" and style=="2" else
-       "q1_" if module=="quiz" else
-       "v2_" if style=="2" else "v1_")
-    if not st.session_state.get(p+"social_auto_layout",False):
+    """Mise en page automatique stricte : les BORDS de chaque bloc restent dans la zone sûre."""
+    if module != "quiz" or str(style) != "1":
         return
-    platform=st.session_state.get(p+"social_platform","Universel")
-    prof=SOCIAL_SAFE_PROFILES.get(platform,SOCIAL_SAFE_PROFILES["Universel"])
+    p="q1_"
+    if not st.session_state.get(p+"social_auto_layout", False):
+        return
+    platform=st.session_state.get(p+"social_platform", "Universel")
+    prof=SOCIAL_SAFE_PROFILES.get(platform, SOCIAL_SAFE_PROFILES["Universel"])
     safe_top=int(HEIGHT*prof["top"]); safe_bottom=int(HEIGHT*(1-prof["bottom"]))
     safe_left=int(WIDTH*prof["left"]); safe_right=int(WIDTH*(1-prof["right"]))
-    safe_w=safe_right-safe_left; center=(safe_left+safe_right)//2
+    safe_w=safe_right-safe_left
+    center=(safe_left+safe_right)//2
 
-    def put(**vals):
-        vals.update({
-            p+"social_safe_left":safe_left,
-            p+"social_safe_right":safe_right,
-            p+"social_safe_top":safe_top,
-            p+"social_safe_bottom":safe_bottom,
-        })
-        for k,v in vals.items(): st.session_state[k]=v
+    # On réserve explicitement la zone entière de chaque bloc, et pas seulement son centre.
+    header_h=74
+    header_y=safe_top+12
+    header_bottom=header_y+header_h
 
-    if module=="quiz" and style=="1":
-        # Preset approuvé Bleu Nuit & Or : on conserve sa hiérarchie et on la borne.
-        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
-        question_y=header_bottom+28; question_reserved_h=190; question_bottom=question_y+question_reserved_h
-        answer_h=76; answer_gap=12; answer_y=question_bottom+24
-        answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=58; timer_y=answers_bottom+76
-        explanation_h=205; explanation_y=timer_y+timer_size+34
-        progress_y=safe_bottom-24
-        if explanation_y+explanation_h>progress_y-12:
-            explanation_y=progress_y-12-explanation_h
-            timer_y=explanation_y-timer_size-34
-        if timer_y<answers_bottom+40:
-            timer_y=answers_bottom+40
-            explanation_y=min(progress_y-12-explanation_h,timer_y+timer_size+34)
-        put(
-            header_y=header_y,header_h=header_h,
-            brand_x=safe_left+22,brand_y=header_y+20,
-            title_x=center,title_y=header_y+19,score_x=safe_right-58,score_y=header_y+10,
-            question_x=center,question_y=question_y,question_width=safe_w,
-            answer_x=safe_left,answer_width=safe_w,answer_y=answer_y,answer_h=answer_h,answer_gap=answer_gap,
-            timer_x=center,timer_y=timer_y,timer_size=timer_size,timer_auto_below_answers=False,
-            explanation_x=center,explanation_y=explanation_y,explanation_width=safe_w,explanation_h=explanation_h,
-            explanation_auto_below_timer=False,explanation_auto_height=False,
-            social_progress_y=progress_y,
-        )
+    # Question : réserve 3 lignes maximum + marges du cadre.
+    question_y=header_bottom+28
+    question_reserved_h=190
+    question_bottom=question_y+question_reserved_h
+
+    # Réponses : 4 cartes entières dans la zone sûre.
+    answer_h=76
+    answer_gap=12
+    answer_y=question_bottom+24
+    answers_bottom=answer_y+4*answer_h+3*answer_gap
+
+    # Minuteur puis explication, avec une marge de sécurité supplémentaire.
+    timer_size=58
+    timer_y=answers_bottom+76
+    explanation_h=205
+    explanation_y=timer_y+timer_size+34
+    progress_y=safe_bottom-24
+
+    # Si la plateforme est très restrictive, on compacte avant de franchir safe_bottom.
+    available_before_progress=progress_y-explanation_h-18
+    if explanation_y>available_before_progress:
+        explanation_y=available_before_progress
+        timer_y=explanation_y-timer_size-34
+    if timer_y < answers_bottom+40:
+        timer_y=answers_bottom+40
+        explanation_y=timer_y+timer_size+24
+    if explanation_y+explanation_h > progress_y-12:
+        explanation_y=progress_y-12-explanation_h
+
+    vals={
+        # Header entièrement à l'intérieur de la zone sûre.
+        p+"header_y":header_y, p+"header_h":header_h,
+        p+"brand_x":safe_left+22, p+"brand_y":header_y+20,
+        p+"title_x":center, p+"title_y":header_y+19,
+        p+"score_x":safe_right-58, p+"score_y":header_y+10,
+        # Question : cadre complet dans safe_left/safe_right.
+        p+"question_x":center, p+"question_y":question_y,
+        p+"question_width":safe_w,
+        # Réponses : cadres complets dans la même largeur sûre.
+        p+"answer_x":safe_left, p+"answer_width":safe_w, p+"answer_y":answer_y,
+        p+"answer_h":answer_h, p+"answer_gap":answer_gap,
+        # Minuteur centré entre les réponses et l'explication.
+        p+"timer_x":center, p+"timer_y":timer_y, p+"timer_size":timer_size,
+        p+"timer_auto_below_answers":False,
+        # Explication complète au-dessus de la zone basse interdite.
+        p+"explanation_x":center, p+"explanation_y":explanation_y,
+        p+"explanation_width":safe_w, p+"explanation_h":explanation_h,
+        p+"explanation_auto_below_timer":False,
+        p+"explanation_auto_height":False,
+        # Progression entièrement dans la zone sûre.
+        p+"social_progress_y":progress_y,
+        p+"social_safe_left":safe_left, p+"social_safe_right":safe_right,
+        p+"social_safe_top":safe_top, p+"social_safe_bottom":safe_bottom,
+    }
+    for k,v in vals.items(): st.session_state[k]=v
+
+
+    # V31.23 — protection additive pour les trois autres styles.
+    # Le preset Quiz Style 1 validé ci-dessus n'est pas modifié.
+    # Pour les autres styles, on conserve leur géométrie existante et on ne
+    # corrige que les débordements hors zone sûre.
+    if module == "quiz" and str(style) == "2":
+        p="q2_"
+        qy=int(st.session_state.get(p+"question_y",150))
+        st.session_state[p+"question_x"]=center
+        st.session_state[p+"question_width"]=min(int(st.session_state.get(p+"question_width",920)),max(620,safe_w-40))
+        st.session_state[p+"question_y"]=max(safe_top+145,min(qy,safe_bottom-700))
+        st.session_state[p+"timer_x"]=center
+        st.session_state[p+"timer_y"]=max(st.session_state[p+"question_y"]+430,min(int(st.session_state.get(p+"timer_y",430)),safe_bottom-700))
+        st.session_state[p+"history_x"]=safe_left
+        st.session_state[p+"history_width"]=min(int(st.session_state.get(p+"history_width",920)),safe_w)
+        hist_y=max(st.session_state[p+"timer_y"]+110,int(st.session_state.get(p+"history_y",690)))
+        st.session_state[p+"history_y"]=min(hist_y,safe_bottom-700)
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
+        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
-    if module=="quiz" and style=="2":
-        # Style 2 Quiz : titre fixe, question active, minuteur, puis historique R1/R2…
-        title_y=safe_top+18
-        question_y=safe_top+215
-        question_width=max(620,safe_w-40)
-        timer_size=54
-        timer_y=620
-        history_y=760
-        # L'historique peut aller jusqu'à 15 lignes : sa hauteur est ensuite réduite
-        # dynamiquement dans draw_style2_frame().
-        history_width=safe_w; progress_y=safe_bottom-24
-        if history_y>progress_y-120:
-            history_y=max(safe_top+600,progress_y-700)
-        put(
-            title_x=center,title_y=title_y,
-            brand_x=safe_left+22,brand_y=title_y,
-            question_x=center,question_y=question_y,question_width=question_width,
-            timer_x=center,timer_y=timer_y,timer_size=timer_size,
-            history_x=safe_left,history_y=history_y,history_width=history_width,
-            history_row_h=58,history_gap=7,history_size=27,
-            social_progress_y=progress_y,
-        )
+    if module == "vocab" and str(style) == "1":
+        p="v1_"
+        st.session_state[p+"question_x"]=center
+        st.session_state[p+"question_width"]=min(int(st.session_state.get(p+"question_width",920)),safe_w)
+        st.session_state[p+"question_y"]=max(safe_top+220,min(int(st.session_state.get(p+"question_y",500)),safe_bottom-650))
+        st.session_state[p+"translation_x"]=center
+        st.session_state[p+"translation_width"]=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
+        st.session_state[p+"translation_y"]=max(safe_top+520,min(int(st.session_state.get(p+"translation_y",760)),safe_bottom-300))
+        st.session_state[p+"timer_x"]=min(max(int(st.session_state.get(p+"timer_x",810)),safe_left+55),safe_right-55)
+        st.session_state[p+"timer_y"]=max(safe_top+500,min(int(st.session_state.get(p+"timer_y",760)),safe_bottom-180))
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
+        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
-    if module=="vocab" and style=="1":
-        # Style 1 Vocab : mot/phrase au centre, minuteur à droite, traduction en dessous.
-        title_y=safe_top+20
-        word_y=safe_top+300
-        translation_y=safe_top+680
-        timer_x=safe_right-110
-        timer_y=translation_y+10
-        translation_width=max(560,safe_w-70)
-        progress_y=safe_bottom-24
-        put(
-            title_x=center,title_y=title_y,
-            brand_x=safe_left+22,brand_y=title_y,
-            question_x=center,question_y=word_y,question_width=translation_width,
-            translation_x=center,translation_y=translation_y,translation_width=translation_width,
-            timer_x=timer_x,timer_y=timer_y,timer_size=44,
-            social_progress_y=progress_y,
-        )
+    if module == "vocab" and str(style) == "2":
+        p="v2_"
+        tx=int(st.session_state.get(p+"table_x",70)); tw=int(st.session_state.get(p+"table_width",940))
+        ty=int(st.session_state.get(p+"table_y",350)); rh=int(st.session_state.get(p+"table_row_h",82)); gap=int(st.session_state.get(p+"table_gap",6))
+        tw=min(tw,safe_w); tx=max(safe_left,min(tx,safe_right-tw))
+        total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or [])); total=min(total,15)
+        max_rh=max(58,int((safe_bottom-24-ty-gap*max(0,total-1))/max(1,total)))
+        st.session_state[p+"table_x"]=tx
+        st.session_state[p+"table_width"]=tw
+        st.session_state[p+"table_y"]=max(safe_top+250,min(ty,safe_bottom-24-max(1,total)*min(rh,max_rh)))
+        st.session_state[p+"table_row_h"]=min(rh,max_rh)
+        st.session_state[p+"table_split"]=min(int(st.session_state.get(p+"table_split",540)),max(400,tw-80))
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
+        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
-
-    # Style 2 Vocab : on conserve le tableau cumulatif aimé, mais son cadre complet
-    # devient strictement contenu dans la zone sûre choisie.
-    table_x=safe_left; table_width=safe_w
-    table_y=max(safe_top+260,340)
-    table_bottom=safe_bottom-24
-    total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or []))
-    if total<1: total=15
-    gap=6
-    row_h=max(58,min(82,int((table_bottom-table_y-gap*(min(total,15)-1))/max(1,min(total,15)))))
-    if row_h<58:
-        row_h=58
-    put(
-        title_x=center,title_y=safe_top+20,
-        brand_x=safe_left+22,brand_y=safe_top+20,
-        table_x=table_x,table_y=table_y,table_width=table_width,table_row_h=row_h,table_gap=gap,
-        table_split=int(table_width*0.575),
-        vocab_timer_offset_x=0,vocab_timer_offset_y=0,vocab_timer_size=min(44,max(38,row_h//2)),
-        social_progress_y=safe_bottom-24,
-    )
 
 
 def render_platform_safe_preview(image, key_prefix="platform_preview", module="quiz", style="1"):
@@ -3170,11 +3164,12 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
-    # V31.22 — l'automatique est réellement actif par défaut pour chaque style.
-    # On initialise la clé AVANT la création des widgets, puis on calcule le preset.
-    # Le moteur de rendu reste ensuite en lecture seule.
+    # V31.23 — calcul avant création des widgets.
+    # Style 1 Quiz reste strictement sur son preset validé V31.18/V31.19.
+    # Les trois autres styles utilisent une protection additive qui conserve
+    # leur géométrie et ne corrige que les débordements.
     if p+"social_auto_layout" not in st.session_state:
-        st.session_state[p+"social_auto_layout"] = True
+        st.session_state[p+"social_auto_layout"] = False if not (is_quiz and style=="1") else True
     if p+"social_platform" not in st.session_state:
         st.session_state[p+"social_platform"] = "Universel"
     if st.session_state.get(p+"social_auto_layout", False):
@@ -3226,12 +3221,14 @@ def render_layout_editor(module, style="1"):
 
     with tabs[1]:
         st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
-        if module=="vocab" and style=="2":
-            st.caption("🧩 Le tableau cumulatif reste exactement le principe Style 2 aimé. L’automatique ne change que ses limites de sécurité lorsqu’il est activé.")
-        elif module=="quiz" and style=="2":
-            st.caption("🎯 Style 2 conserve Q1 → Q2+R1 → Q3+R1/R2. L’automatique protège la question active, le minuteur et tout l’historique.")
+        if is_quiz and style=="1":
+            st.caption("🔒 Style 1 Bleu Nuit & Or : preset de zones sûres validé conservé. Aucun changement de géométrie sans demande explicite.")
+        elif is_quiz and style=="2":
+            st.caption("🎯 Style 2 : Q1 → Q2 + R1 → Q3 + R1/R2. L'automatique protège la question active et l'historique sans transformer la mise en page.")
+        elif (not is_quiz) and style=="2":
+            st.caption("🧩 Style 2 Vocabulaire : tableau cumulatif conservé. L'automatique ne fait que borner le tableau s'il dépasse la zone sûre.")
         else:
-            st.caption("Les zones sont indicatives/recommandées. Le mode automatique agit sur le rendu vidéo réel et maintient les cadres complets à l’intérieur de la zone sûre choisie.")
+            st.caption("🗣️ Style 1 Vocabulaire : la mise en page existante est conservée ; seuls les débordements hors zone sûre sont corrigés.")
         ac1,ac2=st.columns(2)
         with ac1:
             st.checkbox("Activer la mise en page automatique",key=p+"social_auto_layout")
@@ -3240,7 +3237,7 @@ def render_layout_editor(module, style="1"):
         if st.session_state.get(p+"social_auto_layout",False):
             st.success(f"✓ Protection active : {st.session_state.get(p+"social_platform","Universel")}")
         else:
-            st.info("🔓 Mode manuel : aucune coordonnée X/Y n’est imposée.")
+            st.info("🔓 Mode manuel : la mise en page actuelle est conservée.")
         st.markdown("---")
         c1,c2 = st.columns(2)
         with c1:
@@ -3687,7 +3684,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         try:
             if "preview" not in locals():
                 raise RuntimeError("L’aperçu interactif n’a pas pu être calculé.")
-            render_platform_safe_preview(preview, "quiz_platform_safe", module="quiz", style=quiz_style_id)
+            render_platform_safe_preview(preview, "quiz_platform_safe", "quiz", "2" if str(quiz_style_id).endswith("2") else "1")
         except Exception as e:
             st.caption(f"Aperçu plateforme indisponible : {e}")
 
@@ -3997,7 +3994,7 @@ else:
         st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
         st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
         try:
-            render_platform_safe_preview(preview_v, "vocab_platform_safe", module="vocab", style=style_v_id)
+            render_platform_safe_preview(preview_v, "vocab_platform_safe", "vocab", "2" if str(vocab_style_id).endswith("2") else "1")
         except Exception as e:
             st.caption(f"Aperçu plateforme indisponible : {e}")
 
