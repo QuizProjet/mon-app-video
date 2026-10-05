@@ -2732,6 +2732,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
+# V31.17 — correction Streamlit : auto-layout appliqué avant instanciation des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
@@ -3107,6 +3108,14 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
+    # V31.17 — appliquer la mise en page automatique AVANT de créer les widgets.
+    # Streamlit interdit de modifier directement une clé de widget après son instanciation.
+    # À chaque rerun, les clés déjà présentes sont donc recalculées ici, avant les sliders/
+    # selectbox/checkbox de l'éditeur. Le premier clic d'activation est ainsi pris en compte
+    # au rerun suivant sans provoquer StreamlitWidgetAlreadyInstantiatedError.
+    if is_quiz and style == "1" and st.session_state.get(p+"social_auto_layout", False):
+        apply_social_auto_layout("quiz", "1")
+
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • PRO</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Chaque élément possède ses propres positions, tailles, couleurs et cadres. X = horizontal • Y = vertical • les réglages sont indépendants par style.</div>', unsafe_allow_html=True)
     st.info("🧭 **Comment lire X/Y :** X déplace de gauche à droite (0 → 1080). Y déplace de haut en bas (0 → 1920). Les coordonnées concernent la vidéo 1080×1920, pas la taille du téléphone affiché.")
@@ -3161,7 +3170,6 @@ def render_layout_editor(module, style="1"):
             with ac2:
                 st.selectbox("Plateforme cible",["Universel","TikTok","Instagram Reels","YouTube Shorts","Facebook Reels"],key=p+"social_platform")
             if st.session_state.get(p+"social_auto_layout",False):
-                apply_social_auto_layout("quiz","1")
                 st.success(f"✓ Mise en page protégée : {st.session_state.get(p+"social_platform","Universel")}")
             st.markdown("---")
         c1,c2 = st.columns(2)
