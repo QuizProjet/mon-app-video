@@ -807,6 +807,31 @@ def _save_settings():
 
 _load_saved_settings()
 
+# V31.10 — preset géométrique du visuel approuvé « Bleu Nuit & Or ».
+# Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
+if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
+    _blue_gold_preset = {
+        "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
+        "q1_answer_x": 80, "q1_answer_y": 600, "q1_answer_width": 920, "q1_answer_h": 90, "q1_answer_gap": 16,
+        "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
+        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 62, "q1_timer_text_size": 55,
+        "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
+        "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
+        "q1_explanation_size": 30,
+        "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
+        "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
+        "q1_border_color": "#334155", "q1_border_width": 2, "q1_border_radius": 20,
+        "q1_question_frame_enabled": True, "q1_question_frame_bg_enabled": True, "q1_question_border_enabled": True,
+        "q1_answer_cards_enabled": True, "q1_answer_badges_enabled": True,
+        "q1_answer_frame_bg_enabled": True, "q1_answer_border_enabled": True,
+        "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
+        "q1_score_x": 965, "q1_score_y": 148, "q1_score_size": 31,
+        "q1_brand_x": 55, "q1_brand_y": 150, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+    }
+    for _k, _v in _blue_gold_preset.items():
+        st.session_state[_k] = _v
+    st.session_state["_blue_gold_layout_v31_10_applied"] = True
+
 def _layout(module="quiz", style=None):
     """Réglages visuels persistants, séparés par éditeur/style."""
     if module == "vocab":
@@ -818,15 +843,15 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"title_x":540,"title_y":150,"title_size":46,
-        "question_x":540,"question_y":305,"question_size":47,"question_width":900,"question_box_radius":24,
-        "answer_y":620,"answer_x":80,"answer_width":920,"answer_h":86,"answer_gap":12,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
+        "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
+        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1110,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
-        "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
+        "timer_y":1110,"timer_x":540,"timer_size":62,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
+        "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":148,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
         "brand_x":55,"brand_y":150,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
-        "explanation_x":540,"explanation_y":1340,"explanation_width":964,"explanation_h":280,"explanation_size":30,
+        "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
@@ -980,7 +1005,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
     else:
         box_h=int(cfg.get("explanation_h",320))
-    y2=min(1710,y1+box_h)
+    y2=min(1645,y1+box_h)
     is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
     if cfg.get("explanation_frame_enabled", True):
         fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
@@ -1378,7 +1403,8 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
             alpha=int(95*(1-rp/0.45)); glow=Image.new("RGBA",(WIDTH,HEIGHT),(255,255,255,0)); gd=ImageDraw.Draw(glow); gd.rectangle((42,360,1038,870),outline=(255,255,255,alpha),width=8); glow=glow.filter(ImageFilter.GaussianBlur(12)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
     if correct_idx is not None and explanation and explanation_progress>0 and cfg["show_explanation"]:
         draw_explanation_panel(draw,theme,explanation,explanation_progress,active_word=explanation_active_word)
-    draw_brand(draw,theme,channel,(q_num-1)/max(1,total))
+    # Le nom SuspenseLingo est rendu une seule fois dans le header; ici on garde uniquement la barre de progression.
+    draw_brand(draw,theme,None,(q_num-1)/max(1,total))
     return img
 
 def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None, progress=1.0):
