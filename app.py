@@ -683,13 +683,13 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """V31.29 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
+    """V31.30 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
-    top=int(cfg.get("social_safe_top",120)); header_h=74; bottom=min(int(cfg.get("social_safe_bottom",HEIGHT-220)),top+header_h)
+    top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))+12)); header_h=74; bottom=min(int(cfg.get("social_safe_bottom",HEIGHT-220)),top+header_h)
     left=max(20,min(left,WIDTH-100)); right=max(left+100,min(right,WIDTH-20))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
@@ -1111,9 +1111,9 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     # (header SuspenseLingo + titre + compteur), puis tableau cumulatif.
     # Cette couche ne change PAS la mécanique cumulative : elle ne fait qu'habiller
     # le rendu final et reste entièrement à l'intérieur de la zone sûre.
-    safe_left,safe_top=40,120
-    safe_right,safe_bottom=WIDTH-40,HEIGHT-220
-    draw_unified_header(draw,cfg,active_idx+1,total,video_title or "Vocabulaire")
+    safe_left=int(cfg.get("social_safe_left",40)); safe_top=int(cfg.get("social_safe_top",120))
+    safe_right=int(cfg.get("social_safe_right",WIDTH-40)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
+    header_y,header_bottom=draw_unified_header(draw,cfg,active_idx+1,total,video_title or "Vocabulaire")
     # Pour 15 lignes, on réduit automatiquement la hauteur si nécessaire afin
     # que le tableau reste entièrement visible et ne touche jamais le footer.
     x=int(cfg.get("table_x",70))
@@ -1346,8 +1346,9 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     img=add_top_glow(base,theme,1.0+0.10*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]; ff=cfg.get("font_family","Lato")
 
-    safe_left,safe_top=40,120
-    safe_right,safe_bottom=WIDTH-40,HEIGHT-220
+    safe_left=int(cfg.get("social_safe_left",40)); safe_top=int(cfg.get("social_safe_top",120))
+    safe_right=int(cfg.get("social_safe_right",WIDTH-40)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
+    auto=bool(cfg.get("social_auto_layout",False))
     header_y,header_bottom=draw_unified_header(draw,cfg,active_idx+1,total,video_title or "Culture Générale")
     # Question active : toujours dans la même zone, largeur entièrement sûre.
     q=clean_text(active.get("question",""))
@@ -3352,7 +3353,7 @@ def render_layout_editor(module, style="1"):
                 st.info("Le minuteur du Style 2 est positionné dans la cellule de traduction. Utilise les réglages X/Y juste au-dessus pour l’ajuster.")
             else:
                 st.slider("Position X",0,1080,key=p+"timer_x")
-                # V31.29: normaliser toute ancienne valeur avant le slider pour éviter ValueAboveMax/BelowMin.
+                # V31.30: normaliser toute ancienne valeur avant le slider pour éviter ValueAboveMax/BelowMin.
                 timer_y_key=p+"timer_y"
                 if timer_y_key not in st.session_state:
                     st.session_state[timer_y_key]=1110
@@ -3999,6 +4000,8 @@ else:
         st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
         st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
         try:
+            if "preview_v" not in locals():
+                raise RuntimeError("L’aperçu interactif vocabulaire n’a pas pu être calculé.")
             render_platform_safe_preview(preview_v, "vocab_platform_safe", "vocab", "2" if str(vocab_style_id).endswith("2") else "1")
         except Exception as e:
             st.caption(f"Aperçu plateforme indisponible : {e}")
