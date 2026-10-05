@@ -2566,7 +2566,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 def render_platform_safe_preview(image, key_prefix="platform_preview"):
-    """Aperçu plateforme discret : ne modifie jamais la mise en page réelle du quiz."""
+    """Aperçu vertical avec zones de sécurité indicatives par plateforme."""
     profiles={
         "TikTok":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"TikTok"},
         "Instagram Reels":{"top":0.09,"bottom":0.18,"left":0.03,"right":0.16,"label":"Instagram Reels"},
@@ -2579,26 +2579,29 @@ def render_platform_safe_preview(image, key_prefix="platform_preview"):
     with c2:
         show=st.checkbox("Afficher les zones",value=True,key=f"{key_prefix}_show")
     profile=profiles[platform]
-    st.caption("Les zones sont indicatives : elles montrent uniquement les emplacements où l'interface de la plateforme peut recouvrir le contenu.")
+    st.caption("Les zones colorées sont indicatives : elles représentent les emplacements où l'interface de la plateforme peut recouvrir le contenu.")
     canvas=image.convert("RGBA").resize((360,640),Image.Resampling.LANCZOS)
     if show:
         ov=Image.new("RGBA",canvas.size,(0,0,0,0)); d=ImageDraw.Draw(ov); W,H=canvas.size
-        top=int(H*profile["top"]); bottom=int(H*(1-profile["bottom"])); left=int(W*profile["left"]); right=int(W*(1-profile["right"]))
-        d.rectangle((0,0,W,top),fill=(220,45,65,24))
-        d.rectangle((0,bottom,W,H),fill=(220,45,65,28))
-        d.rectangle((0,top,left,bottom),fill=(220,45,65,16))
-        d.rectangle((right,top,W,bottom),fill=(220,45,65,28))
-        d.rounded_rectangle((left,top,right,bottom),radius=5,outline=(255,205,64,180),width=2)
-        mark=(255,205,64,205); m=9
-        for x1,y1,dx,dy in [(left,top,1,1),(right,top,-1,1),(left,bottom,1,-1),(right,bottom,-1,-1)]:
-            d.line((x1,y1,x1+dx*m,y1),fill=mark,width=3)
-            d.line((x1,y1,x1,y1+dy*m),fill=mark,width=3)
+        zones=[
+            (0,0,W,int(H*profile["top"]),"ZONE À ÉVITER • HAUT"),
+            (0,int(H*(1-profile["bottom"])),W,H,"ZONE À ÉVITER • BAS"),
+            (0,int(H*profile["top"]),int(W*profile["left"]),int(H*(1-profile["bottom"])),""),
+            (int(W*(1-profile["right"])),int(H*profile["top"]),W,int(H*(1-profile["bottom"])),"ZONE UI"),
+        ]
+        for x1,y1,x2,y2,label in zones:
+            d.rectangle((x1,y1,x2,y2),fill=(220,45,65,72),outline=(255,110,125,180),width=2)
+            if label:
+                try:
+                    tw=max(150, min(250, int(d.textlength(label))+18))
+                    d.rounded_rectangle((x1+8,y1+8,x1+tw,y1+31),radius=7,fill=(25,25,30,205))
+                    d.text((x1+14,y1+13),label,fill=(255,255,255,235))
+                except Exception:
+                    pass
+        d.rectangle((int(W*profile["left"]),int(H*profile["top"]),int(W*(1-profile["right"])),int(H*(1-profile["bottom"]))),outline=(255,255,255,115),width=2)
         canvas=Image.alpha_composite(canvas,ov).convert("RGB")
     st.image(canvas,width=360)
-    if show:
-        st.caption(f"🛡️ {profile['label']} — rouge très léger = interface potentielle • cadre doré = zone recommandée")
-    else:
-        st.caption(f"👁️ Aperçu propre — {profile['label']} sans les zones techniques")
+    st.caption(f"🛡️ Zone de contenu recommandée pour {profile['label']} : garde la question et les réponses dans le cadre central.")
 
 def _qvp_quick_controls(module, style, selected, theme_name, channel, bg, state, title, language="Anglais", prefix_key="qvp"):
     """Barre compacte d'édition rapide sous l'aperçu. Ne remplace pas l'Éditeur Studio."""
