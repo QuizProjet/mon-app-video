@@ -883,6 +883,7 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
         "q1_header_y": 120, "q1_header_h": 74, "q1_score_x": 965, "q1_score_y": 130, "q1_score_size": 31,
         "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+        "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
         st.session_state[_k] = _v
@@ -909,7 +910,7 @@ def _layout(module="quiz", style=None):
         "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
         "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
-        "social_auto_layout":False,"social_platform":"Universel","social_progress_y":1530,
+        "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
         "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
@@ -2731,7 +2732,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.15 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
+# V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
 SOCIAL_SAFE_PROFILES = {
@@ -2835,7 +2836,12 @@ def render_platform_safe_preview(image, key_prefix="platform_preview"):
     with c2:
         show=st.checkbox("Afficher les zones",value=True,key=f"{key_prefix}_show")
     profile=profiles[platform]
-    st.caption("Les zones colorées sont indicatives : elles représentent les emplacements où l'interface de la plateforme peut recouvrir le contenu.")
+    auto_on=bool(st.session_state.get("q1_social_auto_layout",False))
+    if auto_on:
+        st.success(f"🛡️ Mise en page automatique active — contenu placé dans la zone sûre ({platform}).")
+    else:
+        st.warning("⚠️ Mise en page automatique désactivée : l'aperçu montre les zones interdites, mais ne déplace pas les éléments.")
+    st.caption("Les zones rouges indiquent les zones d'interface à éviter. Avec la mise en page automatique, les cadres complets — en-tête, question, réponses, minuteur, explication et progression — restent à l'intérieur de la zone sûre.")
     canvas=image.convert("RGBA").resize((360,640),Image.Resampling.LANCZOS)
     if show:
         ov=Image.new("RGBA",canvas.size,(0,0,0,0)); d=ImageDraw.Draw(ov); W,H=canvas.size
