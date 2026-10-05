@@ -660,7 +660,12 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
-    left, top, right = 40, int(cfg.get("header_y",120)), WIDTH-40
+    auto=bool(cfg.get("social_auto_layout",False))
+    if auto:
+        left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
+    else:
+        left, right = 40, WIDTH-40
+    top=int(cfg.get("header_y",120))
     header_h=int(cfg.get("header_h",74)); bottom=top+header_h
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
 
@@ -669,6 +674,9 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
         bf=get_font(int(cfg.get("brand_size",28)),ff)
         bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",150))
+        if auto:
+            bx=max(left+16,min(right-text_width(draw,brand,bf)-16,bx))
+            by=max(top+12,min(bottom-text_height(bf,brand)-10,by))
         if cfg.get("brand_bg_enabled",False):
             tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
             draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
@@ -690,6 +698,7 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
     bw=max(116,sw+34); bh=max(54,sh+16)
     bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
+    # Le compteur est lui aussi entièrement contenu dans le header sûr.
     bx=max(left+10,min(right-bw-10,bx)); by=max(top+10,min(bottom-bh-10,by))
     draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=12,fill=gold)
     draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=black)
@@ -2695,7 +2704,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.13 — Mise en page automatique réseaux sociaux.
+# V31.14 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
 SOCIAL_SAFE_PROFILES = {
@@ -2709,7 +2718,7 @@ SOCIAL_SAFE_PROFILES["Universel"] = {
 }
 
 def apply_social_auto_layout(module="quiz", style="1"):
-    """Calcule une mise en page sûre et cohérente pour le rendu réel 1080x1920."""
+    """Mise en page automatique stricte : les BORDS de chaque bloc restent dans la zone sûre."""
     if module != "quiz" or str(style) != "1":
         return
     p="q1_"
@@ -2717,39 +2726,69 @@ def apply_social_auto_layout(module="quiz", style="1"):
         return
     platform=st.session_state.get(p+"social_platform", "Universel")
     prof=SOCIAL_SAFE_PROFILES.get(platform, SOCIAL_SAFE_PROFILES["Universel"])
-    top=int(HEIGHT*prof["top"]); bottom=int(HEIGHT*(1-prof["bottom"]))
-    left=int(WIDTH*prof["left"]); right=int(WIDTH*(1-prof["right"]))
-    safe_w=right-left
-    # Architecture verticale : header → question → 4 réponses → minuteur → explication → barre.
-    header_y=top+18; header_h=74
-    question_y=header_y+header_h+24
-    answer_y=question_y+205
-    answer_h=78; answer_gap=13
+    safe_top=int(HEIGHT*prof["top"]); safe_bottom=int(HEIGHT*(1-prof["bottom"]))
+    safe_left=int(WIDTH*prof["left"]); safe_right=int(WIDTH*(1-prof["right"]))
+    safe_w=safe_right-safe_left
+    center=(safe_left+safe_right)//2
+
+    # On réserve explicitement la zone entière de chaque bloc, et pas seulement son centre.
+    header_h=74
+    header_y=safe_top+12
+    header_bottom=header_y+header_h
+
+    # Question : réserve 3 lignes maximum + marges du cadre.
+    question_y=header_bottom+28
+    question_reserved_h=190
+    question_bottom=question_y+question_reserved_h
+
+    # Réponses : 4 cartes entières dans la zone sûre.
+    answer_h=76
+    answer_gap=12
+    answer_y=question_bottom+24
     answers_bottom=answer_y+4*answer_h+3*answer_gap
-    timer_y=answers_bottom+82
+
+    # Minuteur puis explication, avec une marge de sécurité supplémentaire.
+    timer_size=58
+    timer_y=answers_bottom+76
     explanation_h=205
-    explanation_y=min(timer_y+112, bottom-explanation_h-42)
-    progress_y=bottom-22
-    # Garanties de débordement : on compacte l'espace avant de toucher aux zones sûres.
-    if explanation_y < timer_y+105:
-        timer_y=max(answer_y+4*answer_h+3*answer_gap+55, explanation_y-105)
-    # Question et réponses restent centrées dans la largeur sûre.
+    explanation_y=timer_y+timer_size+34
+    progress_y=safe_bottom-24
+
+    # Si la plateforme est très restrictive, on compacte avant de franchir safe_bottom.
+    available_before_progress=progress_y-explanation_h-18
+    if explanation_y>available_before_progress:
+        explanation_y=available_before_progress
+        timer_y=explanation_y-timer_size-34
+    if timer_y < answers_bottom+40:
+        timer_y=answers_bottom+40
+        explanation_y=timer_y+timer_size+24
+    if explanation_y+explanation_h > progress_y-12:
+        explanation_y=progress_y-12-explanation_h
+
     vals={
+        # Header entièrement à l'intérieur de la zone sûre.
         p+"header_y":header_y, p+"header_h":header_h,
-        p+"brand_x":left+28, p+"brand_y":header_y+20,
-        p+"title_x":(left+right)//2, p+"title_y":header_y+19,
-        p+"score_x":right-58, p+"score_y":header_y+10,
-        p+"question_x":(left+right)//2, p+"question_y":question_y,
-        p+"question_width":max(760,min(940,safe_w)),
-        p+"answer_x":left, p+"answer_width":safe_w, p+"answer_y":answer_y,
+        p+"brand_x":safe_left+22, p+"brand_y":header_y+20,
+        p+"title_x":center, p+"title_y":header_y+19,
+        p+"score_x":safe_right-58, p+"score_y":header_y+10,
+        # Question : cadre complet dans safe_left/safe_right.
+        p+"question_x":center, p+"question_y":question_y,
+        p+"question_width":safe_w,
+        # Réponses : cadres complets dans la même largeur sûre.
+        p+"answer_x":safe_left, p+"answer_width":safe_w, p+"answer_y":answer_y,
         p+"answer_h":answer_h, p+"answer_gap":answer_gap,
-        p+"timer_x":(left+right)//2, p+"timer_y":timer_y,
+        # Minuteur centré entre les réponses et l'explication.
+        p+"timer_x":center, p+"timer_y":timer_y, p+"timer_size":timer_size,
         p+"timer_auto_below_answers":False,
-        p+"explanation_x":(left+right)//2, p+"explanation_y":explanation_y,
+        # Explication complète au-dessus de la zone basse interdite.
+        p+"explanation_x":center, p+"explanation_y":explanation_y,
         p+"explanation_width":safe_w, p+"explanation_h":explanation_h,
         p+"explanation_auto_below_timer":False,
         p+"explanation_auto_height":False,
+        # Progression entièrement dans la zone sûre.
         p+"social_progress_y":progress_y,
+        p+"social_safe_left":safe_left, p+"social_safe_right":safe_right,
+        p+"social_safe_top":safe_top, p+"social_safe_bottom":safe_bottom,
     }
     for k,v in vals.items(): st.session_state[k]=v
 
@@ -3082,7 +3121,7 @@ def render_layout_editor(module, style="1"):
     with tabs[1]:
         if is_quiz and style=="1":
             st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
-            st.caption("Les zones sont indicatives et servent de protection pratique contre les boutons/éléments d’interface des plateformes. Le mode automatique agit sur le rendu vidéo réel.")
+            st.caption("Les zones sont indicatives/recommandées. Le mode automatique agit sur le rendu vidéo réel et maintient les cadres complets à l’intérieur de la zone sûre choisie.")
             ac1,ac2=st.columns(2)
             with ac1:
                 st.checkbox("Activer la mise en page automatique",key=p+"social_auto_layout")
