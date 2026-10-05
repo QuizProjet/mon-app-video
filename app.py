@@ -1378,7 +1378,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                 timer_text_size,None,20,tc,0.12
             )
 
-    # V31.27: un seul branding dans l'entête. Ne pas rappeler draw_brand() ici
+    # V31.28: un seul branding dans l'entête. Ne pas rappeler draw_brand() ici
     # (sinon un second logo apparaît sous le tableau).
     return img
 
@@ -1410,27 +1410,45 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
     draw.rounded_rectangle((safe_left,header_y,safe_right,header_bottom),radius=20,fill=navy,outline=border,width=2)
 
+    # V31.28 — en-tête en 3 zones de largeur égale :
+    # LOGO | TITRE | COMPTEUR. Les trois éléments restent sur une seule ligne
+    # et sont centrés verticalement dans le même gabarit de 74 px.
+    header_center_y = header_y + header_h / 2
+    slot_w = (safe_right - safe_left) / 3.0
+    left_center = safe_left + slot_w / 2.0
+    center_center = safe_left + slot_w * 1.5
+    right_center = safe_left + slot_w * 2.5
+
     if bool(cfg.get("brand_show",True)):
         brand="SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",28)),ff)
+        bf=get_font(28,ff)
         bw=text_width(draw,brand,bf); bh=text_height(bf,brand)
-        bx=max(safe_left+16,min(safe_right-bw-170,int(cfg.get("brand_x",safe_left+22))))
-        by=max(header_y+10,min(header_bottom-bh-8,int(cfg.get("brand_y",header_y+20))))
+        # Le logo est centré dans le tiers gauche, sans empiéter sur le titre.
+        bx=int(left_center-bw/2)
+        by=int(header_center_y-bh/2-1)
+        bx=max(safe_left+12,min(safe_left+slot_w-bw-12,bx))
+        by=max(header_y+8,min(header_bottom-bh-8,by))
         draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
 
     if cfg.get("show_title",True):
         title=clean_text(video_title or "Culture Générale")
-        tf=get_font(int(cfg.get("title_size",38)),ff); tw=text_width(draw,title,tf); th=text_height(tf,title)
-        tx=int(cfg.get("title_x",(safe_left+safe_right)//2))-tw//2
-        tx=max(safe_left+150,min(safe_right-170-tw,tx))
-        ty=max(header_y+10,min(header_bottom-th-8,int(cfg.get("title_y",header_y+19))))
+        tf=get_font(38,ff)
+        tw=text_width(draw,title,tf); th=text_height(tf,title)
+        # Le titre est centré dans le tiers central, sans chevaucher logo/compteur.
+        tx=int(center_center-tw/2)
+        tx=max(int(safe_left+slot_w+10),min(int(safe_left+2*slot_w-tw-10),tx))
+        ty=int(header_center_y-th/2-1)
+        ty=max(header_y+8,min(header_bottom-th-8,ty))
         draw.text((tx+2,ty+2),title,font=tf,fill=dark)
         draw.text((tx,ty),title,font=tf,fill=_hex_rgb(cfg.get("text"),white))
 
     score=f"{active_idx+1}/{total}"
-    sf=get_font(int(cfg.get("score_size",31)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    sf=get_font(31,ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
     pill_w=max(86,sw+30); pill_h=max(48,sh+18)
-    px=safe_right-pill_w-14; py=header_y+(header_h-pill_h)//2
+    # Le compteur est centré dans le tiers droit, sur la même ligne que logo/titre.
+    px=int(right_center-pill_w/2); py=int(header_center_y-pill_h/2)
+    px=max(int(safe_left+2*slot_w+10),min(int(safe_right-pill_w-10),px))
+    py=max(header_y+8,min(header_bottom-pill_h-8,py))
     draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
     draw.text((px+(pill_w-sw)//2,py+(pill_h-sh)//2-1),score,font=sf,fill=dark)
 
@@ -3387,7 +3405,15 @@ def render_layout_editor(module, style="1"):
                 st.caption("💡 X = gauche ↔ droite • Y = haut ↕ bas. Désactive l’automatique pour placer l’explication librement.")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
-                st.slider("Hauteur d'une ligne",40,110,key=p+"history_row_h")
+                # V31.28 — migration sûre : une ancienne valeur < 55 faisait
+                # planter Streamlit avec StreamlitValueBelowMinError.
+                _history_row_key = p + "history_row_h"
+                try:
+                    _history_row_value = int(st.session_state.get(_history_row_key, 78))
+                except (TypeError, ValueError):
+                    _history_row_value = 78
+                st.session_state[_history_row_key] = max(55, min(110, _history_row_value))
+                st.slider("Hauteur d'une ligne",55,110,key=_history_row_key)
                 st.slider("Taille du texte historique",20,52,key=p+"history_size")
             elif not is_quiz and style=="2":
                 st.caption("Tableau cumulatif optimisé pour 1 à 15 lignes. À partir de 12 lignes, la hauteur et la taille du texte s'adaptent automatiquement.")
@@ -4276,3 +4302,4 @@ if st.session_state.get("last_vocab_video_data"):
     render_export_panel(st.session_state["last_vocab_video_data"],"SuspenseLingo_Vocabulaire","export_vocab_persist")
 
 st.markdown('</div>',unsafe_allow_html=True)
+
