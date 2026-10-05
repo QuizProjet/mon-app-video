@@ -366,8 +366,9 @@ VOICES_MAP = {
     "Italien": {"Diego": "it-IT-DiegoNeural", "Elsa": "it-IT-ElsaNeural"},
 }
 # Option 1 — Bleu Nuit & Or : spécification CSS exacte pour le preview HTML/Tailwind.
-# Le rendu vidéo actuel reste PIL/Pillow ; cette classe sert de contrat visuel commun
-# pour les wrappers Streamlit/HTML sans remplacer le moteur vidéo existant.
+# Le rendu vidéo est synchronisé avec les mêmes valeurs géométriques dans draw_header,
+# _draw_question_rich, _draw_answers, draw_timer, draw_explanation_panel et draw_brand.
+# Cette classe reste le contrat visuel commun pour les wrappers Streamlit/HTML.
 BLUE_GOLD_PREVIEW_CSS = r"""
 .quiz-preview { width: 1080px; aspect-ratio: 9 / 16; background:#0B1021; color:#FFFFFF; }
 .quiz-header { background:#151D33; border:2px solid #2B3960; border-radius:20px; display:flex; align-items:center; justify-content:space-between; }
@@ -628,7 +629,7 @@ def draw_brand(draw, theme, channel, progress=None):
         draw.text((x,y),text,font=f,fill=_hex_rgb(cfg.get("brand_color"),(255,255,255)))
     # Progress bar remains at the bottom, separate from the brand.
     if progress is not None:
-        x, y, w, h = 55, 1695, 970, 12
+        x, y, w, h = 55, 1640, 970, 8
         draw.rounded_rectangle((x,y,x+w,y+h), radius=6, fill=(65,70,85))
         draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=6, fill=theme["accent"])
 
@@ -639,40 +640,47 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
-    """En-tête fidèle à la maquette Bleu Nuit & Or / CSS Option 1."""
+    """En-tête vidéo Bleu Nuit & Or : 1000x60, centré sur une seule ligne.
+    Safe zone haute = 140 px ; aucune dépendance au DOM/HTML.
+    """
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
-    left, top, right, bottom = 40, 120, WIDTH-40, 235
+    left, top, right = 40, 140, WIDTH-40
+    header_h=60; bottom=top+header_h
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
 
-    # Marque à gauche — position/taille restent pilotables depuis l'éditeur.
+    # Trois zones alignées sur le même axe vertical.
+    center_y=top+header_h/2
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
         bf=get_font(int(cfg.get("brand_size",28)),ff)
-        bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",150))
+        bx=int(cfg.get("brand_x",70))
+        bh=text_height(bf,brand)
+        by=int(center_y-bh/2)
         if cfg.get("brand_bg_enabled",False):
-            tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
-            draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
+            tw=text_width(draw,brand,bf); pad=8
+            draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+bh+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
         draw.text((bx,by),brand,font=bf,fill=gold)
 
-    # Titre central.
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
     tf=get_font(int(cfg.get("title_size",46)),ff)
     label=f"QUIZ {title.upper()}"
     tw=text_width(draw,label,tf); th=text_height(tf,label)
-    tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",145))
-    ty=max(top+12,min(bottom-th-10,ty))
+    tx=int(cfg.get("title_x",540))-tw/2
+    ty=int(center_y-th/2)
     draw.text((tx+2,ty+3),label,font=tf,fill=black)
     draw.text((tx,ty),label,font=tf,fill=white)
 
-    # Compteur doré à droite.
-    sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    bw=max(116,sw+34); bh=max(54,sh+16)
-    bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
-    bx=max(left+10,min(right-bw-10,bx)); by=max(top+10,min(bottom-bh-10,by))
+    sf=get_font(int(cfg.get("score_size",31)),ff)
+    score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    bw=max(116,sw+34); bh=max(46,sh+16)
+    # Le centre X reste pilotable, mais le Y est verrouillé au centre du header.
+    score_cx=int(cfg.get("score_x",965))
+    bx=max(left+10,min(right-bw-10,score_cx-bw//2))
+    by=int(center_y-bh/2)
     draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=12,fill=gold)
     draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=black)
 
@@ -741,16 +749,22 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
     if label:
         lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or color)
 
-def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0):
-    cfg=_layout("quiz", "1"); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
+def draw_timer(draw, theme, timer, fraction=1.0, pulse=0.0, answer_bottom=None):
+    cfg=_layout("quiz", "1")
+    color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
     if timer is not None and timer<=1: color=_hex_rgb(cfg.get("timer_color"),theme["danger"])
-    timer_size=max(24,int(cfg.get("timer_size",58)))
-    if cfg.get("timer_auto_below_answers", True):
-        answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
-        timer_y=min(1500, answer_bottom + timer_size + 22)
+    timer_size=max(24,int(cfg.get("timer_size",32)))
+    # Dans le rendu vidéo, timer_size est le rayon du cercle.
+    # Avec le preset Bleu Nuit & Or : 32 => cercle 64x64.
+    if cfg.get("timer_auto_below_answers", True) and answer_bottom is not None:
+        timer_y=int(answer_bottom + 20 + timer_size)
+    elif cfg.get("timer_auto_below_answers", True):
+        answer_bottom=int(cfg.get("answer_y",397))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",14))
+        timer_y=int(answer_bottom + 20 + timer_size)
     else:
-        timer_y=int(cfg.get("timer_y",1045))
-    _draw_timer_visual(draw,color,int(cfg.get("timer_x",540)),timer_y,timer_size,timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",55))),clean_text(cfg.get("timer_label")) if cfg.get("timer_show_label",True) else None,int(cfg.get("timer_label_size",23)),_hex_rgb(cfg.get("timer_label_color"),color),pulse)
+        timer_y=int(cfg.get("timer_y",836))
+    timer_y=max(220,min(1500,timer_y))
+    _draw_timer_visual(draw,color,int(cfg.get("timer_x",540)),timer_y,timer_size,timer,fraction,cfg.get("timer_style"),max(20,int(cfg.get("timer_text_size",28))),clean_text(cfg.get("timer_label")) if cfg.get("timer_show_label",True) else None,int(cfg.get("timer_label_size",23)),_hex_rgb(cfg.get("timer_label_color"),color),pulse)
 
 
 def _hex_rgb(value, fallback=(255,255,255)):
@@ -806,17 +820,21 @@ def _save_settings():
 
 _load_saved_settings()
 
-# V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
-# V31.10 — preset géométrique du visuel approuvé « Bleu Nuit & Or ».
+# V31.12 — synchronisation du moteur vidéo Pillow avec la géométrie Bleu Nuit & Or.
+# Le preview HTML et le rendu vidéo utilisent désormais le même gabarit 9:16 / safe zones.
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
-if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
+if not st.session_state.get("_blue_gold_layout_v31_12_applied"):
     _blue_gold_preset = {
-        "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
-        "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
-        "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
-        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 64, "q1_timer_text_size": 55,
-        "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
-        "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
+        # Safe zone haute 140 px ; header 60 px ; question commence à 220 px.
+        "q1_question_x": 540, "q1_question_y": 240, "q1_question_size": 47, "q1_question_width": 940,
+        # 25 px après la carte question ; cartes 82 px ; 14 px entre réponses.
+        "q1_answer_x": 70, "q1_answer_y": 397, "q1_answer_width": 940, "q1_answer_h": 82, "q1_answer_gap": 14,
+        "q1_answer_size": 31, "q1_answer_badge_size": 42, "q1_answer_text_padding": 18,
+        # Le moteur Pillow interprète timer_size comme un rayon : 32 => diamètre 64 px.
+        "q1_timer_x": 540, "q1_timer_y": 836, "q1_timer_size": 32, "q1_timer_text_size": 28,
+        "q1_timer_auto_below_answers": True, "q1_explanation_auto_below_timer": False,
+        # Explication et progression restent dans la safe zone basse.
+        "q1_explanation_x": 540, "q1_explanation_y": 1370, "q1_explanation_width": 940, "q1_explanation_h": 250,
         "q1_explanation_size": 30,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
         "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
@@ -830,7 +848,7 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     }
     for _k, _v in _blue_gold_preset.items():
         st.session_state[_k] = _v
-    st.session_state["_blue_gold_layout_v31_10_applied"] = True
+    st.session_state["_blue_gold_layout_v31_12_applied"] = True
 
 def _layout(module="quiz", style=None):
     """Réglages visuels persistants, séparés par éditeur/style."""
@@ -913,13 +931,14 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
         yy+=line_h
     return box_bottom
 
-def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
+def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0, start_y_override=None):
     cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
-    configured_h=int(cfg.get("answer_h",92)); gap=int(cfg.get("answer_gap",14)); start_y=int(cfg.get("answer_y",690))
+    configured_h=int(cfg.get("answer_h",92)); gap=int(cfg.get("answer_gap",14)); start_y=int(cfg.get("answer_y",690)) if start_y_override is None else int(start_y_override)
     base_size=int(cfg.get("answer_size",31)); padding=int(cfg.get("answer_text_padding",24))
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
     badge_size=max(36,min(72,int(cfg.get("answer_badge_size",54))))
+    max_bottom=start_y
     for i,opt in enumerate(options[:4]):
         opt_clean=clean_text(opt)
         # La carte reste indépendante de la taille du texte. Si nécessaire, seul le texte
@@ -976,6 +995,8 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
                 draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
                 draw.line((cx-8,cy,cx-2,cy+7),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
                 draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
+        max_bottom=max(max_bottom,y+card_h+extra)
+    return max_bottom
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
@@ -1393,10 +1414,13 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     gr=max(120,min(360,int(cfg.get("question_width",900)*0.28)))
     gd.ellipse((qcx-gr,qcy-gr//2,qcx+gr,qcy+gr//2),fill=(*_hex_rgb(cfg.get("primary"),theme["accent"]),38))
     glow=glow.filter(ImageFilter.GaussianBlur(55)); img=Image.alpha_composite(img.convert("RGBA"),glow).convert("RGB"); draw=ImageDraw.Draw(img)
-    _draw_question_rich(draw,question,theme,y=int(cfg["question_y"]),phase=phase,active_word=question_active_word)
-    _draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase)
+    question_bottom=_draw_question_rich(draw,question,theme,y=int(cfg["question_y"]),phase=phase,active_word=question_active_word)
+    # 25 px exactement entre la carte question et la première réponse.
+    answer_start=max(int(cfg.get("answer_y",397)),int(question_bottom)+25)
+    answer_bottom=_draw_answers(draw,options,theme,entrance,correct_idx,reveal_progress,phase,start_y_override=answer_start)
     if timer is not None and cfg["show_timer"]:
-        draw_timer(draw,theme,timer,timer_fraction,pulse)
+        # 20 px de séparation avant le cercle ; le cercle est centré horizontalement.
+        draw_timer(draw,theme,timer,timer_fraction,pulse,answer_bottom=answer_bottom)
     if correct_idx is not None and reveal_progress>0:
         rp=clamp(reveal_progress)
         if rp<0.45:
@@ -2816,7 +2840,7 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.caption("🧠 SuspenseLingo Studio V30  •  🗣️ Vocabulaire Pro")
+st.sidebar.caption("🧠 SuspenseLingo Studio V31.12  •  🗣️ Vocabulaire Pro")
 st.sidebar.markdown("""
 <div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
@@ -2919,16 +2943,16 @@ def render_layout_editor(module, style="1"):
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
     defaults = {
         "font_family":"Lato", "show_title":True, "title_x":540, "title_y":86 if is_quiz else 70, "title_size":46 if is_quiz else 34,
-        "question_x":540, "question_y":250 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
-        "answer_y":550 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
+        "question_x":540, "question_y":240 if is_quiz else 500, "question_size":47 if is_quiz else 58, "question_width":940,
+        "answer_y":397 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":31 if is_quiz else 42, "answer_radius":20,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
-        "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
+        "show_explanation":True, "explanation_x":540, "explanation_y":1370, "explanation_width":940, "explanation_h":250, "explanation_size":30,
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
         "score_x":540, "score_y":150, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
-        "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
+        "show_timer":True, "timer_y":836 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":32 if is_quiz else 62, "timer_text_size":28 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
