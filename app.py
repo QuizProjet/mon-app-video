@@ -1117,7 +1117,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     ff=cfg.get("font_family","DejaVu Sans")
     table_ff=cfg.get("table_font_family",ff)
 
-    # V31.26 — Vocabulaire Style 2 : mise en page visuelle validée
+    # V31.27 — Vocabulaire Style 2 : mise en page visuelle validée
     # (header SuspenseLingo + titre + compteur), puis tableau cumulatif.
     # Cette couche ne change PAS la mécanique cumulative : elle ne fait qu'habiller
     # le rendu final et reste entièrement à l'intérieur de la zone sûre.
@@ -1126,8 +1126,8 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     safe_right=int(cfg.get("social_safe_right",WIDTH-40)) if auto else WIDTH-40
     safe_top=int(cfg.get("social_safe_top",120)) if auto else 120
     header_y=max(safe_top+8, int(cfg.get("header_y",120)))
-    header_h=int(cfg.get("header_h",74))
-    header_bottom=min(HEIGHT-220, header_y+header_h)
+    header_h=74
+    header_bottom=min(safe_bottom-20, header_y+header_h)
     header_left=safe_left
     header_right=safe_right
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); dark=(15,23,42)
@@ -1148,7 +1148,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
 
     # Titre central.
     title=clean_text(video_title or "Vocabulaire")
-    tf=get_font(int(cfg.get("title_size",34)),ff)
+    tf=get_font(int(cfg.get("title_size",38)),ff)
     label=title.upper()[:24]
     tw=text_width(draw,label,tf); th=text_height(tf,label)
     tx=(header_left+header_right-tw)//2
@@ -1168,15 +1168,16 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
     # Pour 15 lignes, on réduit automatiquement la hauteur si nécessaire afin
     # que le tableau reste entièrement visible et ne touche jamais le footer.
     x=int(cfg.get("table_x",70))
+    w=min(int(cfg.get("table_width",940)),safe_right-safe_left)
+    x=max(safe_left,min(x,safe_right-w))
     y0=int(cfg.get("table_y",350))
     y0=max(y0,header_bottom+28)
-    w=int(cfg.get("table_width",940))
     configured_rh=int(cfg.get("table_row_h",82))
     gap=int(cfg.get("table_gap",6))
     split=int(cfg.get("table_split",540))
     radius=int(cfg.get("table_radius",16))
 
-    bottom_limit=1775
+    bottom_limit=max(y0+100,safe_bottom-24)
     max_rh=(bottom_limit-y0-gap*(total-1))//total
     effective_rh=max(58,min(configured_rh,int(max_rh))) if total>=12 else configured_rh
 
@@ -1377,7 +1378,7 @@ def draw_vocab_cumulative_frame(items, active_idx, theme_name, channel, bg_file=
                 timer_text_size,None,20,tc,0.12
             )
 
-    # V31.26: un seul branding dans l'entête. Ne pas rappeler draw_brand() ici
+    # V31.27: un seul branding dans l'entête. Ne pas rappeler draw_brand() ici
     # (sinon un second logo apparaît sous le tableau).
     return img
 
@@ -1396,7 +1397,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     img=add_top_glow(base,theme,1.0+0.10*math.sin(float(motion)*math.pi*2)); draw=ImageDraw.Draw(img)
     total=max(1,len(items)); active_idx=max(0,min(int(active_idx),total-1)); active=items[active_idx]; ff=cfg.get("font_family","Lato")
 
-    # V31.26 — même langage visuel que Style 1 : un seul entête, zones sûres,
+    # V31.27 — même langage visuel que Style 1 : un seul entête, zones sûres,
     # nom de l'application à gauche, titre au centre, compteur à droite.
     auto=bool(cfg.get("social_auto_layout",False))
     safe_left=int(cfg.get("social_safe_left",40)) if auto else 40
@@ -1445,7 +1446,10 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     lines=wrap_text(q,qf,maxw)[:3]
     line_h=max(42,int(qf.size*1.10)); box_h=max(112,len(lines)*line_h+54); box_w=min(safe_right-safe_left,max(620,maxw+40))
     bx1=max(safe_left,qx-box_w//2); bx2=min(safe_right,qx+box_w//2); by1=max(header_bottom+16,qy-28); by2=min(760,by1+box_h)
-    draw.rounded_rectangle((bx1,by1,bx2,by2),radius=int(cfg.get("border_radius",22)),fill=(5,14,31),outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("primary"),theme["accent"])),width=max(1,int(cfg.get("border_width",2))))
+    if cfg.get("question_frame_enabled",True):
+        qfill=(5,14,31) if cfg.get("question_frame_bg_enabled",True) else None
+        qoutline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg.get("primary"),theme["accent"])) if cfg.get("question_border_enabled",True) else None
+        draw.rounded_rectangle((bx1,by1,bx2,by2),radius=int(cfg.get("border_radius",22)),fill=qfill,outline=qoutline,width=max(1,int(cfg.get("border_width",2))) if qoutline else 1)
     q_draw_y=by1+20; global_q_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,qf) for w in words]; space=text_width(draw," ",qf); totalw=sum(widths)+space*max(0,len(words)-1); xx=qx-totalw/2+dx
@@ -1458,12 +1462,8 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     hist=[(i,items[i]) for i in range(active_idx)]
     if answer_reveal: hist.append((active_idx,active))
     timer_cy=None
-    if timer is not None and cfg.get("show_timer",True):
-        timer_cy=max(by2+70,int(cfg.get("timer_y",by2+78)))
-        timer_cy=min(timer_cy,safe_bottom-360)
-        draw_inline_timer(draw,theme,int(cfg.get("timer_x",(safe_left+safe_right)//2)),int(timer_cy),timer,timer_fraction,"quiz","2")
 
-    if hist:
+    if hist and cfg.get("answer_cards_enabled",True):
         hx=int(cfg.get("history_x",safe_left)); hw=min(int(cfg.get("history_width",safe_right-safe_left)),safe_right-safe_left)
         hx=max(safe_left,min(hx,safe_right-hw))
         hy_base=int(cfg.get("history_y",690)); hy=max(hy_base,(timer_cy+105 if timer_cy is not None else by2+42))
@@ -1485,6 +1485,16 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
             lines2=wrap_text("✓ "+ans,hfs,hw-120)[:2]; ty=ry+(rh-len(lines2)*text_height(hfs))/2-2
             for line in lines2:
                 tw=text_width(draw,line,hfs); draw.text((hx+hw/2-tw/2,ty),line,font=hfs,fill=_hex_rgb(cfg.get("correct"),theme["success"])); ty+=text_height(hfs,line)+2
+
+    # V31.27 : le minuteur vient après les réponses cumulatives.
+    if timer is not None and cfg.get("show_timer",True):
+        if hist and cfg.get("answer_cards_enabled",True):
+            last_bottom=hy+len(shown)*rh+(len(shown)-1)*hg
+            timer_cy=max(by2+90,last_bottom+28+int(cfg.get("timer_size",52)))
+        else:
+            timer_cy=max(by2+90,int(cfg.get("timer_y",by2+100)))
+        timer_cy=min(safe_bottom-40,timer_cy)
+        draw_inline_timer(draw,theme,int(cfg.get("timer_x",(safe_left+safe_right)//2)),int(timer_cy),timer,timer_fraction,"quiz","2")
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0, question_active_word=-1, explanation_active_word=-1):
@@ -2861,24 +2871,30 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "quiz" and str(style) == "2":
         p="q2_"
-        qy=max(safe_top+150, min(int(st.session_state.get(p+"question_y",150)), safe_top+560))
-        qh=220
-        qw=min(int(st.session_state.get(p+"question_width",920)), safe_w)
-        qx=center
-        timer_size=min(int(st.session_state.get(p+"timer_size",52)),62)
-        timer_y=max(qy+250, min(int(st.session_state.get(p+"timer_y",430)), safe_top+850))
-        hist_y=max(timer_y+105, int(st.session_state.get(p+"history_y",690)))
-        hist_row_h=min(int(st.session_state.get(p+"history_row_h",72)),78)
-        hist_gap=min(int(st.session_state.get(p+"history_gap",10)),12)
-        max_rows=3
-        hist_bottom=hist_y+max_rows*hist_row_h+(max_rows-1)*hist_gap
-        if hist_bottom>safe_bottom-30:
-            hist_row_h=max(54,int((safe_bottom-30-hist_y-(max_rows-1)*hist_gap)/max_rows))
-            hist_bottom=hist_y+max_rows*hist_row_h+(max_rows-1)*hist_gap
+        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        qy=max(header_bottom+28, min(int(st.session_state.get(p+"question_y",315)), header_bottom+500))
+        qw=min(int(st.session_state.get(p+"question_width",920)), safe_w); qx=center
+        # Réponses cumulatives : on réserve l'espace avant le minuteur.
+        hist_y=max(qy+250, int(st.session_state.get(p+"history_y",690)))
+        hist_gap=min(int(st.session_state.get(p+"history_gap",10)),10)
+        max_rows=15
+        available=max(180,safe_bottom-105-hist_y)
+        hist_row_h=max(42,min(int(st.session_state.get(p+"history_row_h",68)), int((available-hist_gap*(max_rows-1))/max_rows)))
+        visible_rows=max(1,min(max_rows,int((available+hist_gap)/(hist_row_h+hist_gap))))
+        hist_bottom=hist_y+visible_rows*hist_row_h+(visible_rows-1)*hist_gap
+        timer_size=min(int(st.session_state.get(p+"timer_size",52)),58)
+        timer_y=min(safe_bottom-timer_size-22, hist_bottom+24)
+        if timer_y+timer_size>safe_bottom:
+            timer_y=max(hist_bottom+12,safe_bottom-timer_size)
+        # Un même gabarit d'en-tête pour tous les styles.
+        st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
+        st.session_state[p+"brand_x"]=safe_left+22; st.session_state[p+"brand_y"]=header_y+20; st.session_state[p+"brand_size"]=28
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+19; st.session_state[p+"title_size"]=38
+        st.session_state[p+"score_x"]=safe_right-58; st.session_state[p+"score_y"]=header_y+10; st.session_state[p+"score_size"]=31
         st.session_state[p+"question_x"]=qx; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
+        st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w; st.session_state[p+"history_y"]=hist_y
+        st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
         st.session_state[p+"timer_x"]=center; st.session_state[p+"timer_y"]=timer_y; st.session_state[p+"timer_size"]=timer_size
-        st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w
-        st.session_state[p+"history_y"]=hist_y; st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
         st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right; st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
@@ -2905,17 +2921,22 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "2":
         p="v2_"
-        ty=int(st.session_state.get(p+"table_y",350)); tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
-        tx=center-tw//2; tx=max(safe_left,min(tx,safe_right-tw))
+        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
+        st.session_state[p+"brand_x"]=safe_left+22; st.session_state[p+"brand_y"]=header_y+20; st.session_state[p+"brand_size"]=28
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+19; st.session_state[p+"title_size"]=38
+        st.session_state[p+"score_x"]=safe_right-58; st.session_state[p+"score_y"]=header_y+10; st.session_state[p+"score_size"]=31
+        tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
+        tx=max(safe_left,min(center-tw//2,safe_right-tw))
         gap=min(int(st.session_state.get(p+"table_gap",6)),8)
         total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or [])); total=min(total,15)
-        # Le tableau reste visuellement le même : deux colonnes, historique cumulatif,
-        # lignes discrètes et ligne courante mise en évidence.
-        available=safe_bottom-24-max(safe_top+250,ty)-gap*max(0,total-1)
-        row_h=min(int(st.session_state.get(p+"table_row_h",82)),max(58,int(available/max(1,total))))
-        ty=max(safe_top+250,min(ty,safe_bottom-24-total*row_h-gap*max(0,total-1)))
-        split=int(st.session_state.get(p+"table_split",540))
-        split=max(320,min(split,tw-260))
+        min_table_y=header_bottom+28
+        ty=max(min_table_y,int(st.session_state.get(p+"table_y",350)))
+        available=max(180,safe_bottom-24-ty-gap*max(0,total-1))
+        row_h=max(42,min(int(st.session_state.get(p+"table_row_h",82)),int(available/max(1,total))))
+        if ty+total*row_h+gap*max(0,total-1)>safe_bottom-24:
+            ty=max(min_table_y,safe_bottom-24-total*row_h-gap*max(0,total-1))
+        split=max(300,min(int(st.session_state.get(p+"table_split",540)),tw-260))
         st.session_state[p+"table_x"]=tx; st.session_state[p+"table_width"]=tw; st.session_state[p+"table_y"]=ty
         st.session_state[p+"table_row_h"]=row_h; st.session_state[p+"table_gap"]=gap; st.session_state[p+"table_split"]=split
         st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right; st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
@@ -3177,7 +3198,7 @@ def render_layout_editor(module, style="1"):
     style = str(style)
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
     defaults = {
-        "font_family":"Lato", "show_title":True, "title_x":540, "title_y":86 if is_quiz else 70, "title_size":46 if is_quiz else 34,
+        "font_family":"Lato", "show_title":True, "title_x":540, "title_y":139, "title_size":38,
         "question_x":540, "question_y":250 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
         "answer_y":550 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
@@ -3185,7 +3206,8 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":540, "score_y":150, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "brand_x":70, "brand_y":139, "brand_size":28, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#151D33", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
@@ -3241,35 +3263,35 @@ def render_layout_editor(module, style="1"):
         else:
             st.info("**Style 1** : mot/phrase → réflexion → traduction.\n\n**Style 2** : tableau cumulatif : français à gauche → minuteur dans la cellule traduction → traduction → nouvelle ligne sous la précédente, jusqu'à 15 lignes.")
         st.checkbox("Afficher le titre", key=p+"show_title")
-        st.checkbox("Afficher l'explication" if is_quiz else "Afficher le titre", key=p+"show_explanation", disabled=not is_quiz) if is_quiz else None
-        if is_quiz and style=="1":
-            st.markdown("**🧱 Visibilité des éléments et cadres**")
-            vc1,vc2=st.columns(2)
-            with vc1:
-                st.checkbox("Afficher le cadre de la question",key=p+"question_frame_enabled")
-                st.checkbox("Afficher le fond du cadre question",key=p+"question_frame_bg_enabled")
-                st.checkbox("Afficher la bordure question",key=p+"question_border_enabled")
-                st.checkbox("Afficher les cartes des réponses",key=p+"answer_cards_enabled")
-                st.checkbox("Afficher les badges A/B/C/D",key=p+"answer_badges_enabled")
-            with vc2:
-                st.checkbox("Afficher le fond des cartes réponses",key=p+"answer_frame_bg_enabled")
-                st.checkbox("Afficher la bordure des cartes réponses",key=p+"answer_border_enabled")
-                st.checkbox("Afficher le cadre de l'explication",key=p+"explanation_frame_enabled")
-                st.checkbox("Afficher le fond de l'explication",key=p+"explanation_frame_bg_enabled")
-                st.checkbox("Afficher la bordure de l'explication",key=p+"explanation_border_enabled")
-            st.markdown("**🏷️ Logo / nom de chaîne**")
-            st.checkbox("Afficher SuspenseLingo en haut à gauche",key=p+"brand_show")
-            st.checkbox("Fond derrière le logo",key=p+"brand_bg_enabled")
-            c_brand1,c_brand2=st.columns(2)
-            with c_brand1:
-                st.slider("Logo X — gauche ↔ droite",0,1080,key=p+"brand_x")
-                st.slider("Logo Y — haut ↕ bas",80,500,key=p+"brand_y")
-            with c_brand2:
-                st.slider("Taille du logo / nom",16,60,key=p+"brand_size")
-                st.color_picker("Couleur du logo",key=p+"brand_color")
-            c_auto1,c_auto2=st.columns(2)
-            with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
-            with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
+        if is_quiz:
+            st.checkbox("Afficher l'explication", key=p+"show_explanation")
+        st.markdown("**🧱 Visibilité des éléments et cadres**")
+        vc1,vc2=st.columns(2)
+        with vc1:
+            st.checkbox("Afficher le cadre de la question",key=p+"question_frame_enabled")
+            st.checkbox("Afficher le fond du cadre question",key=p+"question_frame_bg_enabled")
+            st.checkbox("Afficher la bordure question",key=p+"question_border_enabled")
+            st.checkbox("Afficher les cartes des réponses",key=p+"answer_cards_enabled")
+            st.checkbox("Afficher les badges A/B/C/D",key=p+"answer_badges_enabled")
+        with vc2:
+            st.checkbox("Afficher le fond des cartes réponses",key=p+"answer_frame_bg_enabled")
+            st.checkbox("Afficher la bordure des cartes réponses",key=p+"answer_border_enabled")
+            st.checkbox("Afficher le cadre de l'explication",key=p+"explanation_frame_enabled")
+            st.checkbox("Afficher le fond de l'explication",key=p+"explanation_frame_bg_enabled")
+            st.checkbox("Afficher la bordure de l'explication",key=p+"explanation_border_enabled")
+        st.markdown("**🏷️ Logo / nom de chaîne**")
+        st.checkbox("Afficher SuspenseLingo en haut à gauche",key=p+"brand_show")
+        st.checkbox("Fond derrière le logo",key=p+"brand_bg_enabled")
+        c_brand1,c_brand2=st.columns(2)
+        with c_brand1:
+            st.slider("Logo X — gauche ↔ droite",0,1080,key=p+"brand_x")
+            st.slider("Logo Y — haut ↕ bas",80,500,key=p+"brand_y")
+        with c_brand2:
+            st.slider("Taille du logo / nom",16,60,key=p+"brand_size")
+            st.color_picker("Couleur du logo",key=p+"brand_color")
+        c_auto1,c_auto2=st.columns(2)
+        with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
+        with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
 
     with tabs[1]:
         st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
