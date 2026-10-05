@@ -336,7 +336,7 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    "Bleu Nuit & Or": {"bg": (7, 12, 28), "bg2": (20, 33, 62), "card": (25, 36, 61), "card2": (40, 55, 88), "accent": (255, 205, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (165, 181, 208)},
+    "Bleu Nuit & Or": {"bg": (11, 16, 33), "bg2": (21, 28, 51), "card": (21, 28, 51), "card2": (30, 41, 59), "accent": (245, 158, 11), "success": (16, 185, 129), "danger": (255, 83, 99), "muted": (226, 232, 240)},
     "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
     "Violet Neon": {"bg": (12, 7, 25), "bg2": (50, 17, 72), "card": (43, 22, 65), "card2": (72, 35, 100), "accent": (239, 93, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 171, 222)},
     "Emeraude Mint": {"bg": (4, 18, 15), "bg2": (8, 61, 48), "card": (13, 48, 37), "card2": (21, 75, 57), "accent": (74, 231, 178), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (160, 202, 186)},
@@ -365,6 +365,29 @@ VOICES_MAP = {
     "Allemand": {"Killian": "de-DE-KillianNeural", "Klarissa": "de-DE-KlarissaNeural"},
     "Italien": {"Diego": "it-IT-DiegoNeural", "Elsa": "it-IT-ElsaNeural"},
 }
+# Option 1 — Bleu Nuit & Or : spécification CSS exacte pour le preview HTML/Tailwind.
+# Le rendu vidéo actuel reste PIL/Pillow ; cette classe sert de contrat visuel commun
+# pour les wrappers Streamlit/HTML sans remplacer le moteur vidéo existant.
+BLUE_GOLD_PREVIEW_CSS = r"""
+.quiz-preview { width: 1080px; aspect-ratio: 9 / 16; background:#0B1021; color:#FFFFFF; }
+.quiz-header { background:#151D33; border:2px solid #2B3960; border-radius:20px; display:flex; align-items:center; justify-content:space-between; }
+.quiz-header .brand { color:#F59E0B; font-weight:700; }
+.quiz-header .title { color:#FFFFFF; font-weight:700; text-align:center; }
+.quiz-header .counter { background:#F59E0B; color:#000000; border-radius:9999px; font-weight:800; }
+.question-card { background:#151C33; border:2px solid #334155; border-radius:24px; padding:20px; color:#FFFFFF; font-weight:700; text-align:center; }
+.option-item { background:#1E293B; border:2px solid #334155; border-radius:20px; color:#E2E8F0; }
+.option-item .letter { background:#F59E0B; color:#000000; border-radius:9999px; font-weight:800; }
+.option-correct { background:#10B981; border-color:#34D399; color:#FFFFFF; }
+.option-correct .letter { background:#FFFFFF; color:#059669; }
+.option-correct .checkmark { color:#FFFFFF; }
+.timer-badge { background:#1E293B; border:4px solid #F59E0B; color:#F59E0B; border-radius:9999px; text-align:center; }
+.explanation-card { background:#0F172A; border:2px solid #F59E0B; border-radius:20px; color:#F8FAFC; text-align:center; }
+.explanation-card .title { color:#F59E0B; font-weight:800; }
+"""
+
+def get_blue_gold_preview_css():
+    return BLUE_GOLD_PREVIEW_CSS
+
 QUIZ_LANGUAGES = {
     "Français": VOICES_FR,
     **VOICES_MAP,
@@ -605,7 +628,7 @@ def draw_brand(draw, theme, channel, progress=None):
         draw.text((x,y),text,font=f,fill=_hex_rgb(cfg.get("brand_color"),(255,255,255)))
     # Progress bar remains at the bottom, separate from the brand.
     if progress is not None:
-        x, y, w, h = 55, 1745, 970, 12
+        x, y, w, h = 55, 1695, 970, 12
         draw.rounded_rectangle((x,y,x+w,y+h), radius=6, fill=(65,70,85))
         draw.rounded_rectangle((x,y,x+int(w*clamp(progress)),y+h), radius=6, fill=theme["accent"])
 
@@ -616,30 +639,57 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
-    """Header inspiré du Short de référence : titre, pensée dessinée, compteur."""
-    title=clean_text(title) or "Culture Générale"
-    if title.lower().startswith("quiz "):
-        title=title[5:].strip()
-    if len(title)>22: title=title[:22].rstrip()+"…"
+    """Header Option 1 Bleu Nuit & Or : marque à gauche, titre centré, compteur à droite.
+    Les coordonnées restent pilotées par l'Éditeur Studio pour préserver les réglages existants.
+    """
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
-    tf=get_font(int(cfg.get("title_size",46)),ff)
-    label=f"QUIZ {title.upper()}"
-    tw=text_width(draw,label,tf)
-    total_w=tw
-    x=max(42,(WIDTH-total_w)/2)
-    y=int(cfg.get("title_y",92))+int(4*math.sin(float(phase)*math.pi*2))
-    draw.text((x+3,y+5),label,font=tf,fill=(0,0,0))
-    draw.text((x,y),label,font=tf,fill="white")
+    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255)
+    left, top, right, bottom = 35, 120, WIDTH-35, 235
+    draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
+
+    # Logo/nom de chaîne : conserve les contrôles Logo X/Y/taille de l'Éditeur.
+    if cfg.get("brand_show",True):
+        brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
+        bf=get_font(int(cfg.get("brand_size",28)),ff)
+        bx=int(cfg.get("brand_x",55)); by=int(cfg.get("brand_y",150))
+        # Le nom passé à draw_brand est également rendu plus bas ; ici on ne dessine
+        # le logo que dans le header si sa position est dans la bande d'en-tête.
+        if 110 <= by <= 210:
+            if cfg.get("brand_bg_enabled",False):
+                tw=text_width(draw,brand,bf); th=text_height(bf,brand); pad=8
+                draw.rounded_rectangle((bx-pad,by-pad,bx+tw+pad,by+th+pad),radius=10,fill=_hex_rgb(cfg.get("brand_bg"),navy))
+            draw.text((bx,by),brand,font=bf,fill=gold)
+
+    # Titre centré.
+    title=clean_text(title) or "Culture Générale"
+    if title.lower().startswith("quiz "): title=title[5:].strip()
+    if len(title)>22: title=title[:22].rstrip()+"…"
+    tf=get_font(int(cfg.get("title_size",46)),ff); label=f"QUIZ {title.upper()}"; tw=text_width(draw,label,tf); th=text_height(tf,label)
+    tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",150))
+    ty=max(top+12,min(bottom-th-10,ty))
+    draw.text((tx+2,ty+3),label,font=tf,fill=(0,0,0)); draw.text((tx,ty),label,font=tf,fill=white)
+
+    # Compteur pill doré à droite.
     sf=get_font(int(cfg.get("score_size",31)),ff); score=f"{q_num}/{total}"; sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    by=int(cfg.get("score_y",150)); bw=sw+40; bh=max(42,sh+18); bx=int(cfg.get("score_x",540))-bw//2; bx=max(20,min(WIDTH-20-bw,bx)); radius=int(cfg.get("score_radius",22))
-    score_bg=_hex_rgb(cfg.get("score_bg"),(7,13,28)); score_color=_hex_rgb(cfg.get("score_color"),theme["accent"])
-    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=radius,fill=score_bg,outline=score_color,width=int(cfg.get("score_border",2)))
-    draw.text(((WIDTH-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=score_color)
+    bw=max(92,sw+34); bh=max(46,sh+16); bx=int(cfg.get("score_x",965))-bw//2; by=int(cfg.get("score_y",148))
+    bx=max(left+10,min(right-bw-10,bx)); by=max(top+10,min(bottom-bh-10,by))
+    draw.rounded_rectangle((bx,by,bx+bw,by+bh),radius=bh//2,fill=gold)
+    draw.text((bx+(bw-sw)/2,by+(bh-sh)/2-2),score,font=sf,fill=(0,0,0))
 
 
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
-    """Chronomètres Studio Pro : six styles cohérents et réellement rendus en vidéo."""
+    """Chronomètres Studio Pro. Option 1 utilise un cercle Bleu Nuit + bordure Or."""
+    frac=clamp(fraction); style=str(style or "Double cercle")
+    if color == (245,158,11):
+        bg=(30,41,59)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(245,158,11),width=4)
+        draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=(245,158,11),width=max(4,int(r*.10)))
+        tf=get_font(text_size); ts=str(timer if timer is not None else ""); th=text_height(tf,ts)
+        draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=(245,158,11))
+        if label:
+            lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or (245,158,11))
+        return
     frac=clamp(fraction); style=str(style or "Double cercle")
     bg=(7,12,26)
     white=(245,248,252)
@@ -767,25 +817,25 @@ def _layout(module="quiz", style=None):
         legacy_prefix = "q_"
     defaults={
         "font_family":"Lato",
-        "show_title":True,"title_x":540,"title_y":86,"title_size":46,
-        "question_x":540,"question_y":250,"question_size":47,"question_width":900,"question_box_radius":28,
-        "answer_y":550,"answer_x":80,"answer_width":920,"answer_h":92,"answer_gap":14,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
+        "show_title":True,"title_x":540,"title_y":150,"title_size":46,
+        "question_x":540,"question_y":305,"question_size":47,"question_width":900,"question_box_radius":24,
+        "answer_y":620,"answer_x":80,"answer_width":920,"answer_h":86,"answer_gap":12,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1045,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#FFCD40","timer_text_size":55,"timer_label_y":1110,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#FFCD40",
+        "timer_y":1110,"timer_x":540,"timer_size":58,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
-        "score_x":540,"score_y":150,"score_size":31,"score_color":"#FFCD40","score_bg":"#070D1C","score_radius":22,"score_border":2,
-        "brand_x":55,"brand_y":34,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#070D1C","brand_color":"#FFFFFF",
-        "explanation_x":540,"explanation_y":1160,"explanation_width":964,"explanation_h":320,"explanation_size":30,
+        "score_x":965,"score_y":148,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
+        "brand_x":55,"brand_y":150,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
+        "explanation_x":540,"explanation_y":1340,"explanation_width":964,"explanation_h":280,"explanation_size":30,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
         "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
-        "primary":"#FFCD40","answer":"#11305B","answer2":"#143765",
-        "correct":"#2EDA7B","text":"#FFFFFF","muted":"#A5B5D0",
-        "border_color":"#D2DFF5","border_width":2,"border_radius":20,
+        "primary":"#F59E0B","answer":"#1E293B","answer2":"#1E293B",
+        "correct":"#10B981","text":"#FFFFFF","muted":"#E2E8F0",
+        "border_color":"#334155","border_width":2,"border_radius":20,
     }
     if module=="vocab":
         defaults.update({
@@ -821,9 +871,10 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     radius=int(cfg["question_box_radius"])
     box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
     if cfg.get("question_frame_enabled", True):
-        fill=(6,12,28,218) if cfg.get("question_frame_bg_enabled",True) else None
-        outline=_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])) if cfg.get("question_border_enabled",True) else None
-        draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2))))
+        is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
+        fill=(21,28,51) if is_blue_gold and cfg.get("question_frame_bg_enabled",True) else ((6,12,28,218) if cfg.get("question_frame_bg_enabled",True) else None)
+        outline=(51,65,85) if is_blue_gold and cfg.get("question_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])) if cfg.get("question_border_enabled",True) else None)
+        draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
     global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
@@ -870,10 +921,11 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         xpad=int((1-local)*40*strength) if anim in ("Glissement","Glissement vertical") else (int((1-local)*10*strength) if anim=="Pop" else 0)
         y=start_y+i*(card_h+gap)+offset+int(2*math.sin((phase+i*.13)*math.pi*2*cfg["motion_strength"]))
         correct=(correct_idx is not None and i==correct_idx)
+        is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
         if correct:
-            fill=_hex_rgb(cfg["correct"],theme["success"]); outline=_hex_rgb(cfg.get("correct"),theme["success"]); width=max(2,int(cfg.get("border_width",2))+1)
+            fill=(16,185,129) if is_blue_gold else _hex_rgb(cfg["correct"],theme["success"]); outline=(52,211,153) if is_blue_gold else _hex_rgb(cfg.get("correct"),theme["success"]); width=2 if is_blue_gold else max(2,int(cfg.get("border_width",2))+1)
         else:
-            fill=_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101)); outline=_hex_rgb(cfg.get("border_color"),(210,225,250)); width=max(1,int(cfg.get("border_width",2)))
+            fill=(30,41,59) if is_blue_gold else (_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101))); outline=(51,65,85) if is_blue_gold else _hex_rgb(cfg.get("border_color"),(210,225,250)); width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
         if cfg.get("answer_cards_enabled",True):
@@ -881,19 +933,24 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
             card_outline=outline if cfg.get("answer_border_enabled",True) else None
             draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=card_fill,outline=card_outline,width=width)
         badge_x=left+10+xpad; badge_y=int(y+(card_h-badge_size)/2)
-        badge_fill=_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white"
+        badge_fill=(245,158,11) if (is_blue_gold and not correct) else (_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white")
         if cfg.get("answer_badges_enabled",True):
             draw.rounded_rectangle((badge_x,badge_y,badge_x+badge_size,badge_y+badge_size),radius=min(int(badge_size*.28),int(cfg["answer_radius"]*.8)),fill=badge_fill)
-        lf=get_font(max(18,min(42,int(base_size*1.02))),ff); letter=chr(65+i); lc=theme["card"] if not correct else _hex_rgb(cfg["correct"],theme["success"])
+        lf=get_font(max(18,min(42,int(base_size*1.02))),ff); letter=chr(65+i); lc=(0,0,0) if (is_blue_gold and not correct) else (theme["card"] if not correct else ((5,150,105) if is_blue_gold else _hex_rgb(cfg["correct"],theme["success"])))
         lh=text_height(lf,letter); draw.text((badge_x+(badge_size-text_width(draw,letter,lf))/2,badge_y+(badge_size-lh)/2-2),letter,font=lf,fill=lc)
         text_x=badge_x+badge_size+padding; maxw=right-text_x-padding; ty=y+(card_h-text_h)/2-2
         for line in lines:
             draw.text((text_x+2,ty+3),line,font=f_opt,fill=(0,0,0)); draw.text((text_x,ty),line,font=f_opt,fill=_hex_rgb(cfg["text"],(255,255,255))); ty+=text_height(f_opt,line)+4
         if correct:
-            cx=right-38+xpad; cy=y+card_h/2; rr=19
-            draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
-            draw.line((cx-8,cy,cx-2,cy+7),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
-            draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
+            cx=right-38+xpad; cy=y+card_h/2
+            if is_blue_gold:
+                draw.line((cx-10,cy,cx-3,cy+8),fill="white",width=5)
+                draw.line((cx-3,cy+8,cx+11,cy-10),fill="white",width=5)
+            else:
+                rr=19
+                draw.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill="white")
+                draw.line((cx-8,cy,cx-2,cy+7),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
+                draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
@@ -924,10 +981,11 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     else:
         box_h=int(cfg.get("explanation_h",320))
     y2=min(1710,y1+box_h)
+    is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
     if cfg.get("explanation_frame_enabled", True):
-        fill=(6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None
-        outline=_hex_rgb(cfg.get("border_color"),primary) if cfg.get("explanation_border_enabled",True) else None
-        draw.rounded_rectangle((left,y1,right,y2),radius=int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=max(1,int(cfg.get("border_width",2))))
+        fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
+        outline=(245,158,11) if is_blue_gold and cfg.get("explanation_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),primary) if cfg.get("explanation_border_enabled",True) else None)
+        draw.rounded_rectangle((left,y1,right,y2),radius=20 if is_blue_gold else int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
         if cfg.get("explanation_border_enabled",True) or cfg.get("explanation_frame_bg_enabled",True):
             draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
     yy=y1+95; global_word=0
@@ -2580,7 +2638,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
     thumb=image.copy().resize((max_w,max_h),Image.Resampling.LANCZOS)
     # L'ancienne couche de hotspots HTML est volontairement supprimée : elle était lourde
     # et ses liens query-string ne déclenchaient pas toujours correctement Streamlit.
-    st.markdown('<div class="qvp-preview-stage">', unsafe_allow_html=True)
+    st.markdown('<div class="quiz-preview qvp-preview-stage" data-theme="bleu-nuit-or">', unsafe_allow_html=True)
     st.image(thumb, use_container_width=False, width=max_w)
     st.markdown('</div>', unsafe_allow_html=True)
 
