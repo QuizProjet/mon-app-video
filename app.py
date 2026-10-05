@@ -894,6 +894,11 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
 
 def _layout(module="quiz", style=None):
     """Réglages visuels persistants, séparés par éditeur/style."""
+    # V31.21: ces variables doivent être locales à _layout().
+    # Le précédent V31.21 utilisait is_quiz/style dans le dictionnaire de défauts
+    # sans les définir dans cette fonction, ce qui cassait l’aperçu live.
+    is_quiz = str(module) == "quiz"
+    style = str(style or "1")
     if module == "vocab":
         prefix = "v2_" if str(style or "1").lower() in ("2", "style2", "cumulative") else "v1_"
         legacy_prefix = "v_"
@@ -2746,7 +2751,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.20 — zones sûres automatiques pour les 4 styles, sans toucher au moteur audio/vidéo.
+# V31.21 — zones sûres automatiques pour les 4 styles, sans toucher au moteur audio/vidéo.
 # V31.18 — correction définitive Streamlit : le moteur de rendu ne modifie plus les clés des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
@@ -3167,7 +3172,7 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
-    # V31.20 — le preset social est calculé AVANT la création des widgets.
+    # V31.21 — le preset social est calculé AVANT la création des widgets.
     # Le moteur de rendu reste ensuite en lecture seule : aucune mutation de clé widget
     # pendant draw_*(), ce qui évite le conflit StreamlitWidgetAlreadyInstantiatedError.
     if st.session_state.get(p+"social_auto_layout", False):
