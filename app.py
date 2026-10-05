@@ -1428,7 +1428,8 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     return img
 
 def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_file=None, entrance=1.0, timer=None, timer_fraction=1.0, correct_idx=None, reveal_progress=0.0, pulse=0.0, motion=0.0, video_title="Culture Générale", explanation=None, explanation_progress=0.0, question_active_word=-1, explanation_active_word=-1):
-    apply_social_auto_layout("quiz","1")
+    # V31.18: le rendu ne modifie plus les clés de widgets Streamlit.
+    # L’auto-layout est appliqué en amont de la création des widgets dans render_layout_editor().
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
@@ -2732,7 +2733,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.17 — correction Streamlit : auto-layout appliqué avant instanciation des widgets.
+# V31.18 — correction définitive Streamlit : le moteur de rendu ne modifie plus les clés des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
