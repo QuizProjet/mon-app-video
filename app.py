@@ -2735,7 +2735,7 @@ def render_clickable_preview(image, module, style, cfg, selected):
 
 
 
-# V31.23 — Style 2 Quiz : structure cumulative exacte Q1 → Q2+R1 → Q3+R1/R2.
+# V31.24 — Style 2 Quiz : structure cumulative exacte Q1 → Q2+R1 → Q3+R1/R2.
 # V31.18 — correction définitive Streamlit : le moteur de rendu ne modifie plus les clés des widgets.
 # V31.16 — zones sûres strictes : cadres complets + header/logo/compteur contenus.
 # Marges recommandées/indicatives : elles servent à garder les éléments
@@ -2751,129 +2751,116 @@ SOCIAL_SAFE_PROFILES["Universel"] = {
 }
 
 def apply_social_auto_layout(module="quiz", style="1"):
-    """Mise en page automatique stricte : les BORDS de chaque bloc restent dans la zone sûre."""
-    if module != "quiz" or str(style) != "1":
-        return
-    p="q1_"
+    """Mise en page sociale réelle. Style 1 Quiz reste son preset validé.
+    Les autres styles conservent leur identité visuelle et sont seulement
+    compactés/repositionnés lorsque leurs BORDS dépassent la zone sûre.
+    """
+    p = ("q1_" if module == "quiz" and str(style) == "1" else
+         "q2_" if module == "quiz" else
+         "v1_" if str(style) == "1" else "v2_")
     if not st.session_state.get(p+"social_auto_layout", False):
         return
-    platform=st.session_state.get(p+"social_platform", "Universel")
-    prof=SOCIAL_SAFE_PROFILES.get(platform, SOCIAL_SAFE_PROFILES["Universel"])
-    safe_top=int(HEIGHT*prof["top"]); safe_bottom=int(HEIGHT*(1-prof["bottom"]))
-    safe_left=int(WIDTH*prof["left"]); safe_right=int(WIDTH*(1-prof["right"]))
-    safe_w=safe_right-safe_left
-    center=(safe_left+safe_right)//2
+    platform = st.session_state.get(p+"social_platform", "Universel")
+    prof = SOCIAL_SAFE_PROFILES.get(platform, SOCIAL_SAFE_PROFILES["Universel"])
+    safe_top = int(HEIGHT*prof["top"]); safe_bottom = int(HEIGHT*(1-prof["bottom"]))
+    safe_left = int(WIDTH*prof["left"]); safe_right = int(WIDTH*(1-prof["right"]))
+    safe_w = safe_right-safe_left; center = (safe_left+safe_right)//2
 
-    # On réserve explicitement la zone entière de chaque bloc, et pas seulement son centre.
-    header_h=74
-    header_y=safe_top+12
-    header_bottom=header_y+header_h
+    # ================================================================
+    # QUIZ STYLE 1 — NE PAS MODIFIER LE PRESET VALIDÉ.
+    # ================================================================
+    if module == "quiz" and str(style) == "1":
+        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        question_y=header_bottom+28; question_reserved_h=190; question_bottom=question_y+question_reserved_h
+        answer_h=76; answer_gap=12; answer_y=question_bottom+24
+        answers_bottom=answer_y+4*answer_h+3*answer_gap
+        timer_size=58; timer_y=answers_bottom+76; explanation_h=205
+        explanation_y=timer_y+timer_size+34; progress_y=safe_bottom-24
+        available=progress_y-explanation_h-18
+        if explanation_y>available:
+            explanation_y=available; timer_y=explanation_y-timer_size-34
+        if timer_y < answers_bottom+40:
+            timer_y=answers_bottom+40; explanation_y=timer_y+timer_size+24
+        if explanation_y+explanation_h > progress_y-12:
+            explanation_y=progress_y-12-explanation_h
+        vals={
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+22,p+"brand_y":header_y+20,
+            p+"title_x":center,p+"title_y":header_y+19,p+"score_x":safe_right-58,p+"score_y":header_y+10,
+            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
+            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
+            p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
+            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,
+            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
+        }
+        for k,v in vals.items(): st.session_state[k]=v
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
+        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
+        return
 
-    # Question : réserve 3 lignes maximum + marges du cadre.
-    question_y=header_bottom+28
-    question_reserved_h=190
-    question_bottom=question_y+question_reserved_h
-
-    # Réponses : 4 cartes entières dans la zone sûre.
-    answer_h=76
-    answer_gap=12
-    answer_y=question_bottom+24
-    answers_bottom=answer_y+4*answer_h+3*answer_gap
-
-    # Minuteur puis explication, avec une marge de sécurité supplémentaire.
-    timer_size=58
-    timer_y=answers_bottom+76
-    explanation_h=205
-    explanation_y=timer_y+timer_size+34
-    progress_y=safe_bottom-24
-
-    # Si la plateforme est très restrictive, on compacte avant de franchir safe_bottom.
-    available_before_progress=progress_y-explanation_h-18
-    if explanation_y>available_before_progress:
-        explanation_y=available_before_progress
-        timer_y=explanation_y-timer_size-34
-    if timer_y < answers_bottom+40:
-        timer_y=answers_bottom+40
-        explanation_y=timer_y+timer_size+24
-    if explanation_y+explanation_h > progress_y-12:
-        explanation_y=progress_y-12-explanation_h
-
-    vals={
-        # Header entièrement à l'intérieur de la zone sûre.
-        p+"header_y":header_y, p+"header_h":header_h,
-        p+"brand_x":safe_left+22, p+"brand_y":header_y+20,
-        p+"title_x":center, p+"title_y":header_y+19,
-        p+"score_x":safe_right-58, p+"score_y":header_y+10,
-        # Question : cadre complet dans safe_left/safe_right.
-        p+"question_x":center, p+"question_y":question_y,
-        p+"question_width":safe_w,
-        # Réponses : cadres complets dans la même largeur sûre.
-        p+"answer_x":safe_left, p+"answer_width":safe_w, p+"answer_y":answer_y,
-        p+"answer_h":answer_h, p+"answer_gap":answer_gap,
-        # Minuteur centré entre les réponses et l'explication.
-        p+"timer_x":center, p+"timer_y":timer_y, p+"timer_size":timer_size,
-        p+"timer_auto_below_answers":False,
-        # Explication complète au-dessus de la zone basse interdite.
-        p+"explanation_x":center, p+"explanation_y":explanation_y,
-        p+"explanation_width":safe_w, p+"explanation_h":explanation_h,
-        p+"explanation_auto_below_timer":False,
-        p+"explanation_auto_height":False,
-        # Progression entièrement dans la zone sûre.
-        p+"social_progress_y":progress_y,
-        p+"social_safe_left":safe_left, p+"social_safe_right":safe_right,
-        p+"social_safe_top":safe_top, p+"social_safe_bottom":safe_bottom,
-    }
-    for k,v in vals.items(): st.session_state[k]=v
-
-
-    # V31.23 — protection additive pour les trois autres styles.
-    # Le preset Quiz Style 1 validé ci-dessus n'est pas modifié.
-    # Pour les autres styles, on conserve leur géométrie existante et on ne
-    # corrige que les débordements hors zone sûre.
+    # ================================================================
+    # QUIZ STYLE 2 — question fixe + historique cumulatif.
+    # Aucun nouvel écran ni changement de mécanique.
+    # ================================================================
     if module == "quiz" and str(style) == "2":
         p="q2_"
-        qy=int(st.session_state.get(p+"question_y",150))
-        st.session_state[p+"question_x"]=center
-        st.session_state[p+"question_width"]=min(int(st.session_state.get(p+"question_width",920)),max(620,safe_w-40))
-        st.session_state[p+"question_y"]=max(safe_top+145,min(qy,safe_bottom-700))
-        st.session_state[p+"timer_x"]=center
-        st.session_state[p+"timer_y"]=max(st.session_state[p+"question_y"]+430,min(int(st.session_state.get(p+"timer_y",430)),safe_bottom-700))
-        st.session_state[p+"history_x"]=safe_left
-        st.session_state[p+"history_width"]=min(int(st.session_state.get(p+"history_width",920)),safe_w)
-        hist_y=max(st.session_state[p+"timer_y"]+110,int(st.session_state.get(p+"history_y",690)))
-        st.session_state[p+"history_y"]=min(hist_y,safe_bottom-700)
-        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
-        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
+        qy=max(safe_top+150, min(int(st.session_state.get(p+"question_y",150)), safe_top+560))
+        qh=220
+        qw=min(int(st.session_state.get(p+"question_width",920)), safe_w)
+        qx=center
+        timer_size=min(int(st.session_state.get(p+"timer_size",52)),62)
+        timer_y=max(qy+250, min(int(st.session_state.get(p+"timer_y",430)), safe_top+850))
+        hist_y=max(timer_y+105, int(st.session_state.get(p+"history_y",690)))
+        hist_row_h=min(int(st.session_state.get(p+"history_row_h",72)),78)
+        hist_gap=min(int(st.session_state.get(p+"history_gap",10)),12)
+        max_rows=3
+        hist_bottom=hist_y+max_rows*hist_row_h+(max_rows-1)*hist_gap
+        if hist_bottom>safe_bottom-30:
+            hist_row_h=max(54,int((safe_bottom-30-hist_y-(max_rows-1)*hist_gap)/max_rows))
+            hist_bottom=hist_y+max_rows*hist_row_h+(max_rows-1)*hist_gap
+        st.session_state[p+"question_x"]=qx; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
+        st.session_state[p+"timer_x"]=center; st.session_state[p+"timer_y"]=timer_y; st.session_state[p+"timer_size"]=timer_size
+        st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w
+        st.session_state[p+"history_y"]=hist_y; st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right; st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
+    # ================================================================
+    # VOCABULAIRE STYLE 1 — mise en page dédiée, sobre et sûre.
+    # ================================================================
     if module == "vocab" and str(style) == "1":
         p="v1_"
-        st.session_state[p+"question_x"]=center
-        st.session_state[p+"question_width"]=min(int(st.session_state.get(p+"question_width",920)),safe_w)
-        st.session_state[p+"question_y"]=max(safe_top+220,min(int(st.session_state.get(p+"question_y",500)),safe_bottom-650))
-        st.session_state[p+"translation_x"]=center
-        st.session_state[p+"translation_width"]=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
-        st.session_state[p+"translation_y"]=max(safe_top+520,min(int(st.session_state.get(p+"translation_y",760)),safe_bottom-300))
-        st.session_state[p+"timer_x"]=min(max(int(st.session_state.get(p+"timer_x",810)),safe_left+55),safe_right-55)
-        st.session_state[p+"timer_y"]=max(safe_top+500,min(int(st.session_state.get(p+"timer_y",760)),safe_bottom-180))
-        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
-        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
+        qy=max(safe_top+190, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
+        qw=min(int(st.session_state.get(p+"question_width",920)),safe_w)
+        ty=max(qy+170, min(int(st.session_state.get(p+"translation_y",760)), safe_bottom-360))
+        tw=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
+        timer_size=min(int(st.session_state.get(p+"timer_size",62)),70)
+        timer_y=max(ty+120, min(int(st.session_state.get(p+"timer_y",760)), safe_bottom-160))
+        st.session_state[p+"question_x"]=center; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
+        st.session_state[p+"translation_x"]=center; st.session_state[p+"translation_y"]=ty; st.session_state[p+"translation_width"]=tw
+        st.session_state[p+"timer_x"]=center; st.session_state[p+"timer_y"]=timer_y; st.session_state[p+"timer_size"]=timer_size
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right; st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
+    # ================================================================
+    # VOCABULAIRE STYLE 2 — ON CONSERVE LE VISUEL CUMULATIF APPROUVÉ.
+    # On adapte uniquement la largeur/position/hauteur pour la zone sûre.
+    # ================================================================
     if module == "vocab" and str(style) == "2":
         p="v2_"
-        tx=int(st.session_state.get(p+"table_x",70)); tw=int(st.session_state.get(p+"table_width",940))
-        ty=int(st.session_state.get(p+"table_y",350)); rh=int(st.session_state.get(p+"table_row_h",82)); gap=int(st.session_state.get(p+"table_gap",6))
-        tw=min(tw,safe_w); tx=max(safe_left,min(tx,safe_right-tw))
+        ty=int(st.session_state.get(p+"table_y",350)); tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
+        tx=center-tw//2; tx=max(safe_left,min(tx,safe_right-tw))
+        gap=min(int(st.session_state.get(p+"table_gap",6)),8)
         total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or [])); total=min(total,15)
-        max_rh=max(58,int((safe_bottom-24-ty-gap*max(0,total-1))/max(1,total)))
-        st.session_state[p+"table_x"]=tx
-        st.session_state[p+"table_width"]=tw
-        st.session_state[p+"table_y"]=max(safe_top+250,min(ty,safe_bottom-24-max(1,total)*min(rh,max_rh)))
-        st.session_state[p+"table_row_h"]=min(rh,max_rh)
-        st.session_state[p+"table_split"]=min(int(st.session_state.get(p+"table_split",540)),max(400,tw-80))
-        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
-        st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
+        # Le tableau reste visuellement le même : deux colonnes, historique cumulatif,
+        # lignes discrètes et ligne courante mise en évidence.
+        available=safe_bottom-24-max(safe_top+250,ty)-gap*max(0,total-1)
+        row_h=min(int(st.session_state.get(p+"table_row_h",82)),max(58,int(available/max(1,total))))
+        ty=max(safe_top+250,min(ty,safe_bottom-24-total*row_h-gap*max(0,total-1)))
+        split=int(st.session_state.get(p+"table_split",540))
+        split=max(320,min(split,tw-260))
+        st.session_state[p+"table_x"]=tx; st.session_state[p+"table_width"]=tw; st.session_state[p+"table_y"]=ty
+        st.session_state[p+"table_row_h"]=row_h; st.session_state[p+"table_gap"]=gap; st.session_state[p+"table_split"]=split
+        st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right; st.session_state[p+"social_safe_top"]=safe_top; st.session_state[p+"social_safe_bottom"]=safe_bottom
         return
 
 
@@ -3164,14 +3151,21 @@ def render_layout_editor(module, style="1"):
         _ss_default(p+"bg_music_style", "Suspense léger")
         _ss_default(p+"bg_music_source", "Musique générée par SuspenseLingo")
 
-    # V31.23 — calcul avant création des widgets.
+    # V31.24 — calcul avant création des widgets.
     # Style 1 Quiz reste strictement sur son preset validé V31.18/V31.19.
     # Les trois autres styles utilisent une protection additive qui conserve
     # leur géométrie et ne corrige que les débordements.
     if p+"social_auto_layout" not in st.session_state:
-        st.session_state[p+"social_auto_layout"] = False if not (is_quiz and style=="1") else True
+        st.session_state[p+"social_auto_layout"] = True
     if p+"social_platform" not in st.session_state:
         st.session_state[p+"social_platform"] = "Universel"
+    # V31.24 : activation initiale des 4 protections. Une seule fois pour
+    # ne pas réactiver le mode automatique après que l'utilisateur l'a désactivé.
+    if not st.session_state.get("_social_auto_layout_v31_24_migrated", False):
+        for _mod,_style in (("quiz","1"),("quiz","2"),("vocab","1"),("vocab","2")):
+            _pp=("q1_" if _mod=="quiz" and _style=="1" else "q2_" if _mod=="quiz" else "v1_" if _style=="1" else "v2_")
+            st.session_state[_pp+"social_auto_layout"] = True
+        st.session_state["_social_auto_layout_v31_24_migrated"] = True
     if st.session_state.get(p+"social_auto_layout", False):
         apply_social_auto_layout(module, style)
 
