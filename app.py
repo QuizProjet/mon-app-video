@@ -431,7 +431,7 @@ VOICE_PROFILES = {
 }
 
 QUIZ_MOTIVATION_DEFAULTS = {
-    "Français": {"start":"Prêt ? C'est parti !", "end":"Bravo ! À bientôt pour un nouveau quiz !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
+    "Français": {"start":"Prêt ? C'est parti !", "end":"Bravo ! À bientôt !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
     "Anglais": {"start":"Ready? Let's go!", "end":"Great job! See you in the next quiz!", "start_label":"READY?", "mid_label":"KEEP GOING", "end_label":"QUIZ COMPLETE", "start_sub":"Test your knowledge!", "end_sub":"See you in the next challenge."},
     "Espagnol": {"start":"¿Listo? ¡Empezamos!", "end":"¡Bravo! ¡Hasta el próximo quiz!", "start_label":"¿LISTO?", "mid_label":"¡SIGUE!", "end_label":"QUIZ TERMINADO", "start_sub":"¡Pon a prueba tus conocimientos!", "end_sub":"Hasta el próximo desafío."},
     "Arabe": {"start":"هل أنت مستعد؟ لنبدأ!", "end":"أحسنت! نلتقي في الاختبار القادم!", "start_label":"مستعد؟", "mid_label":"تابع!", "end_label":"انتهى الاختبار", "start_sub":"اختبر معلوماتك!", "end_sub":"إلى التحدي القادم."},
@@ -936,12 +936,12 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
-    # Priorité à la lisibilité : on essaie d'abord 2 lignes, puis 3 lignes avant de réduire
-    # excessivement la police. La question reste toujours dans son cadre.
+    # V31.31-PRO : les questions longues restent sur 2 lignes maximum.
+    # On réduit uniquement cette police ; aucune autre zone du quiz n'est déplacée.
     size=base_size; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    while len(lines)>3 and size>32:
+    while len(lines)>2 and size>28:
         size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    lines=lines[:3]
+    lines=lines[:2]
     hi=_highlight_words(question); yy=int(cfg["question_y"]);
     line_h=int(size*1.18)
     box_top=yy-18; box_bottom=yy+len(lines)*line_h+22
@@ -1044,22 +1044,30 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         y1=int(cfg["explanation_y"])
     p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
+    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
     box_w=max(420,min(1020,int(cfg.get("explanation_width",964))))
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
-    # Maquette Bleu Nuit & Or : aucun pictogramme dans la carte d'explication.
-    # Titre doré centré, description blanche centrée, comme le visuel approuvé.
-    title_font=get_font(min(36,int(cfg["explanation_size"]*.95)),cfg.get("font_family","DejaVu Sans"))
+    # Carte d'explication adaptative : 3 lignes maximum et toujours entièrement dans la zone sûre.
+    title_font=get_font(min(34,int(cfg["explanation_size"]*.92)),cfg.get("font_family","DejaVu Sans"))
     title_text="EXPLICATION :"
     tw=text_width(draw,title_text,title_font)
-    draw.text(((left+right-tw)/2,y1+26),title_text,font=title_font,fill=primary)
-    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
+    draw.text(((left+right-tw)/2,y1+22),title_text,font=title_font,fill=primary)
+    fit_size=max(22,int(cfg["explanation_size"]))
+    f=get_font(fit_size,cfg.get("font_family","DejaVu Sans")); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-86))
+    while (len(lines)>3 or sum(text_height(f,line) for line in lines)+max(0,len(lines)-1)*5 > 104) and fit_size>22:
+        fit_size-=1; f=get_font(fit_size,cfg.get("font_family","DejaVu Sans")); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-86))
+    lines=lines[:3]
     if cfg.get("explanation_auto_height", False):
-        needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
-        box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
+        needed_h=int(102 + max(1,len(lines))*int(fit_size*1.28))
+        box_h=max(180,min(int(cfg.get("explanation_h",260)),needed_h))
     else:
-        box_h=int(cfg.get("explanation_h",320))
-    y2=min(1645,y1+box_h)
+        box_h=int(cfg.get("explanation_h",260))
+    # Si nécessaire, on remonte la carte ; on ne modifie jamais les bornes de sécurité.
+    max_y1=safe_bottom-box_h-12
+    y1=min(y1,max_y1)
+    y1=max(safe_top+20,y1)
+    y2=min(safe_bottom-12,y1+box_h)
     is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
     if cfg.get("explanation_frame_enabled", True):
         fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
@@ -1067,7 +1075,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
         draw.rounded_rectangle((left,y1,right,y2),radius=20 if is_blue_gold else int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
         if cfg.get("explanation_border_enabled",True) or cfg.get("explanation_frame_bg_enabled",True):
             draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
-    yy=y1+82; global_word=0
+    yy=y1+70; global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
@@ -1076,7 +1084,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
             # ni fond autour du mot actif pour éviter tout scintillement visuel.
             draw.text((x,yy),w,font=f,fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255)))
             x+=ww+space; global_word+=1
-        yy+=int(cfg["explanation_size"]*1.35)
+        yy+=int(fit_size*1.28)
 
 def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
     cfg=_layout(module, style); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
@@ -2753,27 +2761,29 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # QUIZ STYLE 1 — NE PAS MODIFIER LE PRESET VALIDÉ.
     # ================================================================
     if module == "quiz" and str(style) == "1":
-        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
-        question_y=header_bottom+28; question_reserved_h=190; question_bottom=question_y+question_reserved_h
-        answer_h=76; answer_gap=12; answer_y=question_bottom+24
+        # V31.31-PRO — même zone de sécurité, composition simplement plus compacte.
+        # Aucun changement des profils de sécurité ni du moteur d'aperçu.
+        header_h=68; header_y=safe_top+12; header_bottom=header_y+header_h
+        question_y=header_bottom+20; question_reserved_h=168; question_bottom=question_y+question_reserved_h
+        answer_h=72; answer_gap=10; answer_y=question_bottom+16
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=58; timer_y=answers_bottom+76; explanation_h=205
-        explanation_y=timer_y+timer_size+34; progress_y=safe_bottom-24
-        available=progress_y-explanation_h-18
+        timer_size=54; timer_y=answers_bottom+48; explanation_h=190
+        explanation_y=timer_y+timer_size+22; progress_y=safe_bottom-24
+        available=progress_y-explanation_h-14
         if explanation_y>available:
-            explanation_y=available; timer_y=explanation_y-timer_size-34
-        if timer_y < answers_bottom+40:
-            timer_y=answers_bottom+40; explanation_y=timer_y+timer_size+24
-        if explanation_y+explanation_h > progress_y-12:
-            explanation_y=progress_y-12-explanation_h
+            explanation_y=available; timer_y=explanation_y-timer_size-22
+        if timer_y < answers_bottom+34:
+            timer_y=answers_bottom+34; explanation_y=timer_y+timer_size+22
+        if explanation_y+explanation_h > progress_y-10:
+            explanation_y=progress_y-10-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+17,p+"brand_size":24,
-            p+"title_x":center,p+"title_y":header_y+16,p+"title_size":30,p+"score_x":safe_right-50,p+"score_y":header_y+9,p+"score_size":27,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+19,p+"brand_size":25,
+            p+"title_x":center,p+"title_y":header_y+17,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":30,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
             p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,
-            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
+            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":True,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
         st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
