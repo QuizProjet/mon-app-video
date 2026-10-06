@@ -706,9 +706,11 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
+        bf=get_font(int(cfg.get("brand_size",28)),ff); bh=text_height(bf,brand)
         bx=left+16; by=top+(bottom-top-bh)//2
-        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+        brand_fill=_hex_rgb(cfg.get("brand_color"),gold)
+        draw.text((bx+1,by+2),brand,font=bf,fill=(5,10,22))
+        draw.text((bx,by),brand,font=bf,fill=brand_fill)
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
@@ -720,15 +722,15 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
-    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
+    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",30)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    # Badge légèrement plus grand, mais toujours strictement à l'intérieur du 3e tiers.
     third_left=left+2*third; third_right=right
-    pill_w=min(max(78,sw+24),max(78,int(third-18)))
-    pill_h=min(max(40,sh+10),max(40,header_h-10))
+    pill_w=min(max(82,sw+26),max(82,int(third-18)))
+    pill_h=min(max(42,sh+12),max(42,header_h-8))
     cx=(third_left+third_right)/2
     px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
     py=top+(bottom-top-pill_h)/2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(17,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
 
@@ -822,42 +824,6 @@ def _hex_rgb(value, fallback=(255,255,255)):
     return fallback
 
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qvp_settings.json")
-# V31.31-PRO — cache persistant des générations IA réussies.
-AI_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "suspenselingo_ai_cache.json")
-
-def _load_ai_cache_file():
-    try:
-        with open(AI_CACHE_FILE, "r", encoding="utf-8") as f:
-            data=json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
-
-def _save_ai_cache_file(data):
-    try:
-        tmp=AI_CACHE_FILE+".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, AI_CACHE_FILE)
-        return True
-    except Exception:
-        return False
-
-def _persist_quiz_ai_cache(gen_key, questions, subject="", language="Français"):
-    cache=_load_ai_cache_file()
-    cache[str(gen_key)]={
-        "type":"quiz", "subject":clean_text(subject), "language":language,
-        "questions":[dict(x) for x in (questions or [])]
-    }
-    return _save_ai_cache_file(cache)
-
-def _restore_quiz_ai_cache(gen_key):
-    item=_load_ai_cache_file().get(str(gen_key))
-    if not isinstance(item,dict) or item.get("type")!="quiz":
-        return None
-    qs=item.get("questions")
-    return [dict(x) for x in qs] if isinstance(qs,list) and qs else None
-
 
 def _load_saved_settings():
     # Les widgets qui ne sont pas affichés pendant le passage Quiz ↔ Vocabulaire
@@ -983,12 +949,12 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
-    # Priorité à la lisibilité : on essaie d'abord 2 lignes, puis 3 lignes avant de réduire
-    # excessivement la police. La question reste toujours dans son cadre.
+    # Correction vidéo : les questions longues restent sur 2 lignes maximum.
+    # Seule la police de la question est réduite ; la structure du quiz ne bouge pas.
     size=base_size; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    while len(lines)>3 and size>32:
+    while len(lines)>2 and size>28:
         size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    lines=lines[:3]
+    lines=lines[:2]
     hi=_highlight_words(question); yy=int(cfg["question_y"]);
     line_h=int(size*1.18)
     box_top=yy-18; box_bottom=yy+len(lines)*line_h+22
@@ -1078,52 +1044,70 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
+    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
     if cfg.get("explanation_auto_below_timer", False):
         timer_size=max(24,int(cfg.get("timer_size",58)))
         if cfg.get("timer_auto_below_answers",True):
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
-            timer_cy=min(1500, answer_bottom + timer_size + 22)
+            timer_cy=min(safe_bottom-timer_size-22, answer_bottom + timer_size + 22)
         else:
             timer_cy=int(cfg.get("timer_y",1045))
         timer_r=timer_size
-        y1=min(1450, timer_cy + timer_r + 10)
+        y1=min(safe_bottom-220, timer_cy + timer_r + 10)
     else:
-        y1=int(cfg["explanation_y"])
+        y1=int(cfg.get("explanation_y",1135))
     p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
     box_w=max(420,min(1020,int(cfg.get("explanation_width",964))))
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
-    # Maquette Bleu Nuit & Or : aucun pictogramme dans la carte d'explication.
-    # Titre doré centré, description blanche centrée, comme le visuel approuvé.
-    title_font=get_font(min(36,int(cfg["explanation_size"]*.95)),cfg.get("font_family","DejaVu Sans"))
+
+    # Carte d'explication : lisible, compacte et entièrement dans la zone sûre.
+    title_font=get_font(min(34,int(cfg.get("explanation_size",42)*.92)),cfg.get("font_family","DejaVu Sans"))
     title_text="EXPLICATION :"
     tw=text_width(draw,title_text,title_font)
-    draw.text(((left+right-tw)/2,y1+26),title_text,font=title_font,fill=primary)
-    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
-    if cfg.get("explanation_auto_height", False):
-        needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
-        box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
+
+    fit_size=max(22,int(cfg.get("explanation_size",42)))
+    f=get_font(fit_size,cfg.get("font_family","DejaVu Sans"))
+    max_text_w=max(300,box_w-86)
+    lines=wrap_text(explanation or "Bravo !",f,max_text_w)
+    while (len(lines)>3 or sum(text_height(f,line) for line in lines)+max(0,len(lines)-1)*5>112) and fit_size>22:
+        fit_size-=1
+        f=get_font(fit_size,cfg.get("font_family","DejaVu Sans"))
+        lines=wrap_text(explanation or "Bravo !",f,max_text_w)
+    lines=lines[:3] or ["Bravo !"]
+
+    if cfg.get("explanation_auto_height",False):
+        needed_h=int(104 + max(1,len(lines))*int(fit_size*1.28))
+        box_h=max(180,min(int(cfg.get("explanation_h",260)),needed_h))
     else:
-        box_h=int(cfg.get("explanation_h",320))
-    y2=min(1645,y1+box_h)
+        box_h=int(cfg.get("explanation_h",260))
+
+    # Zone interdite basse : la carte remonte automatiquement sans toucher aux profils.
+    max_y1=safe_bottom-box_h-16
+    y1=min(y1,max_y1)
+    y1=max(safe_top+20,y1)
+    y2=min(safe_bottom-12,y1+box_h)
+
     is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
-    if cfg.get("explanation_frame_enabled", True):
+    if cfg.get("explanation_frame_enabled",True):
         fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
         outline=(245,158,11) if is_blue_gold and cfg.get("explanation_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),primary) if cfg.get("explanation_border_enabled",True) else None)
         draw.rounded_rectangle((left,y1,right,y2),radius=20 if is_blue_gold else int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
         if cfg.get("explanation_border_enabled",True) or cfg.get("explanation_frame_bg_enabled",True):
             draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
-    yy=y1+82; global_word=0
+
+    draw.text(((left+right-tw)/2,y1+20),title_text,font=title_font,fill=primary)
+    yy=y1+66; global_word=0
+    line_step=int(fit_size*1.28)
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            # Karaoké explication : changement de couleur uniquement, sans cadre
-            # ni fond autour du mot actif pour éviter tout scintillement visuel.
-            draw.text((x,yy),w,font=f,fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255)))
+            draw.text((x,yy),w,font=f,fill=primary if current else _hex_rgb(cfg["text"],(255,255,255)))
             x+=ww+space; global_word+=1
-        yy+=int(cfg["explanation_size"]*1.35)
+        yy+=line_step
+
 
 def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
     cfg=_layout(module, style); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
@@ -1408,9 +1392,12 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     qf=get_font(int(cfg.get("question_size",50)),ff)
     qx=int(cfg.get("question_x",(safe_left+safe_right)//2)); qy=int(cfg.get("question_y",header_bottom+28))
     maxw=min(int(cfg.get("question_width",safe_right-safe_left)),safe_right-safe_left-20)
-    if auto: qx=(safe_left+safe_right)//2; qy=max(header_bottom+28,qy)
+    if auto: qx=(safe_left+safe_right)//2; qy=max(header_bottom+24+34+66,qy)
     prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*70) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
-    lines=wrap_text(q,qf,maxw)[:3]
+    lines=wrap_text(q,qf,maxw)
+    while len(lines)>2 and qf.size>28:
+        qf=get_font(qf.size-2,ff); lines=wrap_text(q,qf,maxw)
+    lines=lines[:2]
     line_h=max(42,int(qf.size*1.10)); box_h=max(112,len(lines)*line_h+54); box_w=min(safe_right-safe_left,max(620,maxw+40))
     bx1=max(safe_left,qx-box_w//2); bx2=min(safe_right,qx+box_w//2); by1=max(header_bottom+16,qy-28); by2=min(760,by1+box_h)
     if cfg.get("question_frame_enabled",True):
@@ -2389,6 +2376,33 @@ def _quiz_generation_key(nb, subject, language="Français"):
 def _vocab_generation_key(nb, subject, language):
     return _stable_hash({"type": "vocab", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower(), "language": language})
 
+def _quiz_generation_file_payload(data, nb, subject, language):
+    """Prépare un fichier JSON réutilisable sans aucun nouvel appel Gemini."""
+    clean_data=normalize_questions(data)[:int(nb)]
+    return {
+        "format":"SuspenseLingo Quiz Generation",
+        "version":1,
+        "generation_key":_quiz_generation_key(nb,subject,language),
+        "model":MODEL_NAME,
+        "nb":int(nb),
+        "subject":clean_text(subject),
+        "language":language,
+        "questions":clean_data,
+    }
+
+def _load_saved_quiz_generation(uploaded_file, expected_key):
+    """Recharge exactement une génération enregistrée : 0 quota Gemini."""
+    raw=uploaded_file.getvalue().decode("utf-8-sig",errors="replace")
+    payload=json.loads(raw)
+    if not isinstance(payload,dict) or payload.get("format")!="SuspenseLingo Quiz Generation":
+        raise ValueError("Ce fichier n'est pas une génération SuspenseLingo valide.")
+    if payload.get("generation_key")!=expected_key:
+        raise ValueError("Cette génération ne correspond pas au nombre de questions, au sujet ou à la langue actuels.")
+    data=normalize_questions(payload.get("questions",[]))
+    if not data:
+        raise ValueError("Le fichier enregistré ne contient aucune question valide.")
+    return data[:int(payload.get("nb",len(data)))]
+
 def _save_quiz_editor(rows):
     cleaned=[]
     for row in rows:
@@ -2800,27 +2814,31 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # QUIZ STYLE 1 — NE PAS MODIFIER LE PRESET VALIDÉ.
     # ================================================================
     if module == "quiz" and str(style) == "1":
-        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
-        question_y=header_bottom+28; question_reserved_h=190; question_bottom=question_y+question_reserved_h
-        answer_h=76; answer_gap=12; answer_y=question_bottom+24
+        # Correction visuelle : le header reste dans la zone sûre et la question
+        # démarre avec une vraie respiration. Les 4 réponses, le timer et la carte
+        # d'explication gardent leur mécanique d'origine.
+        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
+        drawn_header_bottom=header_y+24+header_h
+        question_y=drawn_header_bottom+34; question_reserved_h=176; question_bottom=question_y+question_reserved_h
+        answer_h=72; answer_gap=10; answer_y=question_bottom+18
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=58; timer_y=answers_bottom+76; explanation_h=205
-        explanation_y=timer_y+timer_size+34; progress_y=safe_bottom-24
-        available=progress_y-explanation_h-18
+        timer_size=56; timer_y=answers_bottom+48; explanation_h=210
+        explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-24
+        available=progress_y-explanation_h-14
         if explanation_y>available:
-            explanation_y=available; timer_y=explanation_y-timer_size-34
-        if timer_y < answers_bottom+40:
-            timer_y=answers_bottom+40; explanation_y=timer_y+timer_size+24
-        if explanation_y+explanation_h > progress_y-12:
-            explanation_y=progress_y-12-explanation_h
+            explanation_y=available; timer_y=explanation_y-timer_size-24
+        if timer_y < answers_bottom+34:
+            timer_y=answers_bottom+34; explanation_y=timer_y+timer_size+24
+        if explanation_y+explanation_h > progress_y-10:
+            explanation_y=progress_y-10-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+17,p+"brand_size":24,
-            p+"title_x":center,p+"title_y":header_y+16,p+"title_size":30,p+"score_x":safe_right-50,p+"score_y":header_y+9,p+"score_size":27,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+19,p+"brand_size":28,
+            p+"title_x":center,p+"title_y":header_y+17,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":30,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
             p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,
-            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
+            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":True,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
         st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
@@ -2833,8 +2851,9 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "quiz" and str(style) == "2":
         p="q2_"
-        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
-        qy=max(header_bottom+28, min(int(st.session_state.get(p+"question_y",315)), header_bottom+500))
+        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
+        drawn_header_bottom=header_y+24+header_h
+        qy=max(drawn_header_bottom+34, min(int(st.session_state.get(p+"question_y",315)), drawn_header_bottom+500))
         qw=min(int(st.session_state.get(p+"question_width",920)), safe_w); qx=center
         # Réponses cumulatives : on réserve l'espace avant le minuteur.
         hist_y=max(qy+250, int(st.session_state.get(p+"history_y",690)))
@@ -2850,9 +2869,9 @@ def apply_social_auto_layout(module="quiz", style="1"):
             timer_y=max(hist_bottom+12,safe_bottom-timer_size)
         # Un même gabarit d'en-tête pour tous les styles.
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
         st.session_state[p+"question_x"]=qx; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
         st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w; st.session_state[p+"history_y"]=hist_y
         st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
@@ -2865,12 +2884,13 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "1":
         p="v1_"
-        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
+        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
+        drawn_header_bottom=header_y+24+header_h
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
-        qy=max(header_bottom+150, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
+        qy=max(drawn_header_bottom+80, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
         qw=min(int(st.session_state.get(p+"question_width",920)),safe_w)
         ty=max(qy+170, min(int(st.session_state.get(p+"translation_y",760)), safe_bottom-360))
         tw=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
@@ -2888,16 +2908,17 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "2":
         p="v2_"
-        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
+        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
+        drawn_header_bottom=header_y+24+header_h
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
         tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
         tx=max(safe_left,min(center-tw//2,safe_right-tw))
         gap=min(int(st.session_state.get(p+"table_gap",6)),8)
         total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or [])); total=min(total,15)
-        min_table_y=header_bottom+28
+        min_table_y=drawn_header_bottom+34
         ty=max(min_table_y,int(st.session_state.get(p+"table_y",350)))
         available=max(180,safe_bottom-24-ty-gap*max(0,total-1))
         row_h=max(42,min(int(st.session_state.get(p+"table_row_h",82)),int(available/max(1,total))))
@@ -2951,9 +2972,6 @@ def render_platform_safe_preview(image, key_prefix="platform_preview", module="q
                 except Exception:
                     pass
         d.rectangle((int(W*profile["left"]),int(H*profile["top"]),int(W*(1-profile["right"])),int(H*(1-profile["bottom"]))),outline=(255,255,255,115),width=2)
-        sx1=int(W*profile["left"]); sx2=int(W*(1-profile["right"]))
-        sy1=int(H*profile["top"]); sy2=int(H*(1-profile["bottom"]))
-        d.rounded_rectangle((sx1,sy1,sx2,sy2),radius=4,outline=(80,220,150,220),width=3)
         canvas=Image.alpha_composite(canvas,ov).convert("RGB")
     st.image(canvas,width=360)
     st.caption(f"🛡️ Zone de contenu recommandée pour {profile['label']} : garde la question et les réponses dans le cadre central.")
@@ -3603,15 +3621,6 @@ if nav=="quiz":
             st.caption("💡 Changer le thème, la voix, le fond, le hook ou le CTA ne consomme aucun quota Gemini. Le CSV et les modifications manuelles non plus. Une nouvelle requête Gemini est envoyée uniquement si tu demandes un nouveau contenu IA.")
             gen_key=_quiz_generation_key(nb_q,th_q,quiz_language)
             cached_key=st.session_state.get("q_ai_key")
-            # V31.31-PRO : restauration du lot correspondant sans nouvel appel Gemini.
-            if cached_key!=gen_key or not st.session_state.get("q_ai_cache"):
-                _disk_quiz=_restore_quiz_ai_cache(gen_key)
-                if _disk_quiz:
-                    st.session_state.q_ai_key=gen_key
-                    st.session_state.q_ai_cache=[dict(x) for x in _disk_quiz]
-                    st.session_state.q_data=[dict(x) for x in _disk_quiz]
-                    st.session_state.q_source=f"IA • {th_q} • cache persistant"
-                    cached_key=gen_key
             if cached_key==gen_key and st.session_state.get("q_data") and st.session_state.get("q_source","").startswith("IA"):
                 st.info("♻️ Ce quiz IA est déjà en mémoire : aucun appel Gemini ne sera fait pour les changements de style ou de vidéo.")
             bq1,bq2=st.columns(2)
@@ -3641,8 +3650,7 @@ Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
                             st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
                             st.session_state.q_ai_key=gen_key
                             st.session_state.q_source=f"IA • {th_q}"
-                            _persist_quiz_ai_cache(gen_key, st.session_state.q_data, th_q, quiz_language)
-                            st.success(f"✅ {len(data)} questions générées et enregistrées. Elles pourront être rechargées sans nouveau quota Gemini.")
+                            st.success(f"✅ {len(data)} questions générées. Cette génération est maintenant en cache.")
                         except Exception as e: st.error(f"Erreur Gemini : {e}")
             with bq2:
                 if st.button("⚠️ Nouveau lot IA (1 quota)",key="forceq",use_container_width=True):
@@ -3662,6 +3670,39 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             st.session_state.q_source=f"IA • {th_q}"
                             st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
                         except Exception as e: st.error(f"Erreur Gemini : {e}")
+
+            # Sauvegarde persistante de la génération réussie : après un redémarrage
+            # de Streamlit, l'utilisateur peut recharger le même lot sans appeler Gemini.
+            if st.session_state.get("q_data") and st.session_state.get("q_ai_key")==gen_key:
+                save_payload=_quiz_generation_file_payload(st.session_state.q_data,nb_q,th_q,quiz_language)
+                csave,cload=st.columns(2,gap="small")
+                with csave:
+                    st.download_button(
+                        "💾 Enregistrer cette génération",
+                        data=json.dumps(save_payload,ensure_ascii=False,indent=2),
+                        file_name="SuspenseLingo_generation_quiz.json",
+                        mime="application/json",
+                        key="save_quiz_generation",
+                        use_container_width=True,
+                    )
+                with cload:
+                    saved_file=st.file_uploader(
+                        "📂 Charger une génération enregistrée",
+                        type=["json"],
+                        key="load_quiz_generation",
+                    )
+                    if saved_file is not None:
+                        file_hash=hashlib.sha256(saved_file.getvalue()).hexdigest()
+                        if st.session_state.get("_loaded_quiz_generation_hash")!=file_hash:
+                            try:
+                                loaded=_load_saved_quiz_generation(saved_file,gen_key)
+                                st.session_state.q_data=loaded
+                                st.session_state.q_ai_cache=[dict(x) for x in loaded]
+                                st.session_state.q_ai_key=gen_key
+                                st.session_state.q_source=f"IA • {th_q} • génération enregistrée"
+                                st.session_state._loaded_quiz_generation_hash=file_hash
+                                st.success(f"✅ Génération enregistrée chargée : {len(loaded)} questions. 0 quota Gemini.")
+                            except Exception as e: st.error(f"Génération enregistrée invalide : {e}")
         else:
             st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>',unsafe_allow_html=True)
             st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
@@ -3672,15 +3713,6 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     st.success(f"✅ {len(imported)} questions importées.")
                     st.dataframe([{"#":i+1,"Question":q["question"],"A":q["options"][0],"B":q["options"][1],"C":q["options"][2],"D":q["options"][3],"Bonne":q["reponse_correcte"]} for i,q in enumerate(imported)], use_container_width=True, hide_index=True)
                 except Exception as e: st.error(f"CSV invalide : {e}")
-
-        if st.session_state.get("q_data") and st.session_state.get("q_ai_key"):
-            if st.button("💾 Enregistrer ce quiz déjà généré",key="save_generated_quiz",use_container_width=True):
-                ok=_persist_quiz_ai_cache(st.session_state["q_ai_key"], st.session_state["q_data"], th_q, quiz_language)
-                if ok:
-                    st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
-                    st.success("✅ Quiz enregistré : tu pourras le recharger plus tard sans consommer Gemini.")
-                else:
-                    st.warning("⚠️ Le quiz reste disponible en mémoire, mais l'enregistrement local a échoué.")
 
         if st.session_state.get("q_data"):
             st.success(f"Quiz prêt : {len(st.session_state.q_data)} question(s) • {st.session_state.get('q_source','source manuelle')}")
