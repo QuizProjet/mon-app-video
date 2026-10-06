@@ -692,7 +692,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # On applique la même zone sûre aux 4 styles, même si l'utilisateur
     # n'a pas activé la mise en page automatique. Une marge interne est
     # ajoutée pour que le compteur ne touche JAMAIS la bande UI de droite.
-    # V31.35 — en-tête pilotable et persistant depuis l’Éditeur Studio.
+    # V31.36 — en-tête pilotable et persistant depuis l’Éditeur Studio.
     platform=str(cfg.get("social_platform","Universel"))
     profiles={
         "TikTok": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
@@ -727,11 +727,14 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     bottom=min(HEIGHT,top+header_h)
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
-    # Zone 1 : logo
+    # Zone 1 : logo — en mode manuel, X/Y viennent directement de l'Éditeur Studio.
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
-        bx=left+16; by=top+(bottom-top-bh)//2
+        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand); bw_brand=text_width(draw,brand,bf)
+        if auto:
+            bx=left+16; by=top+(bottom-top-bh)//2
+        else:
+            bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",139))
         draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
@@ -741,24 +744,32 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     center_x=left+third*1.5; max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
-    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
+    tw=text_width(draw,title,tf)
+    if auto:
+        tx=center_x-tw/2; ty=top+(bottom-top-th)//2
+    else:
+        tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",139))
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
     score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
     # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
     third_left=left+2*third; third_right=right
-    pill_w=min(max(78,sw+24),max(78,int(third-22)))
-    pill_h=min(max(40,sh+10),max(40,header_h-10))
+    pill_w=max(78,int(cfg.get("score_width",sw+24)))
+    pill_h=max(40,int(cfg.get("score_height",sh+10)))
+    pill_w=min(pill_w,max(78,int(third-22)))
+    pill_h=min(pill_h,max(40,header_h-10))
     cx=(third_left+third_right)/2 + int(cfg.get("header_counter_offset_x",0))
-    # En mode manuel, le décalage du compteur est piloté par l’utilisateur.
-    # En mode automatique, il reste borné dans le troisième tiers.
     if auto:
         counter_inset=14
         px=max(third_left+counter_inset,min(cx-pill_w/2,third_right-counter_inset-pill_w))
+        py=top+(bottom-top-pill_h)/2 + int(cfg.get("header_counter_offset_y",0))
     else:
-        px=max(left+12,min(cx-pill_w/2,right-int(cfg.get("header_right_margin",36))-pill_w))
-    py=top+(bottom-top-pill_h)/2 + int(cfg.get("header_counter_offset_y",0))
-    py=max(top+6,min(bottom-pill_h-6,py))
+        cx=int(cfg.get("score_x",cx)) + int(cfg.get("header_counter_offset_x",0))
+        px=cx-pill_w/2
+        py=int(cfg.get("score_y",top+(bottom-top-pill_h)/2)) - pill_h/2 + int(cfg.get("header_counter_offset_y",0))
+        # La marge droite reste une vraie sécurité : le compteur ne peut jamais la franchir.
+        px=max(left+8,min(px,right-int(cfg.get("header_right_margin",36))-pill_w))
+        py=max(20,min(HEIGHT-pill_h-20,py))
     draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
@@ -922,7 +933,9 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
-        st.session_state[_k] = _v
+        # Ne jamais écraser une valeur déjà chargée depuis les réglages persistants.
+        if _k not in st.session_state:
+            st.session_state[_k] = _v
     st.session_state["_blue_gold_layout_v31_10_applied"] = True
 
 def _layout(module="quiz", style=None):
@@ -3155,7 +3168,7 @@ def render_export_panel(video_data, base_name, key_prefix):
             st.download_button(f"⬇️ {platform} — 1080p",data=item["data"],file_name=item["filename"],mime="video/mp4",key=f"{key_prefix}_dl_direct_{platform.replace(' ','_')}",use_container_width=True)
 
 def render_layout_editor(module, style="1"):
-    """Éditeur Studio V31.35 : réglages indépendants et persistants pour les 4 styles."""
+    """Éditeur Studio V31.36 : réglages indépendants et persistants pour les 4 styles."""
     is_quiz = module == "quiz"
     style = str(style)
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
@@ -3168,7 +3181,7 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "score_x":965, "score_y":130, "score_size":31, "score_width":116, "score_height":54, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "header_x":540, "header_y":130, "header_width":960, "header_h":64, "header_right_margin":36, "header_counter_offset_x":0, "header_counter_offset_y":0,
         "brand_x":70, "brand_y":139, "brand_size":28, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#151D33", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
@@ -3202,7 +3215,7 @@ def render_layout_editor(module, style="1"):
         st.session_state[p+"social_auto_layout"] = True
     if p+"social_platform" not in st.session_state:
         st.session_state[p+"social_platform"] = "Universel"
-    # V31.35 — migration persistante : ne jamais réactiver l'automatique
+    # V31.36 — migration persistante : ne jamais réactiver l'automatique
     # si une valeur a déjà été sauvegardée par l'utilisateur.
     # Cela garantit que le mode manuel reste manuel après un redémarrage.
     if not st.session_state.get("_social_auto_layout_v31_24_migrated", False):
@@ -3290,6 +3303,23 @@ def render_layout_editor(module, style="1"):
             st.slider("↔ Marge droite de sécurité",0,160,key=p+"header_right_margin")
             st.slider("↔ Décalage du compteur",-160,160,key=p+"header_counter_offset_x")
             st.slider("↕ Décalage vertical du compteur",-40,40,key=p+"header_counter_offset_y")
+        st.markdown("#### 🏷️ Logo • 📝 Titre • 🔢 Compteur")
+        e1,e2,e3=st.columns(3)
+        with e1:
+            st.caption("🏷️ Logo")
+            st.slider("Logo X",0,1080,key=p+"brand_x",help="Position horizontale du logo dans la vidéo")
+            st.slider("Logo Y",40,700,key=p+"brand_y",help="Position verticale du logo dans la vidéo")
+        with e2:
+            st.caption("📝 Titre")
+            st.slider("Titre X",0,1080,key=p+"title_x",help="Centre horizontal du titre")
+            st.slider("Titre Y",40,700,key=p+"title_y",help="Position verticale du titre")
+        with e3:
+            st.caption("🔢 Compteur")
+            st.slider("Compteur X",0,1080,key=p+"score_x",help="Centre horizontal du badge compteur")
+            st.slider("Compteur Y",40,700,key=p+"score_y",help="Centre vertical du badge compteur")
+            st.slider("Largeur compteur",78,220,key=p+"score_width")
+            st.slider("Hauteur compteur",40,90,key=p+"score_height")
+        st.success("💾 Ces réglages sont propres à ce style et seront repris lors de la prochaine génération après « Enregistrer les réglages ».")
         st.markdown("---")
         c1,c2 = st.columns(2)
         with c1:
