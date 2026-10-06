@@ -3175,7 +3175,9 @@ def render_layout_editor(module, style="1"):
     if not st.session_state.get("_social_auto_layout_v31_24_migrated", False):
         for _mod,_style in (("quiz","1"),("quiz","2"),("vocab","1"),("vocab","2")):
             _pp=("q1_" if _mod=="quiz" and _style=="1" else "q2_" if _mod=="quiz" else "v1_" if _style=="1" else "v2_")
-            st.session_state[_pp+"social_auto_layout"] = True
+            # Ne jamais écraser un réglage déjà chargé depuis qvp_settings.json.
+            if _pp+"social_auto_layout" not in st.session_state:
+                st.session_state[_pp+"social_auto_layout"] = True
         st.session_state["_social_auto_layout_v31_24_migrated"] = True
     if st.session_state.get(p+"social_auto_layout", False):
         apply_social_auto_layout(module, style)
@@ -3364,7 +3366,11 @@ def render_layout_editor(module, style="1"):
         st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
 
     with tabs[5]:
-        st.checkbox("Afficher le compte à rebours",key=p+"show_timer")
+        st.checkbox("Afficher le compte à rebours",key=p+"show_timer",disabled=(is_quiz and style=="1"))
+        # Fonctionnalité fondamentale du Quiz Style 1 : le compte à rebours
+        # fait partie du déroulement vidéo et ne peut pas être désactivé.
+        if is_quiz and style=="1":
+            st.session_state[p+"show_timer"] = True
         if is_quiz and style=="1":
             st.checkbox("Position automatique sous les 4 réponses",key=p+"timer_auto_below_answers")
         c1,c2=st.columns(2)
