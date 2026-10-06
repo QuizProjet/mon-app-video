@@ -689,29 +689,33 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     ff=cfg.get("font_family","Lato")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
-    top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))+12)); header_h=74; bottom=min(int(cfg.get("social_safe_bottom",HEIGHT-220)),top+header_h)
+    top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
+    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
+    top=max(safe_top,top)
+    header_h=max(56,min(74,int(cfg.get("header_h",64))))
+    bottom=min(safe_bottom,top+header_h)
     left=max(20,min(left,WIDTH-100)); right=max(left+100,min(right,WIDTH-20))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(28,ff); bh=text_height(bf,brand)
-        bx=left+18; by=top+(header_h-bh)//2
+        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
+        bx=left+16; by=top+(header_h-bh)//2
         draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(38,ff); th=text_height(tf,title)
+    tf=get_font(int(cfg.get("title_size",32)),ff); th=text_height(tf,title)
     center_x=left+third*1.5; max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
     tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(header_h-th)//2
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
-    score=f"{q_num}/{total}"; sf=get_font(31,ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    pill_w=max(86,sw+28); pill_h=max(46,sh+14); cx=left+third*2.5
+    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    pill_w=max(78,sw+24); pill_h=max(42,sh+12); cx=left+third*2.5
     px=cx-pill_w/2; py=top+(header_h-pill_h)/2
     draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
@@ -1338,7 +1342,7 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     Les réponses précédentes restent dans l'historique et la question active
     reprend toujours exactement la même zone.
     """
-    cfg=_layout("quiz", "2"); theme=THEMES[theme_name]
+    cfg=_layout("quiz", "2"); theme=THEMES[theme_name]; white=_hex_rgb(cfg.get("text"),(255,255,255))
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     alpha=int(clamp(cfg.get("bg_opacity",16),0,90))
     if alpha:
@@ -2749,7 +2753,7 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # QUIZ STYLE 1 — NE PAS MODIFIER LE PRESET VALIDÉ.
     # ================================================================
     if module == "quiz" and str(style) == "1":
-        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
         question_y=header_bottom+28; question_reserved_h=190; question_bottom=question_y+question_reserved_h
         answer_h=76; answer_gap=12; answer_y=question_bottom+24
         answers_bottom=answer_y+4*answer_h+3*answer_gap
@@ -2763,8 +2767,8 @@ def apply_social_auto_layout(module="quiz", style="1"):
         if explanation_y+explanation_h > progress_y-12:
             explanation_y=progress_y-12-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+22,p+"brand_y":header_y+20,
-            p+"title_x":center,p+"title_y":header_y+19,p+"score_x":safe_right-58,p+"score_y":header_y+10,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+17,p+"brand_size":24,
+            p+"title_x":center,p+"title_y":header_y+16,p+"title_size":30,p+"score_x":safe_right-50,p+"score_y":header_y+9,p+"score_size":27,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
@@ -2782,7 +2786,7 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "quiz" and str(style) == "2":
         p="q2_"
-        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
         qy=max(header_bottom+28, min(int(st.session_state.get(p+"question_y",315)), header_bottom+500))
         qw=min(int(st.session_state.get(p+"question_width",920)), safe_w); qx=center
         # Réponses cumulatives : on réserve l'espace avant le minuteur.
@@ -2799,9 +2803,9 @@ def apply_social_auto_layout(module="quiz", style="1"):
             timer_y=max(hist_bottom+12,safe_bottom-timer_size)
         # Un même gabarit d'en-tête pour tous les styles.
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+22; st.session_state[p+"brand_y"]=header_y+20; st.session_state[p+"brand_size"]=28
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+19; st.session_state[p+"title_size"]=38
-        st.session_state[p+"score_x"]=safe_right-58; st.session_state[p+"score_y"]=header_y+10; st.session_state[p+"score_size"]=31
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
         st.session_state[p+"question_x"]=qx; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
         st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w; st.session_state[p+"history_y"]=hist_y
         st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
@@ -2814,7 +2818,12 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "1":
         p="v1_"
-        qy=max(safe_top+190, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
+        st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
+        qy=max(header_bottom+150, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
         qw=min(int(st.session_state.get(p+"question_width",920)),safe_w)
         ty=max(qy+170, min(int(st.session_state.get(p+"translation_y",760)), safe_bottom-360))
         tw=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
@@ -2832,11 +2841,11 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "2":
         p="v2_"
-        header_h=74; header_y=safe_top+12; header_bottom=header_y+header_h
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+22; st.session_state[p+"brand_y"]=header_y+20; st.session_state[p+"brand_size"]=28
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+19; st.session_state[p+"title_size"]=38
-        st.session_state[p+"score_x"]=safe_right-58; st.session_state[p+"score_y"]=header_y+10; st.session_state[p+"score_size"]=31
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
         tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
         tx=max(safe_left,min(center-tw//2,safe_right-tw))
         gap=min(int(st.session_state.get(p+"table_gap",6)),8)
