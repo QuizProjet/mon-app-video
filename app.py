@@ -700,9 +700,12 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
-        bx=left+16; by=top+(header_h-bh)//2
-        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+        bf=get_font(int(cfg.get("brand_size",28)),ff); bh=text_height(bf,brand)
+        bx=left+18; by=top+(header_h-bh)//2
+        # Logo texte plus lisible : léger relief sombre + doré, sans changer le fond ni la structure.
+        brand_fill=_hex_rgb(cfg.get("brand_color"),gold)
+        draw.text((bx+1,by+2),brand,font=bf,fill=(5,10,22))
+        draw.text((bx,by),brand,font=bf,fill=brand_fill)
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
@@ -2763,11 +2766,13 @@ def apply_social_auto_layout(module="quiz", style="1"):
     if module == "quiz" and str(style) == "1":
         # V31.31-PRO — même zone de sécurité, composition simplement plus compacte.
         # Aucun changement des profils de sécurité ni du moteur d'aperçu.
-        header_h=68; header_y=safe_top+12; header_bottom=header_y+header_h
-        question_y=header_bottom+20; question_reserved_h=168; question_bottom=question_y+question_reserved_h
-        answer_h=72; answer_gap=10; answer_y=question_bottom+16
+        header_h=70; header_y=safe_top+10; header_bottom=header_y+header_h
+        # Espacements respirants : le header ne colle plus à la question,
+        # et la question garde une vraie séparation avant les réponses.
+        question_y=header_bottom+30; question_reserved_h=176; question_bottom=question_y+question_reserved_h
+        answer_h=68; answer_gap=9; answer_y=question_bottom+24
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=54; timer_y=answers_bottom+48; explanation_h=190
+        timer_size=54; timer_y=answers_bottom+44; explanation_h=190
         explanation_y=timer_y+timer_size+22; progress_y=safe_bottom-24
         available=progress_y-explanation_h-14
         if explanation_y>available:
@@ -2777,8 +2782,8 @@ def apply_social_auto_layout(module="quiz", style="1"):
         if explanation_y+explanation_h > progress_y-10:
             explanation_y=progress_y-10-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+19,p+"brand_size":25,
-            p+"title_x":center,p+"title_y":header_y+17,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":30,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+18,p+"brand_y":header_y+17,p+"brand_size":29,
+            p+"title_x":center,p+"title_y":header_y+17,p+"title_size":33,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":34,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
