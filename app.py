@@ -683,7 +683,7 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """V31.30 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
+    """V31.32 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
@@ -691,17 +691,23 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
-    top=max(safe_top,top)
-    header_h=max(56,min(74,int(cfg.get("header_h",64))))
-    bottom=min(safe_bottom,top+header_h)
-    left=max(20,min(left,WIDTH-100)); right=max(left+100,min(right,WIDTH-20))
+    # V31.32 — l'en-tête doit rester entièrement dans la zone sûre, avec
+    # une marge interne supplémentaire pour ne jamais toucher le masque.
+    safe_margin_top=24; safe_margin_bottom=24
+    top=max(safe_top+safe_margin_top,top)
+    header_h=max(52,min(66,int(cfg.get("header_h",60))))
+    bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
+    if bottom-top < 52:
+        top=max(safe_top+10, safe_bottom-62)
+        bottom=min(safe_bottom-10,top+52)
+    left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
         bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
-        bx=left+16; by=top+(header_h-bh)//2
+        bx=left+16; by=top+(bottom-top-bh)//2
         draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
@@ -711,13 +717,18 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     center_x=left+third*1.5; max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
-    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(header_h-th)//2
+    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
     score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    pill_w=max(78,sw+24); pill_h=max(42,sh+12); cx=left+third*2.5
-    px=cx-pill_w/2; py=top+(header_h-pill_h)/2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=18,fill=gold)
+    # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
+    third_left=left+2*third; third_right=right
+    pill_w=min(max(78,sw+24),max(78,int(third-18)))
+    pill_h=min(max(40,sh+10),max(40,header_h-10))
+    cx=(third_left+third_right)/2
+    px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
+    py=top+(bottom-top-pill_h)/2
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
 
