@@ -1429,58 +1429,24 @@ def gemini_generate_text(prompt):
         raise
 
 def parse_quiz_csv(uploaded_file):
-    """Lit un CSV manuel et accepte les deux conventions de colonnes courantes.
-
-    Format principal : question,A,B,C,D,reponse_correcte,explication
-    Format compatible : question,reponse_a,reponse_b,reponse_c,reponse_d,reponse_correcte,explication
-    Jusqu'à 15 questions valides sont importées, comme dans l'éditeur manuel.
-    """
+    """Lit un CSV manuel avec colonnes question,A,B,C,D,reponse_correcte,explication."""
     raw = uploaded_file.getvalue().decode("utf-8-sig", errors="replace")
     try: dialect = csv.Sniffer().sniff(raw[:4096], delimiters=",;\t")
     except csv.Error: dialect = csv.excel
     reader = csv.DictReader(io.StringIO(raw), dialect=dialect)
     if not reader.fieldnames: raise ValueError("Le CSV ne contient pas de ligne d'en-tête.")
-
     fields = {f.strip().lower(): f for f in reader.fieldnames if f}
-
-    # Accepte A/B/C/D comme le modèle officiel, mais aussi les noms
-    # reponse_a/reponse_b/reponse_c/reponse_d utilisés par certains CSV.
-    aliases = {
-        "a": ["a", "reponse_a"],
-        "b": ["b", "reponse_b"],
-        "c": ["c", "reponse_c"],
-        "d": ["d", "reponse_d"],
-    }
-
-    question_field = fields.get("question")
-    answer_field = fields.get("reponse_correcte") or fields.get("bonne")
-    option_fields = {}
-    for key, names in aliases.items():
-        for name in names:
-            if name in fields:
-                option_fields[key] = fields[name]
-                break
-
-    missing = []
-    if not question_field: missing.append("question")
-    for key in "ABCD":
-        if key.lower() not in option_fields: missing.append(key)
-    if not answer_field: missing.append("reponse_correcte")
-    if missing:
-        raise ValueError("Colonnes manquantes : " + ", ".join(missing) + ".")
-
-    exp_field = fields.get("explication") or fields.get("explanation")
+    required = ["question", "a", "b", "c", "d", "reponse_correcte"]
+    missing = [f for f in required if f not in fields]
+    if missing: raise ValueError("Colonnes manquantes : " + ", ".join(missing) + ".")
     data=[]
     for row in reader:
-        q=clean_text(row.get(question_field,""))
-        opts=[clean_text(row.get(option_fields[k],"")) for k in "abcd"]
-        ans=clean_text(row.get(answer_field,"A")).upper()[:1]
-        exp=clean_text(row.get(exp_field,"")) if exp_field else ""
-        if q and all(opts) and ans in "ABCD":
-            data.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
-
+        q=clean_text(row.get(fields["question"],"")); opts=[clean_text(row.get(fields[k],"")) for k in ["a","b","c","d"]]
+        ans=clean_text(row.get(fields["reponse_correcte"],"A")).upper()[:1]
+        exp=clean_text(row.get(fields["explication"],"")) if "explication" in fields else ""
+        if q and all(opts) and ans in "ABCD": data.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
     if not data: raise ValueError("Aucune question valide trouvée dans le CSV.")
-    return data[:15]
+    return data[:10]
 
 def csv_template():
     return "question,A,B,C,D,reponse_correcte,explication\nQuelle est la capitale de la France ?,Paris,Londres,Rome,Berlin,A,Paris est la capitale de la France.\n"
