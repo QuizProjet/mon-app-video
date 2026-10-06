@@ -3366,11 +3366,12 @@ def render_layout_editor(module, style="1"):
         st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
 
     with tabs[5]:
-        st.checkbox("Afficher le compte à rebours",key=p+"show_timer",disabled=(is_quiz and style=="1"))
-        # Fonctionnalité fondamentale du Quiz Style 1 : le compte à rebours
-        # fait partie du déroulement vidéo et ne peut pas être désactivé.
+        # Quiz Style 1 : le compte à rebours est une fonctionnalité fondamentale.
+        # IMPORTANT : sa valeur doit être fixée AVANT la création du widget Streamlit,
+        # sinon Streamlit lève StreamlitWidgetAlreadyInstantiatedError.
         if is_quiz and style=="1":
             st.session_state[p+"show_timer"] = True
+        st.checkbox("Afficher le compte à rebours",key=p+"show_timer",disabled=(is_quiz and style=="1"))
         if is_quiz and style=="1":
             st.checkbox("Position automatique sous les 4 réponses",key=p+"timer_auto_below_answers")
         c1,c2=st.columns(2)
