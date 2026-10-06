@@ -683,24 +683,44 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """V31.32 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
+    """V31.33 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
-    left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
-    top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
-    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
-    # V31.32 — l'en-tête doit rester entièrement dans la zone sûre, avec
-    # une marge interne supplémentaire pour ne jamais toucher le masque.
-    safe_margin_top=24; safe_margin_bottom=24
+    # V31.33 — le masque de prévisualisation est la référence réelle.
+    # On applique la même zone sûre aux 4 styles, même si l'utilisateur
+    # n'a pas activé la mise en page automatique. Une marge interne est
+    # ajoutée pour que le compteur ne touche JAMAIS la bande UI de droite.
+    platform=str(cfg.get("social_platform","Universel"))
+    profiles={
+        "TikTok": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
+        "Instagram Reels": {"top":0.09,"bottom":0.18,"left":0.03,"right":0.16},
+        "YouTube Shorts": {"top":0.08,"bottom":0.14,"left":0.03,"right":0.12},
+        "Facebook Reels": {"top":0.09,"bottom":0.17,"left":0.03,"right":0.15},
+        "Universel": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
+    }
+    prof=profiles.get(platform,profiles["Universel"])
+    profile_left=int(WIDTH*prof["left"]); profile_right=int(WIDTH*(1-prof["right"]))
+    profile_top=int(HEIGHT*prof["top"]); profile_bottom=int(HEIGHT*(1-prof["bottom"]))
+    cfg_left=int(cfg.get("social_safe_left",profile_left)); cfg_right=int(cfg.get("social_safe_right",profile_right))
+    cfg_top=int(cfg.get("social_safe_top",profile_top)); cfg_bottom=int(cfg.get("social_safe_bottom",profile_bottom))
+    left=max(profile_left,cfg_left); right=min(profile_right,cfg_right)
+    safe_top=max(profile_top,cfg_top); safe_bottom=min(profile_bottom,cfg_bottom)
+    top=int(cfg.get("header_y",safe_top))
+    # Marges supplémentaires : 36 px haut, 36 px droite/gauche.
+    safe_margin_top=36; safe_margin_side=36; safe_margin_bottom=24
     top=max(safe_top+safe_margin_top,top)
     header_h=max(52,min(66,int(cfg.get("header_h",60))))
     bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
     if bottom-top < 52:
-        top=max(safe_top+10, safe_bottom-62)
-        bottom=min(safe_bottom-10,top+52)
-    left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
+        top=max(safe_top+20, safe_bottom-72)
+        bottom=min(safe_bottom-12,top+52)
+    left=max(profile_left+safe_margin_side,min(left,WIDTH-160))
+    right=min(profile_right-safe_margin_side,max(right,left+160))
+    if right-left < 160:
+        right=min(profile_right-safe_margin_side,WIDTH-40)
+        left=max(profile_left+safe_margin_side,right-160)
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
@@ -723,10 +743,13 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
     # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
     third_left=left+2*third; third_right=right
-    pill_w=min(max(78,sw+24),max(78,int(third-18)))
+    pill_w=min(max(78,sw+24),max(78,int(third-22)))
     pill_h=min(max(40,sh+10),max(40,header_h-10))
     cx=(third_left+third_right)/2
-    px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
+    # Le badge est décalé vers l'intérieur : aucun pixel ne doit entrer
+    # dans la zone UI droite, même avec le masque de prévisualisation.
+    counter_inset=14
+    px=max(third_left+counter_inset,min(cx-pill_w/2,third_right-counter_inset-pill_w))
     py=top+(bottom-top-pill_h)/2
     draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
