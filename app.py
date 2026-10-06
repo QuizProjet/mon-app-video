@@ -683,58 +683,31 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """V31.34 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
+    """V31.30 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
     gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
-    # V31.33 — le masque de prévisualisation est la référence réelle.
-    # On applique la même zone sûre aux 4 styles, même si l'utilisateur
-    # n'a pas activé la mise en page automatique. Une marge interne est
-    # ajoutée pour que le compteur ne touche JAMAIS la bande UI de droite.
-    # V31.36 — en-tête pilotable et persistant depuis l’Éditeur Studio.
-    platform=str(cfg.get("social_platform","Universel"))
-    profiles={
-        "TikTok": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
-        "Instagram Reels": {"top":0.09,"bottom":0.18,"left":0.03,"right":0.16},
-        "YouTube Shorts": {"top":0.08,"bottom":0.14,"left":0.03,"right":0.12},
-        "Facebook Reels": {"top":0.09,"bottom":0.17,"left":0.03,"right":0.15},
-        "Universel": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
-    }
-    prof=profiles.get(platform,profiles["Universel"])
-    profile_left=int(WIDTH*prof["left"]); profile_right=int(WIDTH*(1-prof["right"]))
-    profile_top=int(HEIGHT*prof["top"]); profile_bottom=int(HEIGHT*(1-prof["bottom"]))
-
-    # En mode manuel, les curseurs de l’Éditeur Studio sont prioritaires.
-    # En mode automatique, on reste dans la zone sûre de la plateforme.
-    auto=bool(cfg.get("social_auto_layout",True))
-    if auto:
-        left=profile_left+36; right=profile_right-36
-        safe_top=profile_top; safe_bottom=profile_bottom
-        width=min(int(cfg.get("header_width",960)),right-left)
-        center=(left+right)/2
-        top=max(safe_top+36,int(cfg.get("header_y",safe_top+36)))
-        top=min(top,safe_bottom-88)
-        header_h=max(52,min(66,int(cfg.get("header_h",64))))
-        left=int(center-width/2); right=left+width
-    else:
-        width=max(300,min(1040,int(cfg.get("header_width",960))))
-        center=max(width/2,min(WIDTH-width/2,int(cfg.get("header_x",540))))
-        left=int(center-width/2); right=left+width
-        top=max(20,min(HEIGHT-80,int(cfg.get("header_y",130))))
-        header_h=max(52,min(110,int(cfg.get("header_h",64))))
-
-    bottom=min(HEIGHT,top+header_h)
+    left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
+    top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
+    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
+    # V31.32 — l'en-tête doit rester entièrement dans la zone sûre, avec
+    # une marge interne supplémentaire pour ne jamais toucher le masque.
+    safe_margin_top=24; safe_margin_bottom=24
+    top=max(safe_top+safe_margin_top,top)
+    header_h=max(52,min(66,int(cfg.get("header_h",60))))
+    bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
+    if bottom-top < 52:
+        top=max(safe_top+10, safe_bottom-62)
+        bottom=min(safe_bottom-10,top+52)
+    left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
-    # Zone 1 : logo — en mode manuel, X/Y viennent directement de l'Éditeur Studio.
+    # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand); bw_brand=text_width(draw,brand,bf)
-        if auto:
-            bx=left+16; by=top+(bottom-top-bh)//2
-        else:
-            bx=int(cfg.get("brand_x",70)); by=int(cfg.get("brand_y",139))
+        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
+        bx=left+16; by=top+(bottom-top-bh)//2
         draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
@@ -744,32 +717,17 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     center_x=left+third*1.5; max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
-    tw=text_width(draw,title,tf)
-    if auto:
-        tx=center_x-tw/2; ty=top+(bottom-top-th)//2
-    else:
-        tx=int(cfg.get("title_x",540))-tw/2; ty=int(cfg.get("title_y",139))
+    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
     score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
     # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
     third_left=left+2*third; third_right=right
-    pill_w=max(78,int(cfg.get("score_width",sw+24)))
-    pill_h=max(40,int(cfg.get("score_height",sh+10)))
-    pill_w=min(pill_w,max(78,int(third-22)))
-    pill_h=min(pill_h,max(40,header_h-10))
-    cx=(third_left+third_right)/2 + int(cfg.get("header_counter_offset_x",0))
-    if auto:
-        counter_inset=14
-        px=max(third_left+counter_inset,min(cx-pill_w/2,third_right-counter_inset-pill_w))
-        py=top+(bottom-top-pill_h)/2 + int(cfg.get("header_counter_offset_y",0))
-    else:
-        cx=int(cfg.get("score_x",cx)) + int(cfg.get("header_counter_offset_x",0))
-        px=cx-pill_w/2
-        py=int(cfg.get("score_y",top+(bottom-top-pill_h)/2)) - pill_h/2 + int(cfg.get("header_counter_offset_y",0))
-        # La marge droite reste une vraie sécurité : le compteur ne peut jamais la franchir.
-        px=max(left+8,min(px,right-int(cfg.get("header_right_margin",36))-pill_w))
-        py=max(20,min(HEIGHT-pill_h-20,py))
+    pill_w=min(max(78,sw+24),max(78,int(third-18)))
+    pill_h=min(max(40,sh+10),max(40,header_h-10))
+    cx=(third_left+third_right)/2
+    px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
+    py=top+(bottom-top-pill_h)/2
     draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
@@ -933,9 +891,7 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
-        # Ne jamais écraser une valeur déjà chargée depuis les réglages persistants.
-        if _k not in st.session_state:
-            st.session_state[_k] = _v
+        st.session_state[_k] = _v
     st.session_state["_blue_gold_layout_v31_10_applied"] = True
 
 def _layout(module="quiz", style=None):
@@ -3168,7 +3124,7 @@ def render_export_panel(video_data, base_name, key_prefix):
             st.download_button(f"⬇️ {platform} — 1080p",data=item["data"],file_name=item["filename"],mime="video/mp4",key=f"{key_prefix}_dl_direct_{platform.replace(' ','_')}",use_container_width=True)
 
 def render_layout_editor(module, style="1"):
-    """Éditeur Studio V31.36 : réglages indépendants et persistants pour les 4 styles."""
+    """Éditeur Studio V14 : indépendant pour chacun des 4 styles."""
     is_quiz = module == "quiz"
     style = str(style)
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
@@ -3181,8 +3137,7 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":965, "score_y":130, "score_size":31, "score_width":116, "score_height":54, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "header_x":540, "header_y":130, "header_width":960, "header_h":64, "header_right_margin":36, "header_counter_offset_x":0, "header_counter_offset_y":0,
+        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "brand_x":70, "brand_y":139, "brand_size":28, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#151D33", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
@@ -3215,14 +3170,12 @@ def render_layout_editor(module, style="1"):
         st.session_state[p+"social_auto_layout"] = True
     if p+"social_platform" not in st.session_state:
         st.session_state[p+"social_platform"] = "Universel"
-    # V31.36 — migration persistante : ne jamais réactiver l'automatique
-    # si une valeur a déjà été sauvegardée par l'utilisateur.
-    # Cela garantit que le mode manuel reste manuel après un redémarrage.
+    # V31.25 : activation initiale des 4 protections. Une seule fois pour
+    # ne pas réactiver le mode automatique après que l'utilisateur l'a désactivé.
     if not st.session_state.get("_social_auto_layout_v31_24_migrated", False):
         for _mod,_style in (("quiz","1"),("quiz","2"),("vocab","1"),("vocab","2")):
             _pp=("q1_" if _mod=="quiz" and _style=="1" else "q2_" if _mod=="quiz" else "v1_" if _style=="1" else "v2_")
-            if _pp+"social_auto_layout" not in st.session_state:
-                st.session_state[_pp+"social_auto_layout"] = True
+            st.session_state[_pp+"social_auto_layout"] = True
         st.session_state["_social_auto_layout_v31_24_migrated"] = True
     if st.session_state.get(p+"social_auto_layout", False):
         apply_social_auto_layout(module, style)
@@ -3262,7 +3215,8 @@ def render_layout_editor(module, style="1"):
         st.checkbox("Fond derrière le logo",key=p+"brand_bg_enabled")
         c_brand1,c_brand2=st.columns(2)
         with c_brand1:
-            st.caption("La position du logo se règle dans **🧭 En-tête → Logo**.")
+            st.slider("Logo X — gauche ↔ droite",0,1080,key=p+"brand_x")
+            st.slider("Logo Y — haut ↕ bas",80,500,key=p+"brand_y")
         with c_brand2:
             st.slider("Taille du logo / nom",16,60,key=p+"brand_size")
             st.color_picker("Couleur du logo",key=p+"brand_color")
@@ -3288,36 +3242,7 @@ def render_layout_editor(module, style="1"):
         if st.session_state.get(p+"social_auto_layout",False):
             st.success(f"✓ Protection active : {st.session_state.get(p+"social_platform","Universel")}")
         else:
-            st.info("🔓 Mode manuel : tu peux déplacer l’en-tête librement.")
-
-        st.markdown("### 🧭 En-tête — réglage manuel")
-        st.caption("Désactive « mise en page automatique » pour prendre totalement la main sur l’en-tête. Ces réglages sont indépendants pour chacun des 4 styles.")
-        h1,h2=st.columns(2)
-        with h1:
-            st.slider("↔ En-tête X — centre horizontal",0,1080,key=p+"header_x")
-            st.slider("↕ En-tête Y — haut ↕ bas",40,700,key=p+"header_y")
-            st.slider("↔ Largeur de l’en-tête",500,1040,key=p+"header_width",step=10)
-        with h2:
-            st.slider("↕ Hauteur de l’en-tête",52,110,key=p+"header_h")
-            st.slider("↔ Marge droite de sécurité",0,160,key=p+"header_right_margin")
-            st.slider("↔ Décalage du compteur",-160,160,key=p+"header_counter_offset_x")
-            st.slider("↕ Décalage vertical du compteur",-40,40,key=p+"header_counter_offset_y")
-        st.markdown("#### 🏷️ Logo • 📝 Titre • 🔢 Compteur")
-        e1,e2,e3=st.columns(3)
-        with e1:
-            st.caption("🏷️ Logo")
-            st.caption(f"X : {st.session_state.get(p+'brand_x',70)} • Y : {st.session_state.get(p+'brand_y',139)}")
-            st.caption("Modifie ces valeurs dans la section **🧭 En-tête** ci-dessus.")
-        with e2:
-            st.caption("📝 Titre")
-            st.caption(f"X : {st.session_state.get(p+'title_x',540)} • Y : {st.session_state.get(p+'title_y',139)}")
-            st.caption("Modifie la position dans **🧭 En-tête → Titre**.")
-        with e3:
-            st.caption("🔢 Compteur")
-            st.caption(f"X : {st.session_state.get(p+'score_x',965)} • Y : {st.session_state.get(p+'score_y',130)}")
-            st.caption("Modifie la position dans **🧭 En-tête → Compteur**.")
-            st.caption(f"Largeur : {st.session_state.get(p+'score_width',116)} • Hauteur : {st.session_state.get(p+'score_height',54)}")
-        st.success("💾 Ces réglages sont propres à ce style et seront repris lors de la prochaine génération après « Enregistrer les réglages ».")
+            st.info("🔓 Mode manuel : la mise en page actuelle est conservée.")
         st.markdown("---")
         c1,c2 = st.columns(2)
         with c1:
@@ -3339,10 +3264,12 @@ def render_layout_editor(module, style="1"):
                 st.slider("Espace entre lignes",0,24,key=p+"table_gap",step=2)
         with c2:
             st.markdown("**🧭 En-tête — position dans la zone sûre**")
-            st.caption("Les réglages de l’en-tête ci-dessus sont les seuls réglages utilisés par le rendu. Ils sont sauvegardés avec ce style.")
+            if is_quiz and style=="1":
+                st.slider("↕ En-tête Y — haut 0 • bas 1920",80,500,key=p+"header_y")
+                st.slider("Hauteur de l’en-tête",60,110,key=p+"header_h")
             st.markdown("**Titre**")
-            st.caption(f"X : {st.session_state.get(p+'title_x',540)} • Y : {st.session_state.get(p+'title_y',139)}")
-            st.caption("Modifie ces valeurs dans la section **🧭 En-tête** ci-dessus.")
+            st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
+            st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
             if is_quiz and style=="1":
                 st.markdown("**Réponses — Style 1**")
                 st.slider("↔ Réponses X — bord gauche du bloc",20,180,key=p+"answer_x")
@@ -3382,8 +3309,8 @@ def render_layout_editor(module, style="1"):
                 st.slider("Marge du texte dans les cartes",12,40,key=p+"answer_text_padding")
                 st.slider("Taille du compteur",20,72,key=p+"score_size")
                 st.markdown("**Compteur 1/15 — position indépendante**")
-                st.caption(f"X : {st.session_state.get(p+'score_x',965)} • Y : {st.session_state.get(p+'score_y',130)}")
-                st.caption("La position se règle dans **🧭 En-tête → Compteur**.")
+                st.slider("↔ Compteur X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"score_x")
+                st.slider("↕ Compteur Y — haut 0 • bas 1920",40,600,key=p+"score_y")
                 st.markdown("**Explication**")
                 st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
@@ -3792,7 +3719,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         s1,s2=st.columns(2,gap="small")
         with s1:
             if st.button("💾 Enregistrer les réglages",key="studio_save_unified_q",use_container_width=True):
-                _save_settings(); st.success("✅ Réglages enregistrés — ils seront réutilisés à la prochaine génération.")
+                _save_settings(); st.success("✅ Réglages enregistrés.")
         with s2:
             if st.button("🎲 Nouvelle variation",key="studio_variation_unified_q",use_container_width=True):
                 st.session_state["q_variation_seed"]=random.randint(1,999999); st.rerun()
@@ -4103,7 +4030,7 @@ else:
         s1,s2=st.columns(2,gap="small")
         with s1:
             if st.button("💾 Enregistrer les réglages",key="studio_save_unified_v",use_container_width=True):
-                _save_settings(); st.success("✅ Réglages enregistrés — ils seront réutilisés à la prochaine génération.")
+                _save_settings(); st.success("✅ Réglages enregistrés.")
         with s2:
             if st.button("🎲 Nouvelle variation",key="studio_variation_unified_v",use_container_width=True):
                 st.session_state["v_variation_seed"]=random.randint(1,999999); st.rerun()
