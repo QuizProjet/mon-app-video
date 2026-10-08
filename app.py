@@ -1515,6 +1515,54 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
     draw_brand(draw,theme,channel)
     return img
 
+def draw_page_template(text, theme_name, channel, bg_file=None, progress=1.0, kind="intro", variant="Premium lumineux", module="quiz", style="1", language="Français"):
+    """Page d'ouverture/fin interchangeable depuis l'onglet État.
+    Les trois variantes réutilisent le même fond et la même identité, sans toucher au moteur audio/sync.
+    """
+    variant = clean_text(variant or "Premium lumineux")
+    if variant == "Premium lumineux":
+        return draw_hook(text, theme_name, channel, bg_file, progress, module=module, style=style, language=language)
+    theme = THEMES[theme_name]
+    cfg = _layout(module, style)
+    ff = cfg.get("font_family", "DejaVu Sans")
+    img = add_top_glow(make_base(theme_name, bg_file), theme, 1.0 + 0.18 * float(clamp(progress)))
+    draw = ImageDraw.Draw(img)
+    p = ease_out(progress)
+    title = clean_text(text or ("Prêt ? C'est parti !" if kind == "intro" else "Merci d'avoir joué !"))
+    if variant == "Néon élégant":
+        # Carte lumineuse, plus moderne et plus claire que l'ancien écran sombre.
+        left, top, right, bottom = 90, 610, 990, 1310
+        draw.rounded_rectangle((left, top, right, bottom), radius=42, fill=(18, 35, 68), outline=theme["accent"], width=4)
+        draw.rounded_rectangle((left+16, top+16, right-16, bottom-16), radius=32, outline=(*theme["accent"],), width=2)
+        f = get_font(68, ff)
+        lines = wrap_text(title, f, 790)[:3]
+        y = 760 - int(45*(1-p))
+        for line in lines:
+            tw = text_width(draw, line, f)
+            draw.text(((WIDTH-tw)/2+3, y+5), line, font=f, fill=(5,10,22))
+            draw.text(((WIDTH-tw)/2, y), line, font=f, fill=(255,255,255))
+            y += 92
+        label = "SUSPENSELINGO"
+        lf = get_font(28, ff)
+        lw = text_width(draw, label, lf)
+        draw.text(((WIDTH-lw)/2, 680), label, font=lf, fill=theme["accent"])
+    else:  # Minimal premium
+        draw.line((150, 650, 930, 650), fill=theme["accent"], width=4)
+        draw.line((250, 1280, 830, 1280), fill=theme["accent"], width=2)
+        brand = get_font(30, ff)
+        bw = text_width(draw, "SUSPENSELINGO", brand)
+        draw.text(((WIDTH-bw)/2, 700), "SUSPENSELINGO", font=brand, fill=theme["accent"])
+        f = get_font(72, ff)
+        lines = wrap_text(title, f, 820)[:3]
+        y = 790 - int(35*(1-p))
+        for line in lines:
+            tw = text_width(draw, line, f)
+            draw.text(((WIDTH-tw)/2+3, y+5), line, font=f, fill=(5,10,22))
+            draw.text(((WIDTH-tw)/2, y), line, font=f, fill=(255,255,255))
+            y += 98
+    return img
+
+
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français"):
     theme=THEMES[theme_name]
     ff=_layout(module, style).get("font_family","DejaVu Sans")
@@ -3153,6 +3201,7 @@ def render_layout_editor(module, style="1"):
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
         "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "intro_page_variant":"Premium lumineux", "outro_page_variant":"Premium lumineux",
         "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
@@ -3213,7 +3262,27 @@ def render_layout_editor(module, style="1"):
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • PRO</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Chaque élément possède ses propres positions, tailles, couleurs et cadres. X = horizontal • Y = vertical • les réglages sont indépendants par style.</div>', unsafe_allow_html=True)
     st.info("🧭 **Comment lire X/Y :** X déplace de gauche à droite (0 → 1080). Y déplace de haut en bas (0 → 1920). Les coordonnées concernent la vidéo 1080×1920, pas la taille du téléphone affiché.")
-    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
+    tabs = st.tabs(["🧩 Structure","🖼️ État","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
+
+    with tabs[1]:
+        st.markdown("### 🖼️ Première page et dernière page")
+        st.caption("Choisis le style de l'écran d'ouverture et de l'écran final. Les choix sont conservés avec les autres réglages et n'altèrent ni les questions, ni la voix, ni la synchronisation.")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**▶️ PREMIÈRE PAGE**")
+            st.selectbox("Style de la première page", ["Premium lumineux", "Néon élégant", "Minimal premium"], key=p+"intro_page_variant")
+            intro_txt = "Prêt ? C'est parti !" if is_quiz else "Apprends ces nouveaux mots !"
+            st.caption("Aperçu")
+            intro_preview = draw_page_template(intro_txt, list(THEMES.keys())[0], "SuspenseLingo", None, 1.0, "intro", st.session_state.get(p+"intro_page_variant", "Premium lumineux"), module, style)
+            st.image(intro_preview.resize((216,384), Image.Resampling.LANCZOS), width=216)
+        with c2:
+            st.markdown("**🏁 DERNIÈRE PAGE**")
+            st.selectbox("Style de la dernière page", ["Premium lumineux", "Néon élégant", "Minimal premium"], key=p+"outro_page_variant")
+            outro_txt = "Merci d'avoir joué !" if is_quiz else "Abonne-toi pour un nouveau mot !"
+            st.caption("Aperçu")
+            outro_preview = draw_page_template(outro_txt, list(THEMES.keys())[0], "SuspenseLingo", None, 1.0, "outro", st.session_state.get(p+"outro_page_variant", "Premium lumineux"), module, style)
+            st.image(outro_preview.resize((216,384), Image.Resampling.LANCZOS), width=216)
+        st.info("💡 Les aperçus utilisent le fond et le thème actifs au moment du rendu vidéo. Les trois propositions sont disponibles pour chaque style.")
 
     with tabs[0]:
         if is_quiz:
@@ -3254,7 +3323,7 @@ def render_layout_editor(module, style="1"):
         with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
         with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
 
-    with tabs[1]:
+    with tabs[2]:
         st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
         if is_quiz and style=="1":
             st.caption("🎯 Style 1 Pro : le mode automatique positionne la composition dans la zone sûre au premier chargement. Ensuite, tu peux déplacer librement la question, les réponses, le minuteur et l'explication depuis Position/Taille.")
@@ -3315,7 +3384,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Décalage Y", -50, 50, key=p+"vocab_timer_offset_y", step=5)
                 st.slider("Taille du minuteur",24,70,key=p+"vocab_timer_size")
 
-    with tabs[2]:
+    with tabs[3]:
         c1,c2 = st.columns(2)
         with c1:
             st.markdown("**Élément actif**")
@@ -3367,7 +3436,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Y traduction — Style 1",650,1200,key=p+"translation_y")
                 st.slider("Largeur traduction",400,1000,key=p+"translation_width")
 
-    with tabs[3]:
+    with tabs[4]:
         c1,c2 = st.columns(2)
         with c1:
             st.color_picker("Accent / titre",key=p+"primary")
@@ -3385,7 +3454,7 @@ def render_layout_editor(module, style="1"):
         with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
         with bc3: st.slider("Arrondi",0,48,key=p+"border_radius")
 
-    with tabs[4]:
+    with tabs[5]:
         st.selectbox("Animation principale",["Glissement","Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
         with c1: st.slider("Vitesse",0.5,2.0,key=p+"animation_speed")
@@ -3393,7 +3462,7 @@ def render_layout_editor(module, style="1"):
         st.slider("Mouvement du fond",0.0,2.0,key=p+"motion_strength")
         st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
 
-    with tabs[5]:
+    with tabs[6]:
         # Quiz Style 1 : le compte à rebours est une fonctionnalité fondamentale.
         # IMPORTANT : sa valeur doit être fixée AVANT la création du widget Streamlit,
         # sinon Streamlit lève StreamlitWidgetAlreadyInstantiatedError.
@@ -3431,7 +3500,7 @@ def render_layout_editor(module, style="1"):
         else:
             st.caption("Tic du chrono • entrée de question/mot • pop de révélation • ding de fin.")
 
-    with tabs[6]:
+    with tabs[7]:
         st.selectbox("Police du style",FONT_CHOICES,key=p+"font_family")
         if (not is_quiz) and style=="2":
             st.selectbox("Police des en-têtes du tableau",FONT_CHOICES,key=p+"table_header_font")
@@ -3439,7 +3508,7 @@ def render_layout_editor(module, style="1"):
         st.caption("✅ Cette police est utilisée par l’aperçu et le rendu vidéo de CE style uniquement.")
         st.info("Choisis une police une seule fois pour ce style. Les réglages des autres styles restent indépendants.")
 
-    with tabs[7]:
+    with tabs[8]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
             st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -3453,7 +3522,7 @@ def render_layout_editor(module, style="1"):
         st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
 
     if is_quiz and style == "1":
-        with tabs[8]:
+        with tabs[9]:
             st.markdown("**🎵 Musique de fond du Quiz Style 1**")
             st.checkbox("Activer la musique de fond", key=p+"bg_music_enabled")
             c1,c2=st.columns(2)
@@ -3765,7 +3834,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     if clean_text(mot_start_q):
                         ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(_motivation_text_clean(mot_start_q),voice_q,ma,tts_rate); md=audio_duration(ma)
                         if md>0.15:
-                            mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                            mf=save_frames([(draw_page_template(mot_start_q,theme_q,channel_q,bg_q,p,"intro",st.session_state.get("q1_intro_page_variant","Premium lumineux"),"quiz","1",quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
                             mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
                     if style_q_full.startswith("Style 2"):
@@ -3899,7 +3968,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
                         od=audio_duration(oa)
                         if od>0.15:
-                            of=save_frames([(draw_hook(final_cta_text,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
+                            of=save_frames([(draw_page_template(final_cta_text,theme_q,channel_q,bg_q,p,"outro",st.session_state.get("q1_outro_page_variant","Premium lumineux"),"quiz","1",quiz_language),od/6)
                                             for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                             oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
@@ -4223,9 +4292,9 @@ else:
                         gc.collect()
                     oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
                     if style_v.startswith("Style 2"):
-                        of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                        of=save_frames([(draw_page_template(outro_v+((" "+outro_v_sub) if clean_text(outro_v_sub) else ""),theme_v,channel_v,bg_v,p,"outro",st.session_state.get(("v2_" if style_v.startswith("Style 2") else "v1_")+"outro_page_variant","Premium lumineux"),"vocab","2" if style_v.startswith("Style 2") else "1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                     else:
-                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                        of=save_frames([(draw_page_template(outro_v,theme_v,channel_v,bg_v,p,"outro",st.session_state.get("v1_outro_page_variant","Premium lumineux"),"vocab","1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                     oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                     final=os.path.join(tmp,"vocabulaire_pro.mp4")
                     if style_v.startswith("Style 2"):
