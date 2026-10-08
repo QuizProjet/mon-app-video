@@ -1516,50 +1516,96 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
     return img
 
 def draw_page_template(text, theme_name, channel, bg_file=None, progress=1.0, kind="intro", variant="Premium lumineux", module="quiz", style="1", language="Français"):
-    """Page d'ouverture/fin interchangeable depuis l'onglet État.
-    Les trois variantes réutilisent le même fond et la même identité, sans toucher au moteur audio/sync.
-    """
+    """Pages intro/outro premium. Toutes les variantes restent lumineuses, lisibles et cohérentes avec SuspenseLingo."""
     variant = clean_text(variant or "Premium lumineux")
-    if variant == "Premium lumineux":
-        return draw_hook(text, theme_name, channel, bg_file, progress, module=module, style=style, language=language)
     theme = THEMES[theme_name]
     cfg = _layout(module, style)
     ff = cfg.get("font_family", "DejaVu Sans")
-    img = add_top_glow(make_base(theme_name, bg_file), theme, 1.0 + 0.18 * float(clamp(progress)))
-    draw = ImageDraw.Draw(img)
     p = ease_out(progress)
     title = clean_text(text or ("Prêt ? C'est parti !" if kind == "intro" else "Merci d'avoir joué !"))
+    brand = clean_text(channel or "SuspenseLingo") or "SuspenseLingo"
+
+    # Base volontairement plus lumineuse : aucun écran de fin presque noir.
+    img = add_top_glow(make_base(theme_name, bg_file), theme, 1.12 + 0.08*p)
+    draw = ImageDraw.Draw(img)
+
+    # Variante 1 — Premium lumineux : référence principale.
+    if variant == "Premium lumineux":
+        # Voile clair et carte premium pour détacher le message du fond.
+        panel = Image.new("RGBA", (WIDTH, HEIGHT), (0,0,0,0))
+        pd = ImageDraw.Draw(panel)
+        pd.rounded_rectangle((72, 300, 1008, 1515), radius=48,
+                             fill=(9,24,52,218), outline=(*theme["accent"],190), width=3)
+        pd.rounded_rectangle((92, 320, 988, 1495), radius=40,
+                             outline=(255,255,255,38), width=2)
+        img = Image.alpha_composite(img.convert("RGBA"), panel).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        lf=get_font(26,ff); lw=text_width(draw,brand,lf)
+        draw.text(((WIDTH-lw)/2,390),brand,font=lf,fill=theme["accent"])
+        draw.line((270,455,810,455),fill=(255,255,255,65),width=2)
+        _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,610,86,p)
+        f=get_font(66,ff); lines=wrap_text(title,f,800)[:3]
+        y=790-int(30*(1-p))
+        for line in lines:
+            tw=text_width(draw,line,f)
+            draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
+            draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(255,255,255))
+            y+=92
+        sub="C'est parti !" if kind=="intro" else "À très bientôt !"
+        sf=get_font(29,ff); sw=text_width(draw,sub,sf)
+        draw.text(((WIDTH-sw)/2,1165),sub,font=sf,fill=(225,232,244))
+        draw.rounded_rectangle((220,1300,860,1314),radius=7,fill=(255,255,255,35))
+        draw.rounded_rectangle((220,1300,220+int(640*p),1314),radius=7,fill=theme["accent"])
+        draw.text(((WIDTH-text_width(draw,brand,get_font(20,ff)))/2,1415),brand,font=get_font(20,ff),fill=(190,201,220))
+        return img
+
+    # Variante 2 — Éclat néon premium : moderne mais toujours claire et élégante.
     if variant == "Néon élégant":
-        # Carte lumineuse, plus moderne et plus claire que l'ancien écran sombre.
-        left, top, right, bottom = 90, 610, 990, 1310
-        draw.rounded_rectangle((left, top, right, bottom), radius=42, fill=(18, 35, 68), outline=theme["accent"], width=4)
-        draw.rounded_rectangle((left+16, top+16, right-16, bottom-16), radius=32, outline=(*theme["accent"],), width=2)
-        f = get_font(68, ff)
-        lines = wrap_text(title, f, 790)[:3]
-        y = 760 - int(45*(1-p))
+        # Deux halos décoratifs et une carte translucide; pas de gros cadre sombre.
+        draw.ellipse((80,250,420,590),fill=(*theme["accent"],28))
+        draw.ellipse((690,1120,1030,1460),fill=(*theme["accent"],22))
+        panel=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); pd=ImageDraw.Draw(panel)
+        pd.rounded_rectangle((78,410,1002,1390),radius=54,fill=(12,32,65,205),outline=(*theme["accent"],220),width=4)
+        pd.rounded_rectangle((98,430,982,1370),radius=44,outline=(255,255,255,42),width=2)
+        img=Image.alpha_composite(img.convert("RGBA"),panel).convert("RGB"); draw=ImageDraw.Draw(img)
+        lf=get_font(25,ff); lw=text_width(draw,brand.upper(),lf)
+        draw.text(((WIDTH-lw)/2,500),brand.upper(),font=lf,fill=theme["accent"])
+        _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,650,92,p)
+        f=get_font(64,ff); lines=wrap_text(title,f,790)[:3]
+        y=820-int(28*(1-p))
         for line in lines:
-            tw = text_width(draw, line, f)
-            draw.text(((WIDTH-tw)/2+3, y+5), line, font=f, fill=(5,10,22))
-            draw.text(((WIDTH-tw)/2, y), line, font=f, fill=(255,255,255))
-            y += 92
-        label = "SUSPENSELINGO"
-        lf = get_font(28, ff)
-        lw = text_width(draw, label, lf)
-        draw.text(((WIDTH-lw)/2, 680), label, font=lf, fill=theme["accent"])
-    else:  # Minimal premium
-        draw.line((150, 650, 930, 650), fill=theme["accent"], width=4)
-        draw.line((250, 1280, 830, 1280), fill=theme["accent"], width=2)
-        brand = get_font(30, ff)
-        bw = text_width(draw, "SUSPENSELINGO", brand)
-        draw.text(((WIDTH-bw)/2, 700), "SUSPENSELINGO", font=brand, fill=theme["accent"])
-        f = get_font(72, ff)
-        lines = wrap_text(title, f, 820)[:3]
-        y = 790 - int(35*(1-p))
-        for line in lines:
-            tw = text_width(draw, line, f)
-            draw.text(((WIDTH-tw)/2+3, y+5), line, font=f, fill=(5,10,22))
-            draw.text(((WIDTH-tw)/2, y), line, font=f, fill=(255,255,255))
-            y += 98
+            tw=text_width(draw,line,f)
+            draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
+            draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(255,255,255))
+            y+=90
+        draw.line((250,1150,830,1150),fill=theme["accent"],width=3)
+        sf=get_font(28,ff); sub="Ton défi commence maintenant" if kind=="intro" else "Merci pour ta participation !"
+        sw=text_width(draw,sub,sf); draw.text(((WIDTH-sw)/2,1200),sub,font=sf,fill=(220,230,245))
+        draw_brand(draw,theme,brand,None)
+        return img
+
+    # Variante 3 — Élégance éditoriale : sobre, luxueuse et lumineuse.
+    # Elle évite l'ancien écran minimal trop vide.
+    panel=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); pd=ImageDraw.Draw(panel)
+    pd.rounded_rectangle((110,350,970,1450),radius=36,fill=(245,248,252,235),outline=(*theme["accent"],220),width=3)
+    pd.rounded_rectangle((128,368,952,1432),radius=28,outline=(255,255,255,210),width=2)
+    img=Image.alpha_composite(img.convert("RGBA"),panel).convert("RGB"); draw=ImageDraw.Draw(img)
+    # Bandeau supérieur coloré et marque.
+    draw.rounded_rectangle((170,455,910,535),radius=20,fill=theme["accent"])
+    lf=get_font(24,ff); lw=text_width(draw,brand,lf)
+    draw.text(((WIDTH-lw)/2,480),brand,font=lf,fill=(10,18,35))
+    _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,680,86,p)
+    f=get_font(62,ff); lines=wrap_text(title,f,730)[:3]
+    y=820-int(25*(1-p))
+    for line in lines:
+        tw=text_width(draw,line,f)
+        draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(18,31,55))
+        y+=88
+    sub="PRÊT POUR LE DÉFI" if kind=="intro" else "À BIENTÔT"
+    sf=get_font(24,ff); sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1190),sub,font=sf,fill=theme["accent"])
+    draw.line((245,1260,835,1260),fill=(18,31,55,55),width=2)
+    draw.text(((WIDTH-text_width(draw,"SuspenseLingo",get_font(19,ff)))/2,1320),"SuspenseLingo",font=get_font(19,ff),fill=(90,105,125))
     return img
 
 
