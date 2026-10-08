@@ -687,7 +687,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
-    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
+    gold=(250,184,60); navy=(25,45,78); border=(76,105,150); white=(255,255,255); black=(15,23,42)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
@@ -695,7 +695,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # une marge interne supplémentaire pour ne jamais toucher le masque.
     safe_margin_top=24; safe_margin_bottom=24
     top=max(safe_top+safe_margin_top,top)
-    header_h=max(52,min(66,int(cfg.get("header_h",60))))
+    header_h=max(58,min(78,int(cfg.get("header_h",72))))
     bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
     if bottom-top < 52:
         top=max(safe_top+10, safe_bottom-62)
@@ -706,9 +706,21 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",26)),ff); bh=text_height(bf,brand)
-        bx=left+16; by=top+(bottom-top-bh)//2
-        draw.text((bx,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+        bf=get_font(int(cfg.get("brand_size",31)),ff); bh=text_height(bf,brand)
+        bx=left+18; by=top+(bottom-top-bh)//2
+        # Badge de marque : petit monogramme + capsule pour donner plus de
+        # présence à SuspenseLingo sans modifier la mécanique du quiz.
+        icon_r=max(12,min(18,(bottom-top)//4))
+        icx=bx+icon_r; icy=top+(bottom-top)//2
+        draw.ellipse((icx-icon_r,icy-icon_r,icx+icon_r,icy+icon_r),fill=gold)
+        sf=get_font(max(14,int(icon_r*1.25)),ff)
+        stxt="S"; ssw=text_width(draw,stxt,sf); ssh=text_height(sf,stxt)
+        draw.text((icx-ssw/2,icy-ssh/2-1),stxt,font=sf,fill=black)
+        text_x=bx+icon_r*2+10
+        if cfg.get("brand_bg_enabled",True):
+            tw=text_width(draw,brand,bf); pad_x=10; pad_y=7
+            draw.rounded_rectangle((text_x-pad_x,by-pad_y,text_x+tw+pad_x,by+bh+pad_y),radius=12,fill=_hex_rgb(cfg.get("brand_bg"),(32,56,94)),outline=border,width=1)
+        draw.text((text_x,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
@@ -920,7 +932,7 @@ def _layout(module="quiz", style=None):
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
         "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
-        "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
+        "bg_opacity":10,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
         "primary":"#F59E0B","answer":"#1E293B","answer2":"#1E293B",
         "correct":"#10B981","text":"#FFFFFF","muted":"#E2E8F0",
         "border_color":"#334155","border_width":2,"border_radius":20,
@@ -3030,7 +3042,7 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.caption("🧠 SuspenseLingo Studio V30  •  🗣️ Vocabulaire Pro")
+st.sidebar.caption("🧠 SuspenseLingo Studio V32  •  🗣️ Vocabulaire Pro")
 st.sidebar.markdown("""
 <div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
@@ -3140,15 +3152,15 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "brand_x":70, "brand_y":139, "brand_size":28, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#151D33", "brand_color":"#F59E0B",
+        "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
         "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
-        "bg_opacity":18, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
+        "bg_opacity":10, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
         "translation_x":540, "translation_y":760, "translation_width":850,
         "table_x":70, "table_y":350, "table_width":940, "table_row_h":82, "table_gap":6, "table_split":540, "table_radius":18,
         "vocab_fr_size":42, "vocab_tr_size":38, "vocab_header_size":29, "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
@@ -3182,12 +3194,16 @@ def render_layout_editor(module, style="1"):
             if _pp+"social_auto_layout" not in st.session_state:
                 st.session_state[_pp+"social_auto_layout"] = True
         st.session_state["_social_auto_layout_v31_24_migrated"] = True
-    # V31.31 LAYOUT PRO — l'automatique ne doit plus écraser les réglages
+    # V32 MISE EN PAGE PRO — l'automatique ne doit plus écraser les réglages
     # manuels à chaque rerun Streamlit. Il s'applique au premier chargement
     # et uniquement lorsqu'on change de plateforme ou réactive l'automatique.
     _auto_on = bool(st.session_state.get(p+"social_auto_layout", False))
-    _auto_sig = (module, style, st.session_state.get(p+"social_platform", "Universel"))
+    _auto_sig = f"{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
     if _auto_on:
+        # V32 : la mise en page automatique ne doit plus réinitialiser les
+        # réglages enregistrés à chaque nouvelle visite. La signature est
+        # elle-même persistée dans qvp_settings.json. Elle ne change que
+        # lorsque la plateforme cible change.
         if st.session_state.get(p+"_social_auto_applied_sig") != _auto_sig:
             apply_social_auto_layout(module, style)
             st.session_state[p+"_social_auto_applied_sig"] = _auto_sig
@@ -3463,7 +3479,7 @@ with n2:
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
-    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Mise en page Pro • Éditeur interactif</small></div>',unsafe_allow_html=True)
 
     # Paramètres et contenu en pleine largeur.
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
@@ -3724,14 +3740,8 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         except Exception as e:
             st.error(f"Aperçu live indisponible : {e}")
 
-        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
-        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
-        try:
-            if "preview" not in locals():
-                raise RuntimeError("L’aperçu interactif n’a pas pu être calculé.")
-            render_platform_safe_preview(preview, "quiz_platform_safe", "quiz", "2" if str(quiz_style_id).endswith("2") else "1")
-        except Exception as e:
-            st.caption(f"Aperçu plateforme indisponible : {e}")
+        st.markdown("#### 📱 FORMAT DE SORTIE")
+        st.caption("Le gabarit de création reste propre et sans zones interdites affichées. Le format final est choisi automatiquement à l’export selon le réseau.")
 
         # Action principale immédiatement sous l'aperçu et les commandes rapides.
         q_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makeq_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
@@ -3909,7 +3919,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
             st.error(f"Erreur pendant le montage SuspenseLingo : {e}")
 
 else:
-    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Mise en page Pro • Éditeur interactif</small></div>',unsafe_allow_html=True)
     # Paramètres et contenu en pleine largeur.
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
     v1,v2=st.columns(2,gap="medium")
@@ -4036,14 +4046,8 @@ else:
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
-        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
-        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
-        try:
-            if "preview_v" not in locals():
-                raise RuntimeError("L’aperçu interactif vocabulaire n’a pas pu être calculé.")
-            render_platform_safe_preview(preview_v, "vocab_platform_safe", "vocab", "2" if str(vocab_style_id).endswith("2") else "1")
-        except Exception as e:
-            st.caption(f"Aperçu plateforme indisponible : {e}")
+        st.markdown("#### 📱 FORMAT DE SORTIE")
+        st.caption("Le gabarit de création reste propre et sans zones interdites affichées. Le format final est choisi automatiquement à l’export selon le réseau.")
 
         v_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
         s1,s2=st.columns(2,gap="small")
