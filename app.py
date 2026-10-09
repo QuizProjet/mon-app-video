@@ -1,128 +1,96 @@
-                                elapsed=reflection_duration*j/steps
-                                if elapsed<1.05:
-                                    sec=3
-                                    frac=1-(elapsed/1.05)
-                                elif elapsed<2.10:
-                                    sec=2
-                                    frac=1-((elapsed-1.05)/1.05)
-                                elif elapsed<3.15:
-                                    sec=1
-                                    frac=1-((elapsed-2.10)/1.05)
-                                else:
-                                    sec=None
-                                    frac=0.0
+import streamlit as st
+import google.generativeai as genai
+import asyncio
+import edge_tts
+import json
+import os
+import re
+import tempfile
+import math
+import time
+import random
+import csv
+import io
+import zipfile
+import hashlib
+import gc
+import wave
+import struct
+import subprocess
+import base64
+import imageio_ffmpeg
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-                                cframes.append((
-                                    draw_vocab_cumulative_frame(
-                                        items,idx,theme_v,channel_v,bg_v,
-                                        timer=sec,
-                                        timer_fraction=max(0.0,frac),
-                                        reveal=False,
-                                        motion=elapsed/reflection_duration,
-                                        video_title=th_v,
-                                        # Le mot français reste visible pendant 3-2-1.
-                                        source_active_word=fr_last_word
-                                    ),
-                                    reflection_duration/steps
-                                ))
+# ============================================================
+# SUSPENSELINGO — STUDIO
+# V32.3.6 — interface claire conservée, graphismes thématiques et couleurs harmonisées
+# V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
+# V23 — Stabilisation interface : colonne droite sticky, aperçu live, génération pro. Aucune fonctionnalité vidéo supprimée.
+# ============================================================
+st.set_page_config(page_title="SuspenseLingo Studio", page_icon="🎬", layout="wide")
 
-                            count_clip=os.path.join(tmp,f"count_{idx}.mp4")
-                            make_vocab_style2_segment(
-                                save_frames(cframes,tmp,f"vc_{idx}"),
-                                countdown_sfx,count_clip,tmp,1.0
-                            )
+st.markdown("""
+<style>
+[data-testid="stAppViewContainer"] { background: linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%); color:#172033; }
+[data-testid="stMain"] { background: transparent; color:#172033; }
+[data-testid="stSidebar"] { background: linear-gradient(180deg,#ffffff 0%,#f2f6fc 100%); border-right: 1px solid #d9e2ef; }
+[data-testid="stSidebar"] * { color:#334155 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] { color:#334155 !important; }
+[data-testid="stSidebar"] .stRadio label { background:#ffffff; border:1px solid #dbe4f0; border-radius:14px; padding:8px 10px; margin:4px 0; }
+label, [data-testid="stMarkdownContainer"] { color:#334155; }
+[data-testid="stHeader"] { background: rgba(248,251,255,.92); }
+.block-container { max-width: 1220px; padding-top: .55rem; padding-bottom: 1rem; }
+h1, h2, h3 { letter-spacing: -0.02em; color:#172033; }
+[data-testid="stTabs"] button { font-weight: 800; font-size: 1.02rem; color:#334155; padding:10px 18px; }
+[data-testid="stTabs"] [aria-selected="true"] { color:#6d4aff !important; border-bottom-color:#6d4aff !important; }
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea { border-radius: 14px !important; background:#ffffff !important; color:#172033 !important; border-color:#cbd5e1 !important; }
+[data-baseweb="select"] > div { background:#ffffff !important; border-color:#cbd5e1 !important; color:#172033 !important; border-radius:14px !important; }
+[data-testid="stButton"] button { border-radius: 14px; min-height: 2.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: linear-gradient(135deg,#ffffff,#f3f6fa); color:#172033; box-shadow:0 4px 12px rgba(15,23,42,.06); }
+[data-testid="stButton"] button:hover { border-color:#7c8cff; transform: translateY(-1px); box-shadow:0 8px 18px rgba(15,23,42,.10); }
+[data-testid="stFileUploaderDropzone"] { border: 1px dashed #b9c5d6; border-radius: 16px; background: #ffffff; }
+.qvp-card { padding: 9px 12px; border: 1px solid #dbe2ec; border-radius: 18px; background: #ffffff; box-shadow: 0 10px 28px rgba(15,23,42,.07); margin: 4px 0 8px; }
+.qvp-small { color:#64748b; font-size:.9rem; }
+.qvp-side-brand { display:flex; gap:12px; align-items:center; padding:8px 2px 18px; }
+.qvp-logo { width:42px; height:42px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:25px; font-weight:900; background:linear-gradient(135deg,#7b4dff,#36b8e8); color:white !important; box-shadow:0 8px 24px rgba(83,67,180,.35); }
+.qvp-side-title { font-size:1.18rem; font-weight:800; color:#fff !important; }
+.qvp-side-sub { font-size:.72rem; color:#b9c8e8 !important; margin-top:2px; }
+.qvp-side-note { margin-top:18px; padding:14px; border:1px solid rgba(255,255,255,.13); border-radius:16px; background:linear-gradient(135deg,rgba(124,77,255,.18),rgba(42,180,216,.10)); font-size:.78rem; line-height:1.45; }
+.qvp-hero { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 16px; border:1px solid #dbe4f0; border-radius:24px; background:rgba(255,255,255,.84); box-shadow:0 14px 36px rgba(31,48,82,.08); margin-bottom:18px; }
+.qvp-hero h1 { margin:2px 0 3px; font-size:1.55rem; }
+.qvp-hero p { margin:0; color:#66748c; }
+.qvp-kicker { color:#6751e8; font-size:.78rem; font-weight:800; letter-spacing:.12em; }
+.qvp-hero-pill { padding:11px 16px; border-radius:999px; background:#f0edff; color:#5c45d5; font-weight:800; white-space:nowrap; }
+.qvp-flow { display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding:13px 18px; border:1px solid #e1e7f0; border-radius:18px; background:#fff; color:#334155; margin:0 0 20px; box-shadow:0 7px 20px rgba(15,23,42,.04); }
+.qvp-flow b { color:#8b78ee; }
+.qvp-mini-card { min-height:94px; padding:18px; border:1px solid #ddd7ff; border-radius:17px; background:linear-gradient(135deg,#faf9ff,#f2f8ff); color:#334155; }
+.qvp-mini-card span { color:#64748b; font-size:.88rem; }
+.qvp-preview-placeholder { height:250px; border:1px dashed #cbd5e1; border-radius:18px; display:flex; align-items:center; justify-content:center; text-align:center; color:#64748b; background:#f8fafc; }
+.qvp-economy { padding:13px 16px; border-radius:15px; border:1px solid #d6e7f7; background:#eef8ff; color:#28506d; margin:10px 0 16px; }
+.qvp-preview-sticky { z-index:20; }
+[data-testid="stHorizontalBlock"]:has(.qvp-preview-anchor) > [data-testid="column"]:last-child { position:sticky; top:72px; align-self:flex-start; z-index:30; }
+.qvp-preview-panel { padding:14px; border:1px solid #dbe4f0; border-radius:20px; background:rgba(255,255,255,.96); box-shadow:0 14px 34px rgba(15,23,42,.10); }
+.qvp-preview-title { font-weight:800; color:#172033; font-size:1.05rem; margin-bottom:8px; }
+.qvp-preview-note { color:#64748b; font-size:.82rem; margin-bottom:10px; }
+.qvp-editor-tabs [data-testid="stTabs"] button { font-size:.86rem !important; padding:7px 10px !important; }
+.qvp-editor-tabs { margin-bottom:8px; }
 
-                            # --- 3. TRADUCTION + VOIX, puis conservation de la ligne ---
-                            ta=os.path.join(tmp,f"tr_{idx}.mp3")
-                            tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate)
-                            td=audio_duration(ta)
 
-                            tf=word_timed_frames_vocab_style2(
-                                ta,tw,
-                                lambda wi,prog: draw_vocab_cumulative_frame(
-                                    items,idx,theme_v,channel_v,bg_v,
-                                    reveal=True,motion=prog,
-                                    video_title=th_v,
-                                    # Le français reste définitivement visible
-                                    # pendant que la traduction est prononcée.
-                                    source_active_word=fr_last_word,
-                                    translation_active_word=wi
-                                ),
-                                td
-                            )
+/* V8.1 — éditeur compact + aperçu plus proche */
+.qvp-editor-tabs [data-testid="stVerticalBlock"] { gap: 0.28rem; }
+.qvp-editor-tabs [data-testid="stHorizontalBlock"] { gap: 0.45rem; }
+.qvp-editor-tabs .stSlider { margin-bottom: -0.15rem; }
+.qvp-editor-tabs .stCheckbox { margin-bottom: -0.25rem; }
+.qvp-editor-tabs .stCaption { margin-top: -0.2rem; }
+.qvp-preview-sticky { top: 1rem !important; }
+.qvp-preview-panel { margin-bottom: 0.35rem; }
 
-                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                            if sfx_cfg.get("sfx_enabled",True):
-                                mix_voice_sfx(
-                                    ta,pop,tr_fx,0,
-                                    float(sfx_cfg.get("sfx_volume",0.30))
-                                )
-                            else:
-                                tr_fx=ta
+/* V8.3 — studio compact / navigation always visible */
+/* Main module switcher: make the first tab bar look like a real app navigation. */
+[data-testid="stMain"] [data-testid="stTabs"]:not(.qvp-editor-tabs [data-testid="stTabs"]) > div:first-child {background:rgba(255,255,255,.97);border:1px solid #d9e2ef;border-radius:16px;padding:6px 8px;box-shadow:0 8px 24px rgba(15,23,42,.08);position:sticky;top:4px;z-index:100;}
+[data-testid="stMain"] [data-testid="stTabs"]:not(.qvp-editor-tabs [data-testid="stTabs"]) button {font-weight:850 !important;font-size:1rem !important;padding:10px 14px !important;border-radius:11px !important;}
 
-                            tr_clip=os.path.join(tmp,f"tr_{idx}.mp4")
-                            make_vocab_style2_segment(
-                                save_frames(tf,tmp,f"trf_{idx}"),
-                                tr_fx,tr_clip,tmp,1.0
-                            )
-
-                            # On regroupe immédiatement les 3 phases du mot.
-                            # Cela empêche les petits écarts de timebase de se
-                            # cumuler sur 15 mots.
-                            item_clip=os.path.join(tmp,f"item_{idx}.mp4")
-                            concat_videos_style2(
-                                [fr_clip,count_clip,tr_clip],
-                                item_clip,tmp
-                            )
-                            clips.append(item_clip)
-
-                        else:
-                            fwords=word_timed_frames(fa,fw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"mot",entrance=prog,source_active_word=wi),fd)
-                            word_voice_fx=os.path.join(tmp,f"fr_fx_{idx}.m4a")
-                            sfx_cfg=_layout("vocab","1")
-                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(fa,pop,word_voice_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                            else: word_voice_fx=fa
-                            fo=os.path.join(tmp,f"fr_{idx}.mp4"); make_segment(save_frames(fwords,tmp,f"vf_{idx}"),word_voice_fx,fo,tmp); clips.append(fo)
-                            cframes=[]
-                            for j in range(COUNTDOWN_STEPS):
-                                t=j/max(1,31); elapsed=t*3.12
-                                if elapsed<1.02: sec=3; frac=1-(elapsed/1.02)
-                                elif elapsed<2.04: sec=2; frac=1-((elapsed-1.02)/1.02)
-                                elif elapsed<3.0: sec=1; frac=1-((elapsed-2.04)/.96)
-                                else: sec=None; frac=0.0
-                                cframes.append((draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"countdown",sec,frac,1.0),3.12/32))
-                            co=os.path.join(tmp,f"count_{idx}.mp4"); make_segment(save_frames(cframes,tmp,f"vc_{idx}"),countdown_sfx,co,tmp,.92); clips.append(co)
-                            ta=os.path.join(tmp,f"tr_{idx}.mp3"); tw=synthesize_audio(item['trad'],voice_tr,ta,tts_rate); td=audio_duration(ta)
-                            tf=word_timed_frames(ta,tw,lambda wi,prog: draw_vocab_frame(items,idx,langue_v,theme_v,channel_v,bg_v,"translation",entrance=1.0,translation_active_word=wi),td)
-                            tr_fx=os.path.join(tmp,f"tr_fx_{idx}.m4a")
-                            if sfx_cfg.get("sfx_enabled",True): mix_voice_sfx(ta,pop,tr_fx,0,float(sfx_cfg.get("sfx_volume",0.30)))
-                            else: tr_fx=ta
-                            tro=os.path.join(tmp,f"tr_{idx}.mp4"); make_segment(save_frames(tf,tmp,f"trf_{idx}"),tr_fx,tro,tmp); clips.append(tro)
-                        gc.collect()
-                    oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
-                    if style_v.startswith("Style 2"):
-                        of=save_frames([(draw_page_template(outro_v+((" "+outro_v_sub) if clean_text(outro_v_sub) else ""),theme_v,channel_v,bg_v,p,"outro",st.session_state.get(("v2_" if style_v.startswith("Style 2") else "v1_")+"outro_page_variant","Premium lumineux"),"vocab","2" if style_v.startswith("Style 2") else "1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
-                    else:
-                        of=save_frames([(draw_page_template(outro_v,theme_v,channel_v,bg_v,p,"outro",st.session_state.get("v1_outro_page_variant","Premium lumineux"),"vocab","1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
-                    oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
-                    final=os.path.join(tmp,"vocabulaire_pro.mp4")
-                    if style_v.startswith("Style 2"):
-                        concat_videos_style2(clips,final,tmp)
-                    else:
-                        concat_videos(clips,final,tmp)
-                    with open(final,"rb") as f: data=f.read()
-                    st.session_state["last_vocab_video_data"] = data
-                    st.success("✅ Short Vocabulaire Pro terminé.")
-                    st.video(data)
-                    st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
-        except MemoryError:
-            gc.collect(); st.error("La mémoire a été saturée pendant le rendu. Relance l'application puis réessaie.")
-        except Exception as e: st.error(f"Erreur pendant le montage : {e}")
-
-# Export persistant : placé après le rendu pour rester disponible après chaque rerun Streamlit.
-if st.session_state.get("last_quiz_video_data"):
-    render_export_panel(st.session_state["last_quiz_video_data"],"SuspenseLingo_Quiz","export_quiz_persist")
-if st.session_state.get("last_vocab_video_data"):
-    render_export_panel(st.session_state["last_vocab_video_data"],"SuspenseLingo_Vocabulaire","export_vocab_persist")
-
-st.markdown('</div>',unsafe_allow_html=True)
+[data-testid="stAppViewContainer"] .main .block-container {max-width:1500px !important; padding-top:0.55rem !important; padding-bottom:0.7rem !important;}
+[data-testid="stHeader"] {background:transparent !important;}
+.qvp-studio-nav {position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border:1px solid #d9e2ef;border-radius:16px;padding:6px 8px;margin:0 0 10px;box-shadow:0 8px 24px rgba(15,23,42,.08);}
+.qvp-studio-nav [data-testid="stTabs"] {margin:0 !important;}
+.qvp-studio-nav [data-testid="stTabs"] [role="tablist"] {gap:6px;border-bottom:0 !important;}
