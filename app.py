@@ -2548,7 +2548,7 @@ def generate_theme_background(theme_name,topic):
         symbols=[("π",135,430,170),("√",865,500,150),("+",130,980,125),("÷",900,1080,110),("∞",175,1510,125),("×",865,1650,120),("=",535,1780,95)]
         for symbol,x,y,size in symbols:
             font=get_font(size,"DejaVu Sans")
-            d.text((x,y),symbol,font=font,fill=(*accent,30),stroke_width=1,stroke_fill=(*sec,18))
+            d.text((x,y),symbol,font=font,fill=(*accent,62),stroke_width=2,stroke_fill=(*sec,35))
         # Cercles et lignes géométriques translucides pour donner de la profondeur.
         for x,y,r in [(540,850,170),(540,850,235),(540,850,300)]:
             d.ellipse((x-r,y-r,x+r,y+r),outline=(*sec,18),width=3)
@@ -2600,7 +2600,7 @@ def generate_theme_background(theme_name,topic):
         for j in range(6):
             pts=[(x,900+j*120+int(35*math.sin(x/100+j))) for x in range(-30,1120,30)]; d.line(pts,fill=(*accent,45),width=9)
         for x,y in [(300,1400),(540,1280),(780,1450)]:
-            d.ellipse((x-22,y-38,x+22,y+18),fill=(*sec,55)); d.ellipse((x-65,y-65,x-30,y-25),fill=(*sec,50)); d.ellipse((x+30,y-65,x+65,y-25),fill=(*sec,50))
+            d.ellipse((x-22,y-38,x+22,y+18),fill=(*sec,78)); d.ellipse((x-65,y-65,x-30,y-25),fill=(*sec,72)); d.ellipse((x+30,y-65,x+65,y-25),fill=(*sec,72))
     elif kind=="sport":
         d.ellipse((540-300,1300-300,540+300,1300+300),outline=(*accent,55),width=8)
         d.line((150,1300,930,1300),fill=(*sec,55),width=6); d.line((540,1000,540,1600),fill=(*sec,45),width=4)
