@@ -2516,16 +2516,22 @@ def _theme_keywords(topic):
         "animaux":["animal","animaux","faune","océan","ocean","insecte","mammifère","mammifere"],
         "sport":["sport","football","soccer","tennis","basket","olympique","olympiques"],
         "automobile":["automobile","voiture","voitures","auto","véhicule","vehicule","moteur","conduite","course automobile","rallye"],
-        "art":["art","peinture","musique","cinéma","cinema","littérature","litterature"],
+        "musique":["musique","musical","instrument","chanson","mélodie","melodie","note musicale"],
+        "logique":["logique","raisonnement","déduction","deduction","casse-tête","casse tete"],
+        "enigme":["énigme","enigme","énigmes","enigmes","devinette","devinettes","mystère","mystere"],
+        "art":["art","peinture","cinéma","cinema","littérature","litterature"],
         "food":["cuisine","gastronomie","aliment","aliments","nourriture","recette"],
     }
-    for key,words in groups.items():
+    # Priorité aux sujets explicitement sélectionnés : ils doivent gagner
+    # face aux mots secondaires présents dans une question (ex. pays/monde).
+    for key in ("automobile", "sport", "animaux", "mathematiques", "musique", "logique", "enigme", "histoire", "science", "espace", "geographie", "art", "food"):
+        words = groups.get(key, [])
         if any(w in t for w in words): return key
     return "general"
 
 def generate_theme_background(theme_name,topic):
     """Fond local réellement illustratif selon le sujet. Aucun appel Gemini."""
-    key=("auto_bg_v7",theme_name,clean_text(topic).lower())
+    key=("auto_bg_v8",theme_name,clean_text(topic).lower())
     if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
     theme=THEMES[theme_name]; kind=_theme_keywords(topic)
     seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16); rng=random.Random(seed)
@@ -2633,33 +2639,41 @@ def generate_theme_background(theme_name,topic):
             d.ellipse((wx-43,1400,wx+43,1484),fill=(*accent,115),outline=(*sec,190),width=7)
             d.ellipse((wx-13,1430,wx+13,1456),fill=(*sec,190))
     elif kind=="sport":
-        # Terrain + ballon stylisé : motif sportif identifiable même en aperçu réduit.
-        d.rounded_rectangle((115,1030,965,1640),radius=36,outline=(*sec,72),width=7)
-        d.line((540,1035,540,1635),fill=(*sec,65),width=5)
-        d.ellipse((390,1190,690,1490),outline=(*accent,95),width=7)
-        # Ballon au premier plan
-        bx,by,br=540,1350,165
-        d.ellipse((bx-br,by-br,bx+br,by+br),fill=(*accent,35),outline=(*accent,155),width=9)
-        d.polygon([(bx,by-55),(bx+53,by-17),(bx+33,by+43),(bx-33,by+43),(bx-53,by-17)],fill=(*sec,95),outline=(*sec,160))
-        for pts in [[(bx,by-55),(bx,by-br+15)],[(bx+53,by-17),(bx+145,by-70)],[(bx+33,by+43),(bx+95,by+125)],[(bx-33,by+43),(bx-95,by+125)],[(bx-53,by-17),(bx-145,by-70)]]:
-            d.line(pts,fill=(*sec,115),width=6)
-        # Petites lignes de mouvement
-        d.line((170,1190,280,1190),fill=(*accent,70),width=7); d.line((150,1225,250,1225),fill=(*accent,48),width=5)
+        # Petits ballons et chaussure de sport, répartis sans surcharger le fond.
+        d.rounded_rectangle((115,1030,965,1640),radius=36,outline=(*sec,42),width=5)
+        d.line((540,1035,540,1635),fill=(*sec,38),width=4)
+        def ball(cx,cy,r,alpha=105):
+            d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,alpha),width=5)
+            d.polygon([(cx,cy-r//3),(cx+r//3,cy-r//8),(cx+r//5,cy+r//3),(cx-r//5,cy+r//3),(cx-r//3,cy-r//8)],outline=(*sec,alpha),fill=(*accent,20))
+            d.arc((cx-r//2,cy-r//2,cx+r//2,cy+r//2),20,300,fill=(*sec,alpha),width=3)
+        for cx,cy,r in [(230,1170,58),(410,1450,42),(730,1135,48),(850,1480,62),(610,1580,34)]: ball(cx,cy,r,115)
+        # Silhouette simple de chaussure : semelle, empeigne et lacets.
+        shoe=[(270,1370),(330,1350),(385,1380),(435,1420),(500,1430),(525,1460),(510,1490),(300,1490),(265,1470)]
+        d.polygon(shoe,fill=(*accent,48),outline=(*accent,155))
+        d.line((275,1490,520,1490),fill=(*sec,160),width=8)
+        for lx in (385,405,425): d.line((lx,1400,lx+24,1415),fill=(*sec,150),width=4)
+    elif kind=="musique":
+        # Portées et petites notes réparties sur toute la hauteur du fond.
+        for base in (500, 1000, 1500):
+            for yy in (base, base+18, base+36, base+54, base+72):
+                d.line((100,yy,980,yy),fill=(*sec,48),width=3)
+            for nx,ny in [(180,base+54),(320,base+18),(500,base+36),(690,base+72),(850,base+18)]:
+                d.ellipse((nx-13,ny-7,nx+13,ny+7),fill=(*accent,155))
+                d.line((nx+11,ny,nx+11,ny-58),fill=(*accent,155),width=4)
+        d.line((330,960,470,1000,610,955),fill=(*accent,140),width=6)
     elif kind=="art":
-        # Musique : portée et notes nettement reconnaissables.
-        if any(w in clean_text(topic).lower() for w in ["musique","musical","instrument","chanson","mélodie","melodie","note"]):
-            for yy in (1120,1165,1210,1255,1300):
-                d.line((130,yy,950,yy),fill=(*sec,100),width=5)
-            # notes avec hampes et deux croches reliées
-            for nx,ny in [(245,1208),(420,1163),(650,1253),(805,1210)]:
-                d.ellipse((nx-23,ny-13,nx+23,ny+13),fill=(*accent,190))
-                d.line((nx+20,ny,nx+20,ny-145),fill=(*accent,190),width=8)
-            d.line((440,1018,670,1085),fill=(*accent,190),width=12)
-            d.line((670,1085,825,1035),fill=(*accent,190),width=12)
-        else:
-            for _ in range(10):
-                x=rng.randint(100,760); y=rng.randint(900,1500); w=rng.randint(120,280); h=rng.randint(80,180)
-                d.rounded_rectangle((x,y,x+w,y+h),radius=30,fill=(*accent,16),outline=(*accent,50),width=4)
+        for _ in range(10):
+            x=rng.randint(100,760); y=rng.randint(900,1500); w=rng.randint(120,280); h=rng.randint(80,180)
+            d.rounded_rectangle((x,y,x+w,y+h),radius=30,fill=(*accent,16),outline=(*accent,50),width=4)
+    elif kind in ("logique", "enigme"):
+        # Motifs de réflexion : pièces de puzzle, points d'interrogation et chemins.
+        for x,y,r in [(250,1120,92),(700,1320,105),(420,1580,72)]:
+            d.rounded_rectangle((x-r,y-r,x+r,y+r),radius=18,outline=(*accent,125),width=7)
+            d.arc((x-r//2,y-r//2,x+r//2,y+r//2),35,310,fill=(*sec,90),width=5)
+        for x,y,size in [(170,820,145),(790,900,160),(540,1510,130),(870,1690,110)]:
+            f=get_font(size,"DejaVu Sans")
+            d.text((x,y),"?",font=f,fill=(*accent,155),stroke_width=2,stroke_fill=(*sec,55))
+        d.line([(170,1450),(300,1370),(430,1440),(560,1350),(700,1420),(850,1330)],fill=(*sec,85),width=6)
     elif kind=="food":
         for x,y,r in [(250,1350,95),(540,1240,120),(800,1400,80),(400,1540,70),(720,1560,100)]:
             d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,20),outline=(*accent,60),width=4)
