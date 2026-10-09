@@ -22,7 +22,8 @@ import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
-# QUIZVIDEO PRO — STUDIO
+# SUSPENSELINGO — STUDIO
+# V32.3.6 — interface claire conservée, graphismes thématiques et couleurs harmonisées
 # V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
 # V23 — Stabilisation interface : colonne droite sticky, aperçu live, génération pro. Aucune fonctionnalité vidéo supprimée.
 # ============================================================
@@ -30,16 +31,16 @@ st.set_page_config(page_title="SuspenseLingo Studio", page_icon="🎬", layout="
 
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background: linear-gradient(135deg,#f8fbff 0%,#eef3fa 55%,#f7f4ff 100%); color:#172033; }
-[data-testid="stMain"] { background: transparent; }
-[data-testid="stSidebar"] { background: linear-gradient(180deg,#0b1630 0%,#101d3d 58%,#111a33 100%); border-right: 1px solid #1f3159; }
-[data-testid="stSidebar"] * { color:#eef4ff !important; }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] { color:#dbe7ff !important; }
-[data-testid="stSidebar"] .stRadio label { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:8px 10px; margin:4px 0; }
-label, [data-testid="stMarkdownContainer"] { color:#253047; }
-[data-testid="stHeader"] { background: rgba(255,255,255,.78); }
+[data-testid="stAppViewContainer"] { background: linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%); color:#172033; }
+[data-testid="stMain"] { background: transparent; color:#172033; }
+[data-testid="stSidebar"] { background: linear-gradient(180deg,#ffffff 0%,#f2f6fc 100%); border-right: 1px solid #d9e2ef; }
+[data-testid="stSidebar"] * { color:#334155 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] { color:#334155 !important; }
+[data-testid="stSidebar"] .stRadio label { background:#ffffff; border:1px solid #dbe4f0; border-radius:14px; padding:8px 10px; margin:4px 0; }
+label, [data-testid="stMarkdownContainer"] { color:#334155; }
+[data-testid="stHeader"] { background: rgba(248,251,255,.92); }
 .block-container { max-width: 1220px; padding-top: .55rem; padding-bottom: 1rem; }
-h1, h2, h3 { letter-spacing: -0.02em; color:#111827; }
+h1, h2, h3 { letter-spacing: -0.02em; color:#172033; }
 [data-testid="stTabs"] button { font-weight: 800; font-size: 1.02rem; color:#334155; padding:10px 18px; }
 [data-testid="stTabs"] [aria-selected="true"] { color:#6d4aff !important; border-bottom-color:#6d4aff !important; }
 [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea { border-radius: 14px !important; background:#ffffff !important; color:#172033 !important; border-color:#cbd5e1 !important; }
@@ -325,6 +326,27 @@ button[kind="primary"]{font-weight:850!important}
     position:static !important;
   }
 }
+/* V32.3.5 — habillage cohérent nuit / saphir / or, sans modifier le moteur */
+[data-testid="stAppViewContainer"]{background:radial-gradient(ellipse at 18% 0%,#1a3156 0%,#0b1426 48%,#070c16 100%)!important;color:#edf4ff!important}
+[data-testid="stMain"],[data-testid="stMain"] .block-container{color:#edf4ff!important}
+[data-testid="stHeader"]{background:rgba(7,12,22,.92)!important}
+[data-testid="stMain"] h1,[data-testid="stMain"] h2,[data-testid="stMain"] h3{color:#f7faff!important}
+[data-testid="stMain"] label,[data-testid="stMain"] .stMarkdown,[data-testid="stMain"] .stCaption{color:#d5e2f6!important}
+.qvp-studio-header{background:linear-gradient(105deg,#101c32 0%,#172b49 62%,#302649 100%)!important;border:1px solid #385273!important;color:#f7fbff!important;box-shadow:0 10px 26px rgba(0,0,0,.24)!important}
+.qvp-studio-header b{color:#fff!important}.qvp-studio-header span{background:linear-gradient(135deg,#f4bf55,#d99b2b)!important;color:#101827!important;border:1px solid #ffe0a0!important}.qvp-studio-header small{color:#c1d0e6!important}
+.qvp-editor-wrap,.qvp-editor-tabs,.qvp-preview-panel,.qvp-section-card,.qvp-settings-card{background:linear-gradient(145deg,rgba(20,34,57,.97),rgba(13,23,40,.98))!important;border-color:#344b6b!important;color:#edf4ff!important}
+.qvp-editor-title,.qvp-preview-title,.qvp-section-title,.qvp-settings-card .qvp-card-heading{color:#f4f8ff!important}
+.qvp-preview-note,.qvp-editor-subtitle,.qvp-settings-card .qvp-card-sub{color:#b8c9e3!important}
+.qvp-editor-wrap label,.qvp-editor-tabs label{color:#dce8fa!important}
+.qvp-studio-nav{background:rgba(12,22,39,.97)!important;border-color:#344b6b!important}
+.qvp-studio-nav [data-testid="stTabs"] button[aria-selected="false"]{background:#172842!important;color:#d9e7fb!important}
+.qvp-studio-nav [data-testid="stTabs"] button[aria-selected="true"]{background:linear-gradient(135deg,#dba843,#f5ce72)!important;color:#101827!important;border-color:#ffe4a0!important}
+.qvp-actionbar,.qvp-actionbar-v11{background:rgba(12,22,39,.96)!important;border-color:#344b6b!important}
+.qvp-card,.qvp-content-box{background:#13233b!important;border-color:#344b6b!important;color:#edf4ff!important}
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea,[data-baseweb="select"]>div{background:#101c30!important;color:#f7fbff!important;border-color:#3a5273!important}
+[data-testid="stButton"] button{background:linear-gradient(135deg,#1b2e4a,#132139)!important;color:#f7fbff!important;border-color:#3a5273!important}
+[data-testid="stFileUploaderDropzone"]{background:#101c30!important;border-color:#486182!important}
+/* fin des règles V32.3.5 */
 </style>
 """, unsafe_allow_html=True)
 
@@ -336,21 +358,21 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    "Bleu Nuit & Or": {"bg": (11, 16, 33), "bg2": (21, 29, 51), "card": (21, 28, 51), "card2": (30, 41, 59), "accent": (245, 158, 11), "success": (16, 185, 129), "danger": (255, 83, 99), "muted": (226, 232, 240)},
-    "Chocolat Noir & Or": {"bg": (18, 10, 8), "bg2": (65, 35, 20), "card": (52, 31, 22), "card2": (82, 49, 31), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
-    "Violet Neon": {"bg": (12, 7, 25), "bg2": (50, 17, 72), "card": (43, 22, 65), "card2": (72, 35, 100), "accent": (239, 93, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 171, 222)},
-    "Emeraude Mint": {"bg": (4, 18, 15), "bg2": (8, 61, 48), "card": (13, 48, 37), "card2": (21, 75, 57), "accent": (74, 231, 178), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (160, 202, 186)},
-    "Noir Carbone": {"bg": (5, 7, 11), "bg2": (28, 32, 42), "card": (25, 28, 36), "card2": (42, 47, 59), "accent": (112, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 176, 194)},
+    "Bleu Nuit & Or": {"bg": (18, 28, 55), "bg2": (35, 55, 92), "card": (31, 46, 78), "card2": (45, 66, 105), "accent": (245, 158, 11), "success": (16, 185, 129), "danger": (255, 83, 99), "muted": (226, 232, 240)},
+    "Chocolat Noir & Or": {"bg": (32, 19, 15), "bg2": (92, 53, 31), "card": (67, 42, 30), "card2": (103, 62, 38), "accent": (255, 190, 64), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 170, 145)},
+    "Violet Neon": {"bg": (27, 15, 47), "bg2": (74, 30, 102), "card": (58, 32, 84), "card2": (89, 45, 122), "accent": (239, 93, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (199, 171, 222)},
+    "Emeraude Mint": {"bg": (9, 30, 25), "bg2": (15, 82, 63), "card": (22, 61, 49), "card2": (31, 91, 69), "accent": (74, 231, 178), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (160, 202, 186)},
+    "Noir Carbone": {"bg": (18, 22, 30), "bg2": (48, 54, 68), "card": (38, 43, 54), "card2": (57, 64, 80), "accent": (112, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 176, 194)},
 }
 
 # V29 — nouvelles palettes premium, sans modifier les thèmes existants.
 THEMES.update({
-    "Midnight Sapphire": {"bg": (5, 9, 24), "bg2": (15, 35, 78), "card": (18, 31, 58), "card2": (31, 55, 96), "accent": (74, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 194, 226)},
-    "Crimson Noir": {"bg": (18, 5, 10), "bg2": (66, 13, 28), "card": (45, 17, 27), "card2": (82, 25, 40), "accent": (255, 92, 112), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (213, 168, 179)},
-    "Royal Violet": {"bg": (11, 6, 24), "bg2": (43, 17, 74), "card": (35, 19, 61), "card2": (63, 31, 98), "accent": (184, 118, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (194, 171, 221)},
-    "Black Gold": {"bg": (8, 7, 5), "bg2": (45, 31, 10), "card": (34, 27, 14), "card2": (67, 48, 20), "accent": (255, 207, 82), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (202, 188, 151)},
-    "Arctic Cyan": {"bg": (4, 13, 22), "bg2": (10, 52, 72), "card": (13, 38, 54), "card2": (20, 65, 86), "accent": (77, 224, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 204, 219)},
-    "Cyber Pink": {"bg": (18, 5, 20), "bg2": (66, 12, 66), "card": (43, 15, 44), "card2": (76, 25, 78), "accent": (255, 105, 214), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (215, 169, 210)},
+    "Midnight Sapphire": {"bg": (12, 23, 50), "bg2": (28, 58, 112), "card": (27, 48, 84), "card2": (43, 75, 125), "accent": (74, 190, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 194, 226)},
+    "Crimson Noir": {"bg": (34, 10, 19), "bg2": (91, 22, 43), "card": (61, 23, 36), "card2": (107, 32, 54), "accent": (255, 92, 112), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (213, 168, 179)},
+    "Royal Violet": {"bg": (25, 14, 49), "bg2": (63, 29, 103), "card": (51, 29, 82), "card2": (82, 43, 126), "accent": (184, 118, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (194, 171, 221)},
+    "Black Gold": {"bg": (19, 16, 10), "bg2": (67, 47, 17), "card": (48, 39, 20), "card2": (81, 59, 25), "accent": (255, 207, 82), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (202, 188, 151)},
+    "Arctic Cyan": {"bg": (9, 25, 39), "bg2": (17, 69, 94), "card": (23, 52, 70), "card2": (31, 82, 105), "accent": (77, 224, 255), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (166, 204, 219)},
+    "Cyber Pink": {"bg": (33, 10, 36), "bg2": (90, 20, 90), "card": (59, 22, 61), "card2": (100, 34, 102), "accent": (255, 105, 214), "success": (46, 218, 123), "danger": (255, 83, 99), "muted": (215, 169, 210)},
 })
 
 VOICES_FR = {
@@ -543,7 +565,7 @@ def make_base(theme_name, bg_file=None):
 
     if bg is not None:
         base = bg.convert("RGBA")
-        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 105))
+        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 55))
         shade = Image.new("L", (WIDTH, HEIGHT), 0)
         sd = ImageDraw.Draw(shade)
         sd.rectangle((70, 120, WIDTH-70, HEIGHT-100), fill=115)
@@ -556,7 +578,7 @@ def make_base(theme_name, bg_file=None):
     # Bleu Nuit & Or : fond principal strictement #0B1021 comme la maquette approuvée.
     # On garde uniquement de très légers halos dorés décoratifs, sans transformer le fond en dégradé.
     if theme_name == "Bleu Nuit & Or":
-        img = Image.new("RGB", (WIDTH, HEIGHT), (11, 16, 33))
+        img = Image.new("RGB", (WIDTH, HEIGHT), (18, 28, 55))
         glow = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
         gd = ImageDraw.Draw(glow)
         gd.ellipse((140, 170, 940, 700), fill=(*theme["accent"], 22))
@@ -687,7 +709,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
-    gold=(245,158,11); navy=(21,29,51); border=(43,57,96); white=(255,255,255); black=(15,23,42)
+    gold=(250,184,60); navy=(25,45,78); border=(76,105,150); white=(255,255,255); black=(15,23,42)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
@@ -695,7 +717,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # une marge interne supplémentaire pour ne jamais toucher le masque.
     safe_margin_top=24; safe_margin_bottom=24
     top=max(safe_top+safe_margin_top,top)
-    header_h=max(52,min(66,int(cfg.get("header_h",60))))
+    header_h=max(58,min(78,int(cfg.get("header_h",72))))
     bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
     if bottom-top < 52:
         top=max(safe_top+10, safe_bottom-62)
@@ -706,11 +728,21 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",28)),ff); bh=text_height(bf,brand)
-        bx=left+16; by=top+(bottom-top-bh)//2
-        brand_fill=_hex_rgb(cfg.get("brand_color"),gold)
-        draw.text((bx+1,by+2),brand,font=bf,fill=(5,10,22))
-        draw.text((bx,by),brand,font=bf,fill=brand_fill)
+        bf=get_font(int(cfg.get("brand_size",31)),ff); bh=text_height(bf,brand)
+        bx=left+18; by=top+(bottom-top-bh)//2
+        # Badge de marque : petit monogramme + capsule pour donner plus de
+        # présence à SuspenseLingo sans modifier la mécanique du quiz.
+        icon_r=max(12,min(18,(bottom-top)//4))
+        icx=bx+icon_r; icy=top+(bottom-top)//2
+        draw.ellipse((icx-icon_r,icy-icon_r,icx+icon_r,icy+icon_r),fill=gold)
+        sf=get_font(max(14,int(icon_r*1.25)),ff)
+        stxt="S"; ssw=text_width(draw,stxt,sf); ssh=text_height(sf,stxt)
+        draw.text((icx-ssw/2,icy-ssh/2-1),stxt,font=sf,fill=black)
+        text_x=bx+icon_r*2+10
+        if cfg.get("brand_bg_enabled",True):
+            tw=text_width(draw,brand,bf); pad_x=10; pad_y=7
+            draw.rounded_rectangle((text_x-pad_x,by-pad_y,text_x+tw+pad_x,by+bh+pad_y),radius=12,fill=_hex_rgb(cfg.get("brand_bg"),(32,56,94)),outline=border,width=1)
+        draw.text((text_x,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
     # Zone 2 : titre
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
@@ -722,15 +754,15 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
-    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",30)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    # Badge légèrement plus grand, mais toujours strictement à l'intérieur du 3e tiers.
+    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
+    # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
     third_left=left+2*third; third_right=right
-    pill_w=min(max(82,sw+26),max(82,int(third-18)))
-    pill_h=min(max(42,sh+12),max(42,header_h-8))
+    pill_w=min(max(78,sw+24),max(78,int(third-18)))
+    pill_h=min(max(40,sh+10),max(40,header_h-10))
     cx=(third_left+third_right)/2
     px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
     py=top+(bottom-top-pill_h)/2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(17,pill_h//2),fill=gold)
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
 
@@ -743,7 +775,7 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
     frac=clamp(fraction); style=str(style or "Double cercle")
     if color == (245,158,11):
         # Option 1 : badge circulaire fixe, exactement comme la spécification CSS.
-        bg=(30,41,59)
+        bg=(255,255,255)
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(245,158,11),width=4)
         tf=get_font(text_size); ts=str(timer if timer is not None else ""); th=text_height(tf,ts)
         draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=(245,158,11))
@@ -751,8 +783,8 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
             lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or (245,158,11))
         return
     frac=clamp(fraction); style=str(style or "Double cercle")
-    bg=(7,12,26)
-    white=(245,248,252)
+    bg=(248,250,253)
+    white=(255,255,255)
     if style=="Double cercle":
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=max(3,int(r*.07)))
         r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=white,width=max(2,int(r*.045)))
@@ -876,11 +908,11 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
         "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
         "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
-        "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
+        "q1_answer_size": 38, "q1_answer_badge_size": 60, "q1_answer_text_padding": 24,
         "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 64, "q1_timer_text_size": 55,
         "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
         "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
-        "q1_explanation_size": 30,
+        "q1_explanation_size": 36,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
         "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
         "q1_border_color": "#334155", "q1_border_width": 2, "q1_border_radius": 20,
@@ -908,21 +940,21 @@ def _layout(module="quiz", style=None):
         "font_family":"Lato",
         "show_title":True,"header_y":120,"header_h":74,"title_x":540,"title_y":139,"title_size":38,
         "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
-        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
+        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":98,"answer_gap":16,"answer_size":38,"answer_radius":20,"answer_badge_size":60,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1110,"timer_x":540,"timer_size":62,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
         "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
-        "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
+        "explanation_x":540,"explanation_y":1345,"explanation_width":960,"explanation_h":285,"explanation_size":36,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
         "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
-        "bg_opacity":18,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
+        "bg_opacity":10,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
         "primary":"#F59E0B","answer":"#1E293B","answer2":"#1E293B",
         "correct":"#10B981","text":"#FFFFFF","muted":"#E2E8F0",
         "border_color":"#334155","border_width":2,"border_radius":20,
@@ -949,12 +981,12 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
-    # Correction vidéo : les questions longues restent sur 2 lignes maximum.
-    # Seule la police de la question est réduite ; la structure du quiz ne bouge pas.
+    # Priorité à la lisibilité : on essaie d'abord 2 lignes, puis 3 lignes avant de réduire
+    # excessivement la police. La question reste toujours dans son cadre.
     size=base_size; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    while len(lines)>2 and size>28:
+    while len(lines)>3 and size>32:
         size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    lines=lines[:2]
+    lines=lines[:3]
     hi=_highlight_words(question); yy=int(cfg["question_y"]);
     line_h=int(size*1.18)
     box_top=yy-18; box_bottom=yy+len(lines)*line_h+22
@@ -1044,70 +1076,52 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
     cfg=_layout("quiz", "1")
-    safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
     if cfg.get("explanation_auto_below_timer", False):
         timer_size=max(24,int(cfg.get("timer_size",58)))
         if cfg.get("timer_auto_below_answers",True):
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
-            timer_cy=min(safe_bottom-timer_size-22, answer_bottom + timer_size + 22)
+            timer_cy=min(1500, answer_bottom + timer_size + 22)
         else:
             timer_cy=int(cfg.get("timer_y",1045))
         timer_r=timer_size
-        y1=min(safe_bottom-220, timer_cy + timer_r + 10)
+        y1=min(1450, timer_cy + timer_r + 10)
     else:
-        y1=int(cfg.get("explanation_y",1135))
+        y1=int(cfg["explanation_y"])
     p=ease_out(progress)
     primary=_hex_rgb(cfg["primary"],theme["accent"])
     box_w=max(420,min(1020,int(cfg.get("explanation_width",964))))
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
-
-    # Carte d'explication : lisible, compacte et entièrement dans la zone sûre.
-    title_font=get_font(min(34,int(cfg.get("explanation_size",42)*.92)),cfg.get("font_family","DejaVu Sans"))
+    # Maquette Bleu Nuit & Or : aucun pictogramme dans la carte d'explication.
+    # Titre doré centré, description blanche centrée, comme le visuel approuvé.
+    title_font=get_font(min(36,int(cfg["explanation_size"]*.95)),cfg.get("font_family","DejaVu Sans"))
     title_text="EXPLICATION :"
     tw=text_width(draw,title_text,title_font)
-
-    fit_size=max(22,int(cfg.get("explanation_size",42)))
-    f=get_font(fit_size,cfg.get("font_family","DejaVu Sans"))
-    max_text_w=max(300,box_w-86)
-    lines=wrap_text(explanation or "Bravo !",f,max_text_w)
-    while (len(lines)>3 or sum(text_height(f,line) for line in lines)+max(0,len(lines)-1)*5>112) and fit_size>22:
-        fit_size-=1
-        f=get_font(fit_size,cfg.get("font_family","DejaVu Sans"))
-        lines=wrap_text(explanation or "Bravo !",f,max_text_w)
-    lines=lines[:3] or ["Bravo !"]
-
-    if cfg.get("explanation_auto_height",False):
-        needed_h=int(104 + max(1,len(lines))*int(fit_size*1.28))
-        box_h=max(180,min(int(cfg.get("explanation_h",260)),needed_h))
+    draw.text(((left+right-tw)/2,y1+26),title_text,font=title_font,fill=primary)
+    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
+    if cfg.get("explanation_auto_height", False):
+        needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
+        box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
     else:
-        box_h=int(cfg.get("explanation_h",260))
-
-    # Zone interdite basse : la carte remonte automatiquement sans toucher aux profils.
-    max_y1=safe_bottom-box_h-16
-    y1=min(y1,max_y1)
-    y1=max(safe_top+20,y1)
-    y2=min(safe_bottom-12,y1+box_h)
-
+        box_h=int(cfg.get("explanation_h",320))
+    y2=min(1645,y1+box_h)
     is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
-    if cfg.get("explanation_frame_enabled",True):
+    if cfg.get("explanation_frame_enabled", True):
         fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
         outline=(245,158,11) if is_blue_gold and cfg.get("explanation_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),primary) if cfg.get("explanation_border_enabled",True) else None)
         draw.rounded_rectangle((left,y1,right,y2),radius=20 if is_blue_gold else int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
         if cfg.get("explanation_border_enabled",True) or cfg.get("explanation_frame_bg_enabled",True):
             draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
-
-    draw.text(((left+right-tw)/2,y1+20),title_text,font=title_font,fill=primary)
-    yy=y1+66; global_word=0
-    line_step=int(fit_size*1.28)
+    yy=y1+82; global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            draw.text((x,yy),w,font=f,fill=primary if current else _hex_rgb(cfg["text"],(255,255,255)))
+            # Karaoké explication : changement de couleur uniquement, sans cadre
+            # ni fond autour du mot actif pour éviter tout scintillement visuel.
+            draw.text((x,yy),w,font=f,fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255)))
             x+=ww+space; global_word+=1
-        yy+=line_step
-
+        yy+=int(cfg["explanation_size"]*1.35)
 
 def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
     cfg=_layout(module, style); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
@@ -1392,12 +1406,9 @@ def draw_style2_frame(items, active_idx, theme_name, channel, bg_file=None, time
     qf=get_font(int(cfg.get("question_size",50)),ff)
     qx=int(cfg.get("question_x",(safe_left+safe_right)//2)); qy=int(cfg.get("question_y",header_bottom+28))
     maxw=min(int(cfg.get("question_width",safe_right-safe_left)),safe_right-safe_left-20)
-    if auto: qx=(safe_left+safe_right)//2; qy=max(header_bottom+24+34+66,qy)
+    if auto: qx=(safe_left+safe_right)//2; qy=max(header_bottom+28,qy)
     prog=_animated_progress(motion,cfg.get("animation")); dx=int((1-prog)*70) if cfg.get("animation") in ("Glissement vertical","Glissement") else 0
-    lines=wrap_text(q,qf,maxw)
-    while len(lines)>2 and qf.size>28:
-        qf=get_font(qf.size-2,ff); lines=wrap_text(q,qf,maxw)
-    lines=lines[:2]
+    lines=wrap_text(q,qf,maxw)[:3]
     line_h=max(42,int(qf.size*1.10)); box_h=max(112,len(lines)*line_h+54); box_w=min(safe_right-safe_left,max(620,maxw+40))
     bx1=max(safe_left,qx-box_w//2); bx2=min(safe_right,qx+box_w//2); by1=max(header_bottom+16,qy-28); by2=min(760,by1+box_h)
     if cfg.get("question_frame_enabled",True):
@@ -1471,6 +1482,20 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     draw=ImageDraw.Draw(img)
     for k in range(9):
         px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
+    # Décor thématique animé et flouté pour les questions de mathématiques uniquement.
+    q_probe=clean_text(question).lower()
+    math_terms=("math", "calcul", "équation", "equation", "racine", "fraction", "géométr", "geometr", "multipli", "division", "addition", "soustraction", "pi ", "pourcentage", "combien font", "résous", "resous", "périmètre", "perimetre", "aire du", "racine carrée", "racine carree")
+    has_math_operators = any(op in q_probe for op in ("+", "×", "÷", "=", "√", "π", "∞")) or (" - " in q_probe and any(ch.isdigit() for ch in q_probe))
+    if any(term in q_probe for term in math_terms) or has_math_operators:
+        deco=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); dd=ImageDraw.Draw(deco)
+        symbols=("π","√","∞","+","−","×","÷","=")
+        for si,sym in enumerate(symbols):
+            xx=int((80+si*147+phase*(18+si*3))%(WIDTH+160))-40
+            yy=int(230+(si*211+phase*23)%(HEIGHT-320))
+            sf=get_font(78+(si%3)*12,ff)
+            dd.text((xx,yy),sym,font=sf,fill=(*theme["accent"],30 if si%2 else 22),stroke_width=1,stroke_fill=(*theme["accent"],12))
+        deco=deco.filter(ImageFilter.GaussianBlur(5))
+        img=Image.alpha_composite(img.convert("RGBA"),deco).convert("RGB"); draw=ImageDraw.Draw(img)
     if cfg["show_title"]:
         draw_header(draw,theme,q_num,total,video_title,phase)
     # Halo doré discret derrière la question pour renforcer la hiérarchie visuelle.
@@ -1525,6 +1550,134 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
             sy+=52
     draw_brand(draw,theme,channel)
     return img
+
+def _draw_quiz_score_cta(draw, theme, progress=1.0):
+    """CTA final lisible : trophée stylisé, score et direction commentaires."""
+    p=clamp(progress)
+    gold=theme["accent"]
+    # Médaille/trophée brillant sans police emoji, pour un rendu identique sur tous les serveurs.
+    cx,cy=540,1080
+    glow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); gd=ImageDraw.Draw(glow)
+    rr=94+int(5*math.sin(p*math.pi*2))
+    gd.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill=(*gold,25),outline=(*gold,150),width=4)
+    glow=glow.filter(ImageFilter.GaussianBlur(18))
+    base=draw._image if hasattr(draw,"_image") else None
+    # draw receives the current RGB image; the icon itself remains crisp above the halo.
+    draw.ellipse((cx-70,cy-70,cx+70,cy+70),fill=(12,25,45),outline=gold,width=5)
+    draw.rounded_rectangle((cx-30,cy-36,cx+30,cy+16),radius=8,fill=gold)
+    draw.arc((cx-54,cy-29,cx-8,cy+15),70,290,fill=gold,width=7)
+    draw.arc((cx+8,cy-29,cx+54,cy+15),250,110,fill=gold,width=7)
+    draw.rectangle((cx-6,cy+16,cx+6,cy+35),fill=gold)
+    draw.rounded_rectangle((cx-35,cy+35,cx+35,cy+45),radius=5,fill=gold)
+    cta="QUEL EST TON SCORE ?"
+    f=get_font(47); tw=text_width(draw,cta,f)
+    draw.text(((WIDTH-tw)/2,1190),cta,font=f,fill=(255,255,255),stroke_width=2,stroke_fill=(8,16,31))
+    sub="Écris ton résultat en commentaire !"
+    sf=get_font(28); sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1260),sub,font=sf,fill=(225,235,250))
+    # Flèche animée dirigée vers la zone des commentaires, en bas de l'écran.
+    ax=540; ay=1370+int(8*math.sin(p*math.pi*2))
+    draw.line((ax,ay-32,ax,ay+28),fill=gold,width=9)
+    draw.line((ax,ay+28,ax-23,ay+5),fill=gold,width=9)
+    draw.line((ax,ay+28,ax+23,ay+5),fill=gold,width=9)
+
+
+def draw_page_template(text, theme_name, channel, bg_file=None, progress=1.0, kind="intro", variant="Premium lumineux", module="quiz", style="1", language="Français"):
+    """Pages intro/outro premium. Toutes les variantes restent lumineuses, lisibles et cohérentes avec SuspenseLingo."""
+    variant = clean_text(variant or "Premium lumineux")
+    theme = THEMES[theme_name]
+    cfg = _layout(module, style)
+    ff = cfg.get("font_family", "DejaVu Sans")
+    p = ease_out(progress)
+    title = clean_text(text or ("Prêt ? C'est parti !" if kind == "intro" else "Merci d'avoir joué !"))
+    brand = clean_text(channel or "SuspenseLingo") or "SuspenseLingo"
+
+    # Base volontairement plus lumineuse : aucun écran de fin presque noir.
+    img = add_top_glow(make_base(theme_name, bg_file), theme, 1.12 + 0.08*p)
+    draw = ImageDraw.Draw(img)
+
+    # Variante 1 — Premium lumineux : référence principale.
+    if variant == "Premium lumineux":
+        # Voile clair et carte premium pour détacher le message du fond.
+        panel = Image.new("RGBA", (WIDTH, HEIGHT), (0,0,0,0))
+        pd = ImageDraw.Draw(panel)
+        pd.rounded_rectangle((72, 300, 1008, 1515), radius=48,
+                             fill=(9,24,52,218), outline=(*theme["accent"],190), width=3)
+        pd.rounded_rectangle((92, 320, 988, 1495), radius=40,
+                             outline=(255,255,255,38), width=2)
+        img = Image.alpha_composite(img.convert("RGBA"), panel).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        lf=get_font(26,ff); lw=text_width(draw,brand,lf)
+        draw.text(((WIDTH-lw)/2,390),brand,font=lf,fill=theme["accent"])
+        draw.line((270,455,810,455),fill=(255,255,255,65),width=2)
+        _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,610,86,p)
+        f=get_font(66,ff); lines=[] if (kind == "outro" and module == "quiz") else wrap_text(title,f,800)[:3]
+        y=790-int(30*(1-p))
+        for line in lines:
+            tw=text_width(draw,line,f)
+            draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
+            draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(255,255,255))
+            y+=92
+        sub="C'est parti !" if kind=="intro" else "À très bientôt !"
+        sf=get_font(29,ff); sw=text_width(draw,sub,sf)
+        draw.text(((WIDTH-sw)/2,1165),sub,font=sf,fill=(225,232,244))
+        draw.rounded_rectangle((220,1300,860,1314),radius=7,fill=(255,255,255,35))
+        draw.rounded_rectangle((220,1300,220+int(640*p),1314),radius=7,fill=theme["accent"])
+        draw.text(((WIDTH-text_width(draw,brand,get_font(20,ff)))/2,1415),brand,font=get_font(20,ff),fill=(190,201,220))
+        if kind == "outro" and module == "quiz": _draw_quiz_score_cta(draw,theme,p)
+        return img
+
+    # Variante 2 — Éclat néon premium : moderne mais toujours claire et élégante.
+    if variant == "Néon élégant":
+        # Deux halos décoratifs et une carte translucide; pas de gros cadre sombre.
+        draw.ellipse((80,250,420,590),fill=(*theme["accent"],28))
+        draw.ellipse((690,1120,1030,1460),fill=(*theme["accent"],22))
+        panel=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); pd=ImageDraw.Draw(panel)
+        pd.rounded_rectangle((78,410,1002,1390),radius=54,fill=(12,32,65,205),outline=(*theme["accent"],220),width=4)
+        pd.rounded_rectangle((98,430,982,1370),radius=44,outline=(255,255,255,42),width=2)
+        img=Image.alpha_composite(img.convert("RGBA"),panel).convert("RGB"); draw=ImageDraw.Draw(img)
+        lf=get_font(25,ff); lw=text_width(draw,brand.upper(),lf)
+        draw.text(((WIDTH-lw)/2,500),brand.upper(),font=lf,fill=theme["accent"])
+        _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,650,92,p)
+        f=get_font(64,ff); lines=[] if (kind == "outro" and module == "quiz") else wrap_text(title,f,790)[:3]
+        y=820-int(28*(1-p))
+        for line in lines:
+            tw=text_width(draw,line,f)
+            draw.text(((WIDTH-tw)/2+4,y+6),line,font=f,fill=(0,0,0))
+            draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(255,255,255))
+            y+=90
+        draw.line((250,1150,830,1150),fill=theme["accent"],width=3)
+        sf=get_font(28,ff); sub="Ton défi commence maintenant" if kind=="intro" else "Merci pour ta participation !"
+        sw=text_width(draw,sub,sf); draw.text(((WIDTH-sw)/2,1200),sub,font=sf,fill=(220,230,245))
+        draw_brand(draw,theme,brand,None)
+        if kind == "outro" and module == "quiz": _draw_quiz_score_cta(draw,theme,p)
+        return img
+
+    # Variante 3 — Élégance éditoriale : sobre, luxueuse et lumineuse.
+    # Elle évite l'ancien écran minimal trop vide.
+    panel=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0)); pd=ImageDraw.Draw(panel)
+    pd.rounded_rectangle((110,350,970,1450),radius=36,fill=(245,248,252,235),outline=(*theme["accent"],220),width=3)
+    pd.rounded_rectangle((128,368,952,1432),radius=28,outline=(255,255,255,210),width=2)
+    img=Image.alpha_composite(img.convert("RGBA"),panel).convert("RGB"); draw=ImageDraw.Draw(img)
+    # Bandeau supérieur coloré et marque.
+    draw.rounded_rectangle((170,455,910,535),radius=20,fill=theme["accent"])
+    lf=get_font(24,ff); lw=text_width(draw,brand,lf)
+    draw.text(((WIDTH-lw)/2,480),brand,font=lf,fill=(10,18,35))
+    _motivation_icon(draw,theme,"start" if kind=="intro" else "end",540,680,86,p)
+    f=get_font(62,ff); lines=[] if (kind == "outro" and module == "quiz") else wrap_text(title,f,730)[:3]
+    y=820-int(25*(1-p))
+    for line in lines:
+        tw=text_width(draw,line,f)
+        draw.text(((WIDTH-tw)/2,y),line,font=f,fill=(18,31,55))
+        y+=88
+    sub="PRÊT POUR LE DÉFI" if kind=="intro" else "À BIENTÔT"
+    sf=get_font(24,ff); sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1190),sub,font=sf,fill=theme["accent"])
+    draw.line((245,1260,835,1260),fill=(18,31,55,55),width=2)
+    draw.text(((WIDTH-text_width(draw,"SuspenseLingo",get_font(19,ff)))/2,1320),"SuspenseLingo",font=get_font(19,ff),fill=(90,105,125))
+    if kind == "outro" and module == "quiz": _draw_quiz_score_cta(draw,theme,p)
+    return img
+
 
 def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français"):
     theme=THEMES[theme_name]
@@ -2376,33 +2529,6 @@ def _quiz_generation_key(nb, subject, language="Français"):
 def _vocab_generation_key(nb, subject, language):
     return _stable_hash({"type": "vocab", "model": MODEL_NAME, "nb": int(nb), "subject": clean_text(subject).lower(), "language": language})
 
-def _quiz_generation_file_payload(data, nb, subject, language):
-    """Prépare un fichier JSON réutilisable sans aucun nouvel appel Gemini."""
-    clean_data=normalize_questions(data)[:int(nb)]
-    return {
-        "format":"SuspenseLingo Quiz Generation",
-        "version":1,
-        "generation_key":_quiz_generation_key(nb,subject,language),
-        "model":MODEL_NAME,
-        "nb":int(nb),
-        "subject":clean_text(subject),
-        "language":language,
-        "questions":clean_data,
-    }
-
-def _load_saved_quiz_generation(uploaded_file, expected_key):
-    """Recharge exactement une génération enregistrée : 0 quota Gemini."""
-    raw=uploaded_file.getvalue().decode("utf-8-sig",errors="replace")
-    payload=json.loads(raw)
-    if not isinstance(payload,dict) or payload.get("format")!="SuspenseLingo Quiz Generation":
-        raise ValueError("Ce fichier n'est pas une génération SuspenseLingo valide.")
-    if payload.get("generation_key")!=expected_key:
-        raise ValueError("Cette génération ne correspond pas au nombre de questions, au sujet ou à la langue actuels.")
-    data=normalize_questions(payload.get("questions",[]))
-    if not data:
-        raise ValueError("Le fichier enregistré ne contient aucune question valide.")
-    return data[:int(payload.get("nb",len(data)))]
-
 def _save_quiz_editor(rows):
     cleaned=[]
     for row in rows:
@@ -2814,31 +2940,30 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # QUIZ STYLE 1 — NE PAS MODIFIER LE PRESET VALIDÉ.
     # ================================================================
     if module == "quiz" and str(style) == "1":
-        # Correction visuelle : le header reste dans la zone sûre et la question
-        # démarre avec une vraie respiration. Les 4 réponses, le timer et la carte
-        # d'explication gardent leur mécanique d'origine.
-        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
-        drawn_header_bottom=header_y+24+header_h
-        question_y=drawn_header_bottom+34; question_reserved_h=176; question_bottom=question_y+question_reserved_h
-        answer_h=72; answer_gap=10; answer_y=question_bottom+18
+        # Gabarit PRO 9:16 : question plus présente, cartes de réponses plus
+        # grandes et moins d'espace perdu sous le quiz, tout en restant dans
+        # la zone sûre de la plateforme sélectionnée.
+        header_h=72; header_y=safe_top; header_bottom=header_y+header_h
+        question_y=header_bottom+38; question_reserved_h=205; question_bottom=question_y+question_reserved_h
+        answer_h=88; answer_gap=14; answer_y=question_bottom+20
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=56; timer_y=answers_bottom+48; explanation_h=210
-        explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-24
-        available=progress_y-explanation_h-14
+        timer_size=60; timer_y=answers_bottom+42; explanation_h=220
+        explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-18
+        available=progress_y-explanation_h-18
         if explanation_y>available:
-            explanation_y=available; timer_y=explanation_y-timer_size-24
-        if timer_y < answers_bottom+34:
-            timer_y=answers_bottom+34; explanation_y=timer_y+timer_size+24
-        if explanation_y+explanation_h > progress_y-10:
-            explanation_y=progress_y-10-explanation_h
+            explanation_y=available; timer_y=explanation_y-timer_size-34
+        if timer_y < answers_bottom+40:
+            timer_y=answers_bottom+40; explanation_y=timer_y+timer_size+24
+        if explanation_y+explanation_h > progress_y-12:
+            explanation_y=progress_y-12-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+19,p+"brand_size":28,
-            p+"title_x":center,p+"title_y":header_y+17,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":30,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":28,
+            p+"title_x":center,p+"title_y":header_y+18,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":29,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
             p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,
-            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":True,p+"social_progress_y":progress_y,
+            p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
         st.session_state[p+"social_safe_left"]=safe_left; st.session_state[p+"social_safe_right"]=safe_right
@@ -2851,9 +2976,8 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "quiz" and str(style) == "2":
         p="q2_"
-        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
-        drawn_header_bottom=header_y+24+header_h
-        qy=max(drawn_header_bottom+34, min(int(st.session_state.get(p+"question_y",315)), drawn_header_bottom+500))
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
+        qy=max(header_bottom+28, min(int(st.session_state.get(p+"question_y",315)), header_bottom+500))
         qw=min(int(st.session_state.get(p+"question_width",920)), safe_w); qx=center
         # Réponses cumulatives : on réserve l'espace avant le minuteur.
         hist_y=max(qy+250, int(st.session_state.get(p+"history_y",690)))
@@ -2869,9 +2993,9 @@ def apply_social_auto_layout(module="quiz", style="1"):
             timer_y=max(hist_bottom+12,safe_bottom-timer_size)
         # Un même gabarit d'en-tête pour tous les styles.
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
         st.session_state[p+"question_x"]=qx; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
         st.session_state[p+"history_x"]=safe_left; st.session_state[p+"history_width"]=safe_w; st.session_state[p+"history_y"]=hist_y
         st.session_state[p+"history_row_h"]=hist_row_h; st.session_state[p+"history_gap"]=hist_gap
@@ -2884,13 +3008,12 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "1":
         p="v1_"
-        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
-        drawn_header_bottom=header_y+24+header_h
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
-        qy=max(drawn_header_bottom+80, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
+        qy=max(header_bottom+150, min(int(st.session_state.get(p+"question_y",500)), safe_top+620))
         qw=min(int(st.session_state.get(p+"question_width",920)),safe_w)
         ty=max(qy+170, min(int(st.session_state.get(p+"translation_y",760)), safe_bottom-360))
         tw=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
@@ -2908,17 +3031,16 @@ def apply_social_auto_layout(module="quiz", style="1"):
     # ================================================================
     if module == "vocab" and str(style) == "2":
         p="v2_"
-        header_h=66; header_y=safe_top; header_bottom=header_y+header_h
-        drawn_header_bottom=header_y+24+header_h
+        header_h=64; header_y=safe_top; header_bottom=header_y+header_h
         st.session_state[p+"header_y"]=header_y; st.session_state[p+"header_h"]=header_h
-        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+19; st.session_state[p+"brand_size"]=28
-        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+17; st.session_state[p+"title_size"]=32
-        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+8; st.session_state[p+"score_size"]=30
+        st.session_state[p+"brand_x"]=safe_left+16; st.session_state[p+"brand_y"]=header_y+17; st.session_state[p+"brand_size"]=24
+        st.session_state[p+"title_x"]=center; st.session_state[p+"title_y"]=header_y+16; st.session_state[p+"title_size"]=30
+        st.session_state[p+"score_x"]=safe_right-50; st.session_state[p+"score_y"]=header_y+9; st.session_state[p+"score_size"]=27
         tw=min(int(st.session_state.get(p+"table_width",940)),safe_w)
         tx=max(safe_left,min(center-tw//2,safe_right-tw))
         gap=min(int(st.session_state.get(p+"table_gap",6)),8)
         total=max(1,len(st.session_state.get("v_data") or st.session_state.get("vocab_data") or [])); total=min(total,15)
-        min_table_y=drawn_header_bottom+34
+        min_table_y=header_bottom+28
         ty=max(min_table_y,int(st.session_state.get(p+"table_y",350)))
         available=max(180,safe_bottom-24-ty-gap*max(0,total-1))
         row_h=max(42,min(int(st.session_state.get(p+"table_row_h",82)),int(available/max(1,total))))
@@ -2932,7 +3054,7 @@ def apply_social_auto_layout(module="quiz", style="1"):
 
 
 def render_platform_safe_preview(image, key_prefix="platform_preview", module="quiz", style="1"):
-    """Aperçu vertical avec zones de sécurité indicatives par plateforme."""
+    """Aperçu vertical 9:16 à l'échelle de travail, avec zones de sécurité par plateforme."""
     profiles={
         "TikTok":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"TikTok"},
         "Instagram Reels":{"top":0.09,"bottom":0.18,"left":0.03,"right":0.16,"label":"Instagram Reels"},
@@ -2953,7 +3075,7 @@ def render_platform_safe_preview(image, key_prefix="platform_preview", module="q
     else:
         st.warning("⚠️ Mise en page automatique désactivée : l'aperçu montre les zones interdites, mais ne déplace pas les éléments.")
     st.caption("Les zones rouges indiquent les zones d'interface à éviter. Avec la mise en page automatique, les cadres complets — en-tête, question, réponses, minuteur, explication et progression — restent à l'intérieur de la zone sûre.")
-    canvas=image.convert("RGBA").resize((360,640),Image.Resampling.LANCZOS)
+    canvas=image.convert("RGBA").resize((432,768),Image.Resampling.LANCZOS)
     if show:
         ov=Image.new("RGBA",canvas.size,(0,0,0,0)); d=ImageDraw.Draw(ov); W,H=canvas.size
         zones=[
@@ -2973,7 +3095,7 @@ def render_platform_safe_preview(image, key_prefix="platform_preview", module="q
                     pass
         d.rectangle((int(W*profile["left"]),int(H*profile["top"]),int(W*(1-profile["right"])),int(H*(1-profile["bottom"]))),outline=(255,255,255,115),width=2)
         canvas=Image.alpha_composite(canvas,ov).convert("RGB")
-    st.image(canvas,width=360)
+    st.image(canvas,width=432)
     st.caption(f"🛡️ Zone de contenu recommandée pour {profile['label']} : garde la question et les réponses dans le cadre central.")
 
 def _qvp_quick_controls(module, style, selected, theme_name, channel, bg, state, title, language="Anglais", prefix_key="qvp"):
@@ -3084,7 +3206,7 @@ st.sidebar.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-st.sidebar.caption("🧠 SuspenseLingo Studio V30  •  🗣️ Vocabulaire Pro")
+st.sidebar.caption("🧠 SuspenseLingo Studio V32  •  🗣️ Vocabulaire Pro")
 st.sidebar.markdown("""
 <div class="qvp-side-note"><b>✨ Mode économique actif</b><br>
 Gemini est utilisé uniquement lorsque vous demandez du nouveau contenu IA.</div>
@@ -3194,15 +3316,16 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "brand_x":70, "brand_y":139, "brand_size":28, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#151D33", "brand_color":"#F59E0B",
+        "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
+        "intro_page_variant":"Premium lumineux", "outro_page_variant":"Premium lumineux",
+        "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
         "border_color":"#D2DFF5", "border_width":2, "border_radius":20,
-        "bg_opacity":18, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
+        "bg_opacity":10, "bg_zoom":1.02, "bg_x":0, "bg_y":0, "bg_mode":"✨ Automatique",
         "translation_x":540, "translation_y":760, "translation_width":850,
         "table_x":70, "table_y":350, "table_width":940, "table_row_h":82, "table_gap":6, "table_split":540, "table_radius":18,
         "vocab_fr_size":42, "vocab_tr_size":38, "vocab_header_size":29, "vocab_timer_offset_x":0, "vocab_timer_offset_y":0, "vocab_timer_size":44,
@@ -3236,13 +3359,46 @@ def render_layout_editor(module, style="1"):
             if _pp+"social_auto_layout" not in st.session_state:
                 st.session_state[_pp+"social_auto_layout"] = True
         st.session_state["_social_auto_layout_v31_24_migrated"] = True
-    if st.session_state.get(p+"social_auto_layout", False):
-        apply_social_auto_layout(module, style)
+    # V32 MISE EN PAGE PRO — l'automatique ne doit plus écraser les réglages
+    # manuels à chaque rerun Streamlit. Il s'applique au premier chargement
+    # et uniquement lorsqu'on change de plateforme ou réactive l'automatique.
+    _auto_on = bool(st.session_state.get(p+"social_auto_layout", False))
+    _auto_sig = f"{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
+    if _auto_on:
+        # V32 : la mise en page automatique ne doit plus réinitialiser les
+        # réglages enregistrés à chaque nouvelle visite. La signature est
+        # elle-même persistée dans qvp_settings.json. Elle ne change que
+        # lorsque la plateforme cible change.
+        if st.session_state.get(p+"_social_auto_applied_sig") != _auto_sig:
+            apply_social_auto_layout(module, style)
+            st.session_state[p+"_social_auto_applied_sig"] = _auto_sig
+    else:
+        st.session_state.pop(p+"_social_auto_applied_sig", None)
 
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • PRO</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Chaque élément possède ses propres positions, tailles, couleurs et cadres. X = horizontal • Y = vertical • les réglages sont indépendants par style.</div>', unsafe_allow_html=True)
     st.info("🧭 **Comment lire X/Y :** X déplace de gauche à droite (0 → 1080). Y déplace de haut en bas (0 → 1920). Les coordonnées concernent la vidéo 1080×1920, pas la taille du téléphone affiché.")
-    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
+    tabs = st.tabs(["🧩 Structure","🖼️ État","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
+
+    with tabs[1]:
+        st.markdown("### 🖼️ Première page et dernière page")
+        st.caption("Choisis le style de l'écran d'ouverture et de l'écran final. Les choix sont conservés avec les autres réglages et n'altèrent ni les questions, ni la voix, ni la synchronisation.")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**▶️ PREMIÈRE PAGE**")
+            st.selectbox("Style de la première page", ["Premium lumineux", "Néon élégant", "Minimal premium"], key=p+"intro_page_variant")
+            intro_txt = "Prêt ? C'est parti !" if is_quiz else "Apprends ces nouveaux mots !"
+            st.caption("Aperçu")
+            intro_preview = draw_page_template(intro_txt, list(THEMES.keys())[0], "SuspenseLingo", None, 1.0, "intro", st.session_state.get(p+"intro_page_variant", "Premium lumineux"), module, style)
+            st.image(intro_preview.resize((216,384), Image.Resampling.LANCZOS), width=216)
+        with c2:
+            st.markdown("**🏁 DERNIÈRE PAGE**")
+            st.selectbox("Style de la dernière page", ["Premium lumineux", "Néon élégant", "Minimal premium"], key=p+"outro_page_variant")
+            outro_txt = "Merci d'avoir joué !" if is_quiz else "Abonne-toi pour un nouveau mot !"
+            st.caption("Aperçu")
+            outro_preview = draw_page_template(outro_txt, list(THEMES.keys())[0], "SuspenseLingo", None, 1.0, "outro", st.session_state.get(p+"outro_page_variant", "Premium lumineux"), module, style)
+            st.image(outro_preview.resize((216,384), Image.Resampling.LANCZOS), width=216)
+        st.info("💡 Les aperçus utilisent le fond et le thème actifs au moment du rendu vidéo. Les trois propositions sont disponibles pour chaque style.")
 
     with tabs[0]:
         if is_quiz:
@@ -3283,10 +3439,10 @@ def render_layout_editor(module, style="1"):
         with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
         with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
 
-    with tabs[1]:
+    with tabs[2]:
         st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
         if is_quiz and style=="1":
-            st.caption("🔒 Style 1 Bleu Nuit & Or : preset de zones sûres validé conservé. Aucun changement de géométrie sans demande explicite.")
+            st.caption("🎯 Style 1 Pro : le mode automatique positionne la composition dans la zone sûre au premier chargement. Ensuite, tu peux déplacer librement la question, les réponses, le minuteur et l'explication depuis Position/Taille.")
         elif is_quiz and style=="2":
             st.caption("🎯 Style 2 : Q1 → Q2 + R1 → Q3 + R1/R2. L'automatique protège la question active et l'historique sans transformer la mise en page.")
         elif (not is_quiz) and style=="2":
@@ -3344,7 +3500,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Décalage Y", -50, 50, key=p+"vocab_timer_offset_y", step=5)
                 st.slider("Taille du minuteur",24,70,key=p+"vocab_timer_size")
 
-    with tabs[2]:
+    with tabs[3]:
         c1,c2 = st.columns(2)
         with c1:
             st.markdown("**Élément actif**")
@@ -3396,7 +3552,7 @@ def render_layout_editor(module, style="1"):
                 st.slider("Y traduction — Style 1",650,1200,key=p+"translation_y")
                 st.slider("Largeur traduction",400,1000,key=p+"translation_width")
 
-    with tabs[3]:
+    with tabs[4]:
         c1,c2 = st.columns(2)
         with c1:
             st.color_picker("Accent / titre",key=p+"primary")
@@ -3414,7 +3570,7 @@ def render_layout_editor(module, style="1"):
         with bc2: st.slider("Épaisseur",1,8,key=p+"border_width")
         with bc3: st.slider("Arrondi",0,48,key=p+"border_radius")
 
-    with tabs[4]:
+    with tabs[5]:
         st.selectbox("Animation principale",["Glissement","Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
         c1,c2=st.columns(2)
         with c1: st.slider("Vitesse",0.5,2.0,key=p+"animation_speed")
@@ -3422,7 +3578,7 @@ def render_layout_editor(module, style="1"):
         st.slider("Mouvement du fond",0.0,2.0,key=p+"motion_strength")
         st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
 
-    with tabs[5]:
+    with tabs[6]:
         # Quiz Style 1 : le compte à rebours est une fonctionnalité fondamentale.
         # IMPORTANT : sa valeur doit être fixée AVANT la création du widget Streamlit,
         # sinon Streamlit lève StreamlitWidgetAlreadyInstantiatedError.
@@ -3460,7 +3616,7 @@ def render_layout_editor(module, style="1"):
         else:
             st.caption("Tic du chrono • entrée de question/mot • pop de révélation • ding de fin.")
 
-    with tabs[6]:
+    with tabs[7]:
         st.selectbox("Police du style",FONT_CHOICES,key=p+"font_family")
         if (not is_quiz) and style=="2":
             st.selectbox("Police des en-têtes du tableau",FONT_CHOICES,key=p+"table_header_font")
@@ -3468,7 +3624,7 @@ def render_layout_editor(module, style="1"):
         st.caption("✅ Cette police est utilisée par l’aperçu et le rendu vidéo de CE style uniquement.")
         st.info("Choisis une police une seule fois pour ce style. Les réglages des autres styles restent indépendants.")
 
-    with tabs[7]:
+    with tabs[8]:
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
             st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -3482,7 +3638,7 @@ def render_layout_editor(module, style="1"):
         st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
 
     if is_quiz and style == "1":
-        with tabs[8]:
+        with tabs[9]:
             st.markdown("**🎵 Musique de fond du Quiz Style 1**")
             st.checkbox("Activer la musique de fond", key=p+"bg_music_enabled")
             c1,c2=st.columns(2)
@@ -3508,7 +3664,7 @@ with n2:
         _save_settings(); st.session_state["module_nav"]="vocab"; st.rerun()
 
 if nav=="quiz":
-    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🧠 QUIZ</span><small>Mise en page Pro • Éditeur interactif</small></div>',unsafe_allow_html=True)
 
     # Paramètres et contenu en pleine largeur.
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
@@ -3670,39 +3826,6 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             st.session_state.q_source=f"IA • {th_q}"
                             st.success(f"✅ Nouveau lot IA : {len(data)} questions.")
                         except Exception as e: st.error(f"Erreur Gemini : {e}")
-
-            # Sauvegarde persistante de la génération réussie : après un redémarrage
-            # de Streamlit, l'utilisateur peut recharger le même lot sans appeler Gemini.
-            if st.session_state.get("q_data") and st.session_state.get("q_ai_key")==gen_key:
-                save_payload=_quiz_generation_file_payload(st.session_state.q_data,nb_q,th_q,quiz_language)
-                csave,cload=st.columns(2,gap="small")
-                with csave:
-                    st.download_button(
-                        "💾 Enregistrer cette génération",
-                        data=json.dumps(save_payload,ensure_ascii=False,indent=2),
-                        file_name="SuspenseLingo_generation_quiz.json",
-                        mime="application/json",
-                        key="save_quiz_generation",
-                        use_container_width=True,
-                    )
-                with cload:
-                    saved_file=st.file_uploader(
-                        "📂 Charger une génération enregistrée",
-                        type=["json"],
-                        key="load_quiz_generation",
-                    )
-                    if saved_file is not None:
-                        file_hash=hashlib.sha256(saved_file.getvalue()).hexdigest()
-                        if st.session_state.get("_loaded_quiz_generation_hash")!=file_hash:
-                            try:
-                                loaded=_load_saved_quiz_generation(saved_file,gen_key)
-                                st.session_state.q_data=loaded
-                                st.session_state.q_ai_cache=[dict(x) for x in loaded]
-                                st.session_state.q_ai_key=gen_key
-                                st.session_state.q_source=f"IA • {th_q} • génération enregistrée"
-                                st.session_state._loaded_quiz_generation_hash=file_hash
-                                st.success(f"✅ Génération enregistrée chargée : {len(loaded)} questions. 0 quota Gemini.")
-                            except Exception as e: st.error(f"Génération enregistrée invalide : {e}")
         else:
             st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Prépare tes questions dans Excel/Google Sheets puis exporte en CSV. Maximum : 15 questions.</div></div>',unsafe_allow_html=True)
             st.download_button("⬇️ Télécharger le modèle CSV", data=csv_template(), file_name="quiz_template.csv", mime="text/csv", key="csvtemplate")
@@ -3802,14 +3925,8 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
         except Exception as e:
             st.error(f"Aperçu live indisponible : {e}")
 
-        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
-        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
-        try:
-            if "preview" not in locals():
-                raise RuntimeError("L’aperçu interactif n’a pas pu être calculé.")
-            render_platform_safe_preview(preview, "quiz_platform_safe", "quiz", "2" if str(quiz_style_id).endswith("2") else "1")
-        except Exception as e:
-            st.caption(f"Aperçu plateforme indisponible : {e}")
+        st.markdown("#### 📱 FORMAT DE SORTIE")
+        st.caption("Le gabarit de création reste propre et sans zones interdites affichées. Le format final est choisi automatiquement à l’export selon le réseau.")
 
         # Action principale immédiatement sous l'aperçu et les commandes rapides.
         q_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makeq_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("q_data")))
@@ -3830,10 +3947,12 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     clips=[]; total=len(st.session_state.q_data)
 
                     # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
-                    if clean_text(mot_start_q):
+                    # Format direct : en Style 1, la première image est la question, sans écran d'attente.
+                    # L'écran d'introduction reste disponible pour Style 2 si l'utilisateur l'a configuré.
+                    if clean_text(mot_start_q) and style_q_full.startswith("Style 2"):
                         ma=os.path.join(tmp,"mot_start.m4a"); synthesize_audio(_motivation_text_clean(mot_start_q),voice_q,ma,tts_rate); md=audio_duration(ma)
                         if md>0.15:
-                            mf=save_frames([(draw_motivation_scene(mot_start_q,theme_q,channel_q,bg_q,p,kind="start",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
+                            mf=save_frames([(draw_page_template(mot_start_q,theme_q,channel_q,bg_q,p,"intro",st.session_state.get("q1_intro_page_variant","Premium lumineux"),"quiz","1",quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_start")
                             mo=os.path.join(tmp,"mot_start.mp4"); make_segment(mf,ma,mo,tmp); clips.append(mo)
 
                     if style_q_full.startswith("Style 2"):
@@ -3895,6 +4014,12 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
                             q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
                             qdur=audio_duration(qa_raw)
+                            # La voix lit les quatre propositions avant le compte à rebours.
+                            # Cela conserve l'ordre : question immédiate → choix lus → réflexion → révélation.
+                            answer_read_text=". ".join([f"Réponse {chr(65+oi)} : {clean_text(opt)}" for oi,opt in enumerate(q["options"])]) + "."
+                            choices_raw=os.path.join(tmp,f"choices_{idx}.mp3")
+                            synthesize_audio(answer_read_text,voice_q,choices_raw,tts_rate)
+                            choices_dur=audio_duration(choices_raw)
                             exp_text=clean_text(q.get("explication","")) or f"La bonne réponse est {q['options'][corr]}."
                             ea_raw=os.path.join(tmp,f"exp_{idx}.mp3")
                             exp_words=synthesize_audio(exp_text,voice_q,ea_raw,tts_rate)
@@ -3911,7 +4036,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             else:
                                 q_with_fx=qa_raw
                             full_audio_raw=os.path.join(tmp,f"question_full_raw_{idx}.m4a")
-                            concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
+                            concat_audio_files([q_with_fx,choices_raw,countdown_sfx,exp_mix],full_audio_raw)
                             # Fond musical contrôlé depuis l’Éditeur Studio.
                             full_audio=os.path.join(tmp,f"question_full_{idx}.m4a")
                             music_enabled=bool(st.session_state.get("q1_bg_music_enabled",True))
@@ -3923,12 +4048,17 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                                 if uploaded_music is not None:
                                     music=prepare_custom_background_music(uploaded_music,audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}")
                                 else:
-                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style,countdown_start=qdur,countdown_duration=3.12)
+                                    music=make_quiz_background_music(audio_duration(full_audio_raw),tmp,f"quiz_bg_{idx}",1.0,music_style,countdown_start=qdur+choices_dur,countdown_duration=3.12)
                                 mix_background_music(full_audio_raw,music,full_audio,1.0,music_volume)
                             else:
                                 full_audio=full_audio_raw
                             qframes=word_timed_frames(qa_raw,q_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,motion=prog*.9,video_title=th_q,question_active_word=wi),qdur)
                             frames=[(img,dur) for img,dur in qframes]
+                            if choices_dur > 0.05 and frames:
+                                # La voix lit A, B, C, D pendant que les quatre cartes restent visibles.
+                                hold_img=frames[-1][0]
+                                hold_steps=max(2,int(choices_dur*FPS))
+                                frames.extend([(hold_img,choices_dur/hold_steps) for _ in range(hold_steps)])
                             cdur=3.12; cd_steps=COUNTDOWN_STEPS
                             for j in range(cd_steps):
                                 t=j/max(1,cd_steps-1); elapsed=t*cdur
@@ -3951,22 +4081,23 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                             clips.append(out)
 
-                    # Motivation de fin, avant le CTA existant.
+                    # FIN UNIFIÉE : une seule page au lieu de deux.
+                    # La motivation de fin + le CTA + l'engagement sont lus dans une seule séquence
+                    # afin d'éviter une page intermédiaire longue et une coupure visuelle.
+                    final_parts=[]
                     if clean_text(mot_end_q):
-                        ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(_motivation_text_clean(mot_end_q),voice_q,ma,tts_rate); md=audio_duration(ma)
-                        if md>0.15:
-                            mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
-                            me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
-                    # CTA final + engagement : deux phrases courtes, une seule séquence vocale.
-                    final_cta_text=clean_text(outro_q)
-                    if clean_text(engagement_q) and clean_text(engagement_q) not in final_cta_text:
-                        final_cta_text=(final_cta_text+" "+clean_text(engagement_q)).strip()
+                        final_parts.append(_motivation_text_clean(mot_end_q))
+                    if clean_text(outro_q):
+                        final_parts.append(clean_text(outro_q))
+                    if clean_text(engagement_q):
+                        final_parts.append(clean_text(engagement_q))
+                    final_cta_text=" ".join(dict.fromkeys([x for x in final_parts if x])).strip()
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
                         od=audio_duration(oa)
                         if od>0.15:
-                            of=save_frames([(draw_hook(final_cta_text,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
+                            of=save_frames([(draw_page_template(final_cta_text,theme_q,channel_q,bg_q,p,"outro",st.session_state.get("q1_outro_page_variant","Premium lumineux"),"quiz","1",quiz_language),od/6)
                                             for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                             oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
@@ -3987,7 +4118,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
             st.error(f"Erreur pendant le montage SuspenseLingo : {e}")
 
 else:
-    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Studio 9:16 • Éditeur interactif • Style 1 Pro</small></div>',unsafe_allow_html=True)
+    st.markdown('<div class="qvp-studio-header"><b>🎬 SuspenseLingo Studio</b><span>🗣️ VOCABULAIRE</span><small>Mise en page Pro • Éditeur interactif</small></div>',unsafe_allow_html=True)
     # Paramètres et contenu en pleine largeur.
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">⚙️ 1. Paramètres généraux</div>',unsafe_allow_html=True)
     v1,v2=st.columns(2,gap="medium")
@@ -4114,14 +4245,8 @@ else:
         except Exception as e:
             st.caption(f"Aperçu indisponible pour le moment : {e}")
 
-        st.markdown("#### 📱 APERÇU SELON LA PLATEFORME — zones de sécurité")
-        st.caption("Choisis TikTok, Instagram Reels, YouTube Shorts ou Facebook Reels pour visualiser les zones qui peuvent recouvrir le contenu.")
-        try:
-            if "preview_v" not in locals():
-                raise RuntimeError("L’aperçu interactif vocabulaire n’a pas pu être calculé.")
-            render_platform_safe_preview(preview_v, "vocab_platform_safe", "vocab", "2" if str(vocab_style_id).endswith("2") else "1")
-        except Exception as e:
-            st.caption(f"Aperçu plateforme indisponible : {e}")
+        st.markdown("#### 📱 FORMAT DE SORTIE")
+        st.caption("Le gabarit de création reste propre et sans zones interdites affichées. Le format final est choisi automatiquement à l’export selon le réseau.")
 
         v_generate_btn_clicked=st.button("🎬 GÉNÉRER LA VIDÉO",key="makev_unified",type="primary",use_container_width=True,disabled=not bool(st.session_state.get("v_data")))
         s1,s2=st.columns(2,gap="small")
@@ -4296,9 +4421,9 @@ else:
                         gc.collect()
                     oa=os.path.join(tmp,"vo.mp3"); synthesize_audio(outro_v,VOICES_FR["Henri - Dynamique"],oa,tts_rate); od=audio_duration(oa)
                     if style_v.startswith("Style 2"):
-                        of=save_frames([(draw_vocab_style2_outro(outro_v,outro_v_sub,theme_v,channel_v,bg_v,p),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                        of=save_frames([(draw_page_template(outro_v+((" "+outro_v_sub) if clean_text(outro_v_sub) else ""),theme_v,channel_v,bg_v,p,"outro",st.session_state.get(("v2_" if style_v.startswith("Style 2") else "v1_")+"outro_page_variant","Premium lumineux"),"vocab","2" if style_v.startswith("Style 2") else "1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                     else:
-                        of=save_frames([(draw_hook(outro_v,theme_v,channel_v,bg_v,p,module="vocab",style="1"),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
+                        of=save_frames([(draw_page_template(outro_v,theme_v,channel_v,bg_v,p,"outro",st.session_state.get("v1_outro_page_variant","Premium lumineux"),"vocab","1",langue_v),max(.04,od/7)) for p in [.08,.28,.50,.72,.90,1.0]],tmp,"vo")
                     oo=os.path.join(tmp,"vo.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
                     final=os.path.join(tmp,"vocabulaire_pro.mp4")
                     if style_v.startswith("Style 2"):
