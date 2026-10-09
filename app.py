@@ -2525,7 +2525,7 @@ def _theme_keywords(topic):
 
 def generate_theme_background(theme_name,topic):
     """Fond local réellement illustratif selon le sujet. Aucun appel Gemini."""
-    key=("auto_bg_v6",theme_name,clean_text(topic).lower())
+    key=("auto_bg_v7",theme_name,clean_text(topic).lower())
     if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
     theme=THEMES[theme_name]; kind=_theme_keywords(topic)
     seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16); rng=random.Random(seed)
@@ -2633,13 +2633,33 @@ def generate_theme_background(theme_name,topic):
             d.ellipse((wx-43,1400,wx+43,1484),fill=(*accent,115),outline=(*sec,190),width=7)
             d.ellipse((wx-13,1430,wx+13,1456),fill=(*sec,190))
     elif kind=="sport":
-        d.ellipse((540-300,1300-300,540+300,1300+300),outline=(*accent,55),width=8)
-        d.line((150,1300,930,1300),fill=(*sec,55),width=6); d.line((540,1000,540,1600),fill=(*sec,45),width=4)
-        d.ellipse((495,1255,585,1345),outline=(*accent,100),width=5)
+        # Terrain + ballon stylisé : motif sportif identifiable même en aperçu réduit.
+        d.rounded_rectangle((115,1030,965,1640),radius=36,outline=(*sec,72),width=7)
+        d.line((540,1035,540,1635),fill=(*sec,65),width=5)
+        d.ellipse((390,1190,690,1490),outline=(*accent,95),width=7)
+        # Ballon au premier plan
+        bx,by,br=540,1350,165
+        d.ellipse((bx-br,by-br,bx+br,by+br),fill=(*accent,35),outline=(*accent,155),width=9)
+        d.polygon([(bx,by-55),(bx+53,by-17),(bx+33,by+43),(bx-33,by+43),(bx-53,by-17)],fill=(*sec,95),outline=(*sec,160))
+        for pts in [[(bx,by-55),(bx,by-br+15)],[(bx+53,by-17),(bx+145,by-70)],[(bx+33,by+43),(bx+95,by+125)],[(bx-33,by+43),(bx-95,by+125)],[(bx-53,by-17),(bx-145,by-70)]]:
+            d.line(pts,fill=(*sec,115),width=6)
+        # Petites lignes de mouvement
+        d.line((170,1190,280,1190),fill=(*accent,70),width=7); d.line((150,1225,250,1225),fill=(*accent,48),width=5)
     elif kind=="art":
-        for _ in range(10):
-            x=rng.randint(100,760); y=rng.randint(900,1500); w=rng.randint(120,280); h=rng.randint(80,180)
-            d.rounded_rectangle((x,y,x+w,y+h),radius=30,fill=(*accent,16),outline=(*accent,50),width=4)
+        # Musique : portée et notes nettement reconnaissables.
+        if any(w in clean_text(topic).lower() for w in ["musique","musical","instrument","chanson","mélodie","melodie","note"]):
+            for yy in (1120,1165,1210,1255,1300):
+                d.line((130,yy,950,yy),fill=(*sec,100),width=5)
+            # notes avec hampes et deux croches reliées
+            for nx,ny in [(245,1208),(420,1163),(650,1253),(805,1210)]:
+                d.ellipse((nx-23,ny-13,nx+23,ny+13),fill=(*accent,190))
+                d.line((nx+20,ny,nx+20,ny-145),fill=(*accent,190),width=8)
+            d.line((440,1018,670,1085),fill=(*accent,190),width=12)
+            d.line((670,1085,825,1035),fill=(*accent,190),width=12)
+        else:
+            for _ in range(10):
+                x=rng.randint(100,760); y=rng.randint(900,1500); w=rng.randint(120,280); h=rng.randint(80,180)
+                d.rounded_rectangle((x,y,x+w,y+h),radius=30,fill=(*accent,16),outline=(*accent,50),width=4)
     elif kind=="food":
         for x,y,r in [(250,1350,95),(540,1240,120),(800,1400,80),(400,1540,70),(720,1560,100)]:
             d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,20),outline=(*accent,60),width=4)
@@ -3867,7 +3887,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
                         for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
-                            bg_question = selected_video_background(theme_q, q.get("question", th_q), bg_mode_clean_q, uploaded_bg_q)
+                            bg_question = selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
                             qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
                             q_words=synthesize_audio(q["question"],voice_q,qa_raw,tts_rate)
                             qdur=audio_duration(qa_raw)
