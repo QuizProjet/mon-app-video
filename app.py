@@ -2525,7 +2525,7 @@ def _theme_keywords(topic):
 
 def generate_theme_background(theme_name,topic):
     """Fond local réellement illustratif selon le sujet. Aucun appel Gemini."""
-    key=("auto_bg_v5",theme_name,clean_text(topic).lower())
+    key=("auto_bg_v6",theme_name,clean_text(topic).lower())
     if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
     theme=THEMES[theme_name]; kind=_theme_keywords(topic)
     seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16); rng=random.Random(seed)
@@ -2597,23 +2597,41 @@ def generate_theme_background(theme_name,topic):
             rad=math.radians(ang); d.line((cx+math.cos(rad)*340,cy+math.sin(rad)*340,cx-math.cos(rad)*340,cy-math.sin(rad)*340),fill=(*sec,45),width=4)
         d.ellipse((cx-42,cy-42,cx+42,cy+42),fill=(*accent,130))
     elif kind=="animaux":
-        # silhouettes de collines + empreintes stylisées
-        for j in range(6):
-            pts=[(x,900+j*120+int(35*math.sin(x/100+j))) for x in range(-30,1120,30)]; d.line(pts,fill=(*accent,45),width=9)
-        for x,y in [(300,1400),(540,1280),(780,1450)]:
-            d.ellipse((x-22,y-38,x+22,y+18),fill=(*sec,78)); d.ellipse((x-65,y-65,x-30,y-25),fill=(*sec,72)); d.ellipse((x+30,y-65,x+65,y-25),fill=(*sec,72))
+        # Plusieurs empreintes visibles, réparties en petites pistes diagonales.
+        for j in range(5):
+            pts=[(x,900+j*145+int(30*math.sin(x/100+j))) for x in range(-30,1120,30)]
+            d.line(pts,fill=(*accent,28),width=7)
+        def paw(cx,cy,scale=1.0,alpha=100):
+            # coussinet principal + quatre doigts, proportions d'une empreinte.
+            d.ellipse((cx-27*scale,cy-8*scale,cx+27*scale,cy+35*scale),fill=(*sec,alpha))
+            toes=[(-34,-22),(-12,-38),(13,-38),(35,-22)]
+            for tx,ty in toes:
+                rr=12*scale
+                d.ellipse((cx+(tx-rr)*scale,cy+(ty-rr)*scale,cx+(tx+rr)*scale,cy+(ty+rr)*scale),fill=(*sec,max(35,alpha-8)))
+        for cx,cy,sc in [(170,1190,.8),(235,1280,.72),(340,1390,.95),(455,1325,.72),(585,1450,.9),(710,1350,.75),(835,1480,.95),(900,1200,.7),(680,1110,.65),(390,1580,.72)]:
+            paw(cx,cy,sc,92)
     elif kind=="automobile":
-        # Silhouette simple de voiture, décor translucide dans le bas du fond.
-        # Carrosserie et roues restent éloignées de la zone centrale du texte.
-        d.rounded_rectangle((180,1260,900,1480),radius=85,fill=(*accent,22),outline=(*accent,100),width=8)
-        d.polygon([(300,1260),(390,1110),(690,1110),(800,1260)],fill=(*accent,18),outline=(*accent,90))
-        d.line((420,1130,420,1250),fill=(*sec,65),width=5)
-        d.line((665,1130,665,1250),fill=(*sec,65),width=5)
-        for wx in (340,740):
-            d.ellipse((wx-75,1415,wx+75,1565),fill=(15,22,36,85),outline=(*sec,105),width=8)
-            d.ellipse((wx-30,1460,wx+30,1520),outline=(*accent,120),width=6)
-        d.rounded_rectangle((205,1300,285,1360),radius=15,fill=(*sec,65))
-        d.rounded_rectangle((805,1300,875,1360),radius=15,fill=(*sec,65))
+        # Voiture stylisée plus grande et contrastée pour être identifiable dans l'aperçu.
+        # Le motif reste translucide mais ses roues, vitres et phares sont clairement dessinés.
+        body=(*accent,68); outline=(*accent,185); glass=(*sec,135)
+        # ombre douce et carrosserie
+        d.ellipse((145,1430,955,1530),fill=(*sec,32))
+        d.rounded_rectangle((145,1190,955,1450),radius=90,fill=body,outline=outline,width=12)
+        d.polygon([(260,1210),(380,1015),(700,1015),(845,1210)],fill=(*accent,48),outline=outline)
+        # vitres bien visibles
+        d.polygon([(405,1045),(485,1045),(485,1190),(315,1190)],fill=glass,outline=outline)
+        d.polygon([(515,1045),(685,1045),(790,1190),(515,1190)],fill=glass,outline=outline)
+        d.line((500,1035,500,1205),fill=outline,width=8)
+        # pare-chocs, phares et calandre
+        d.line((175,1370,925,1370),fill=outline,width=8)
+        d.rounded_rectangle((175,1250,260,1315),radius=18,fill=(*sec,150),outline=outline,width=4)
+        d.rounded_rectangle((840,1250,925,1315),radius=18,fill=(*sec,150),outline=outline,width=4)
+        d.rounded_rectangle((480,1380,630,1415),radius=10,outline=outline,width=5)
+        # roues et jantes
+        for wx in (330,760):
+            d.ellipse((wx-82,1360,wx+82,1524),fill=(*sec,150),outline=outline,width=10)
+            d.ellipse((wx-43,1400,wx+43,1484),fill=(*accent,115),outline=(*sec,190),width=7)
+            d.ellipse((wx-13,1430,wx+13,1456),fill=(*sec,190))
     elif kind=="sport":
         d.ellipse((540-300,1300-300,540+300,1300+300),outline=(*accent,55),width=8)
         d.line((150,1300,930,1300),fill=(*sec,55),width=6); d.line((540,1000,540,1600),fill=(*sec,45),width=4)
