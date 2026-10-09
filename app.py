@@ -2531,7 +2531,7 @@ def _theme_keywords(topic):
 
 def generate_theme_background(theme_name,topic):
     """Fond local réellement illustratif selon le sujet. Aucun appel Gemini."""
-    key=("auto_bg_v8",theme_name,clean_text(topic).lower())
+    key=("auto_bg_v9",theme_name,clean_text(topic).lower())
     if key in _BASE_CACHE: return _BASE_CACHE[key].copy()
     theme=THEMES[theme_name]; kind=_theme_keywords(topic)
     seed=int(hashlib.md5((theme_name+"|"+clean_text(topic)).encode()).hexdigest()[:8],16); rng=random.Random(seed)
@@ -2617,41 +2617,33 @@ def generate_theme_background(theme_name,topic):
         for cx,cy,sc in [(170,1190,.8),(235,1280,.72),(340,1390,.95),(455,1325,.72),(585,1450,.9),(710,1350,.75),(835,1480,.95),(900,1200,.7),(680,1110,.65),(390,1580,.72)]:
             paw(cx,cy,sc,92)
     elif kind=="automobile":
-        # Voiture stylisée plus grande et contrastée pour être identifiable dans l'aperçu.
-        # Le motif reste translucide mais ses roues, vitres et phares sont clairement dessinés.
-        body=(*accent,68); outline=(*accent,185); glass=(*sec,135)
-        # ombre douce et carrosserie
-        d.ellipse((145,1430,955,1530),fill=(*sec,32))
-        d.rounded_rectangle((145,1190,955,1450),radius=90,fill=body,outline=outline,width=12)
-        d.polygon([(260,1210),(380,1015),(700,1015),(845,1210)],fill=(*accent,48),outline=outline)
-        # vitres bien visibles
-        d.polygon([(405,1045),(485,1045),(485,1190),(315,1190)],fill=glass,outline=outline)
-        d.polygon([(515,1045),(685,1045),(790,1190),(515,1190)],fill=glass,outline=outline)
-        d.line((500,1035,500,1205),fill=outline,width=8)
-        # pare-chocs, phares et calandre
-        d.line((175,1370,925,1370),fill=outline,width=8)
-        d.rounded_rectangle((175,1250,260,1315),radius=18,fill=(*sec,150),outline=outline,width=4)
-        d.rounded_rectangle((840,1250,925,1315),radius=18,fill=(*sec,150),outline=outline,width=4)
-        d.rounded_rectangle((480,1380,630,1415),radius=10,outline=outline,width=5)
-        # roues et jantes
-        for wx in (330,760):
-            d.ellipse((wx-82,1360,wx+82,1524),fill=(*sec,150),outline=outline,width=10)
-            d.ellipse((wx-43,1400,wx+43,1484),fill=(*accent,115),outline=(*sec,190),width=7)
-            d.ellipse((wx-13,1430,wx+13,1456),fill=(*sec,190))
+        # Petites voitures discrètes, répétées sur tout le fond.
+        def small_car(cx, cy, scale=1.0, alpha=85):
+            body=(*accent,alpha); outline=(*accent,min(190,alpha+55)); glass=(*sec,max(45,alpha))
+            x0=cx-62*scale; y0=cy-22*scale
+            d.rounded_rectangle((x0,y0,x0+124*scale,y0+38*scale),radius=max(4,int(10*scale)),fill=body,outline=outline,width=max(1,int(3*scale)))
+            d.polygon([(cx-39*scale,cy-20*scale),(cx-23*scale,cy-42*scale),(cx+22*scale,cy-42*scale),(cx+42*scale,cy-20*scale)],fill=body,outline=outline)
+            d.polygon([(cx-19*scale,cy-37*scale),(cx+0*scale,cy-37*scale),(cx+0*scale,cy-23*scale),(cx-30*scale,cy-23*scale)],fill=glass)
+            d.polygon([(cx+6*scale,cy-37*scale),(cx+20*scale,cy-37*scale),(cx+34*scale,cy-23*scale),(cx+6*scale,cy-23*scale)],fill=glass)
+            for wx in (cx-35*scale,cx+35*scale):
+                rr=10*scale
+                d.ellipse((wx-rr,cy+8*scale,wx+rr,cy+8*scale+2*rr),fill=(*sec,max(60,alpha)),outline=outline,width=max(1,int(2*scale)))
+        for cx,cy,sc in [(130,520,.52),(390,650,.42),(700,500,.48),(930,700,.4),(230,900,.43),(550,960,.5),(840,1040,.42),(120,1230,.46),(390,1370,.4),(670,1280,.48),(920,1480,.42),(240,1640,.5),(560,1750,.4),(800,1680,.45)]:
+            small_car(cx,cy,sc,78)
     elif kind=="sport":
-        # Petits ballons et chaussure de sport, répartis sans surcharger le fond.
-        d.rounded_rectangle((115,1030,965,1640),radius=36,outline=(*sec,42),width=5)
-        d.line((540,1035,540,1635),fill=(*sec,38),width=4)
-        def ball(cx,cy,r,alpha=105):
-            d.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(*accent,alpha),width=5)
-            d.polygon([(cx,cy-r//3),(cx+r//3,cy-r//8),(cx+r//5,cy+r//3),(cx-r//5,cy+r//3),(cx-r//3,cy-r//8)],outline=(*sec,alpha),fill=(*accent,20))
-            d.arc((cx-r//2,cy-r//2,cx+r//2,cy+r//2),20,300,fill=(*sec,alpha),width=3)
-        for cx,cy,r in [(230,1170,58),(410,1450,42),(730,1135,48),(850,1480,62),(610,1580,34)]: ball(cx,cy,r,115)
-        # Silhouette simple de chaussure : semelle, empeigne et lacets.
-        shoe=[(270,1370),(330,1350),(385,1380),(435,1420),(500,1430),(525,1460),(510,1490),(300,1490),(265,1470)]
-        d.polygon(shoe,fill=(*accent,48),outline=(*accent,155))
-        d.line((275,1490,520,1490),fill=(*sec,160),width=8)
-        for lx in (385,405,425): d.line((lx,1400,lx+24,1415),fill=(*sec,150),width=4)
+        # Petits ballons de football répétés partout, sans grand terrain ni chaussure.
+        def football(cx,cy,r,alpha=120):
+            d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(*sec,18),outline=(*accent,alpha),width=max(2,int(r*.09)))
+            # Pentagone central et panneaux typiques d'un ballon de football.
+            pts=[(cx,cy-r*.34),(cx+r*.32,cy-r*.10),(cx+r*.20,cy+r*.28),(cx-r*.20,cy+r*.28),(cx-r*.32,cy-r*.10)]
+            d.polygon(pts,fill=(*accent,max(35,alpha-20)),outline=(*sec,alpha))
+            d.line((cx,cy-r*.34,cx,cy-r*.86),fill=(*sec,alpha),width=max(1,int(r*.045)))
+            d.line((cx+r*.32,cy-r*.10,cx+r*.83,cy-r*.35),fill=(*sec,alpha),width=max(1,int(r*.045)))
+            d.line((cx+r*.20,cy+r*.28,cx+r*.55,cy+r*.72),fill=(*sec,alpha),width=max(1,int(r*.045)))
+            d.line((cx-r*.20,cy+r*.28,cx-r*.55,cy+r*.72),fill=(*sec,alpha),width=max(1,int(r*.045)))
+            d.line((cx-r*.32,cy-r*.10,cx-r*.83,cy-r*.35),fill=(*sec,alpha),width=max(1,int(r*.045)))
+        for cx,cy,r in [(100,470,20),(290,590,15),(510,480,18),(760,560,22),(950,470,16),(170,760,18),(420,820,22),(650,740,15),(860,850,20),(100,1040,16),(330,1120,21),(570,1010,17),(790,1140,15),(960,1050,22),(210,1350,20),(460,1430,15),(700,1320,22),(900,1450,17),(120,1630,21),(360,1720,16),(590,1600,19),(820,1710,22),(990,1810,15)]:
+            football(cx,cy,r,118)
     elif kind=="musique":
         # Portées et petites notes réparties sur toute la hauteur du fond.
         for base in (500, 1000, 1500):
