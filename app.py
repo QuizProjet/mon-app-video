@@ -2515,6 +2515,7 @@ def _theme_keywords(topic):
         "science":["science","physique","chimie","biologie","atome","scientifique","corps humain","anatomie"],
         "animaux":["animal","animaux","faune","océan","ocean","insecte","mammifère","mammifere"],
         "sport":["sport","football","soccer","tennis","basket","olympique","olympiques"],
+        "automobile":["automobile","voiture","voitures","auto","véhicule","vehicule","moteur","conduite","course automobile","rallye"],
         "art":["art","peinture","musique","cinéma","cinema","littérature","litterature"],
         "food":["cuisine","gastronomie","aliment","aliments","nourriture","recette"],
     }
@@ -2601,6 +2602,18 @@ def generate_theme_background(theme_name,topic):
             pts=[(x,900+j*120+int(35*math.sin(x/100+j))) for x in range(-30,1120,30)]; d.line(pts,fill=(*accent,45),width=9)
         for x,y in [(300,1400),(540,1280),(780,1450)]:
             d.ellipse((x-22,y-38,x+22,y+18),fill=(*sec,78)); d.ellipse((x-65,y-65,x-30,y-25),fill=(*sec,72)); d.ellipse((x+30,y-65,x+65,y-25),fill=(*sec,72))
+    elif kind=="automobile":
+        # Silhouette simple de voiture, décor translucide dans le bas du fond.
+        # Carrosserie et roues restent éloignées de la zone centrale du texte.
+        d.rounded_rectangle((180,1260,900,1480),radius=85,fill=(*accent,22),outline=(*accent,100),width=8)
+        d.polygon([(300,1260),(390,1110),(690,1110),(800,1260)],fill=(*accent,18),outline=(*accent,90))
+        d.line((420,1130,420,1250),fill=(*sec,65),width=5)
+        d.line((665,1130,665,1250),fill=(*sec,65),width=5)
+        for wx in (340,740):
+            d.ellipse((wx-75,1415,wx+75,1565),fill=(15,22,36,85),outline=(*sec,105),width=8)
+            d.ellipse((wx-30,1460,wx+30,1520),outline=(*accent,120),width=6)
+        d.rounded_rectangle((205,1300,285,1360),radius=15,fill=(*sec,65))
+        d.rounded_rectangle((805,1300,875,1360),radius=15,fill=(*sec,65))
     elif kind=="sport":
         d.ellipse((540-300,1300-300,540+300,1300+300),outline=(*accent,55),width=8)
         d.line((150,1300,930,1300),fill=(*sec,55),width=6); d.line((540,1000,540,1600),fill=(*sec,45),width=4)
@@ -3451,6 +3464,7 @@ def render_layout_editor(module, style="1"):
         st.info("Choisis une police une seule fois pour ce style. Les réglages des autres styles restent indépendants.")
 
     with tabs[7]:
+        st.markdown("**Fond de la vidéo**")
         st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
         if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
             st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
@@ -3497,7 +3511,7 @@ if nav=="quiz":
     g1,g2=st.columns(2,gap="medium")
     with g1:
         subject_options=[
-            "Culture générale","Animaux","Géographie","Histoire","Sciences","Technologie","Cinéma & séries","Sport","Musique","Logique & énigmes","Personnalisé"
+            "Culture générale","Animaux","Mathématiques","Géographie","Histoire","Sciences","Technologie","Automobile","Cinéma & séries","Sport","Musique","Logique & énigmes","Personnalisé"
         ]
         subject_choice=st.selectbox("Sujet",subject_options,index=0,key="thq_choice")
         if subject_choice=="Personnalisé":
@@ -3512,6 +3526,7 @@ if nav=="quiz":
         quiz_tts_rate=VOICE_PROFILES[voice_profile]["rate"]
     with g2:
         theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
+        st.caption("Le Style visuel règle les couleurs. Le fond automatique affiche des motifs selon le Sujet : empreintes pour Animaux, symboles π √ + ÷ ∞ × pour Mathématiques, formes historiques pour Histoire, voiture pour Automobile.")
         style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
         nb_q=st.slider("Questions",1,15,3,key="nbq")
     g3,g4=st.columns(2,gap="medium")
