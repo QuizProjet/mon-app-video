@@ -336,7 +336,7 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    # V32.10 : palette unique lumineuse et cohérente pour tous les styles.
+    # V32.11 : palette unique lumineuse et cohérente pour tous les styles.
     # Les motifs de fond restent déterminés séparément par le sujet choisi.
     "Bleu Nuit & Or": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
     "Chocolat Noir & Or": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
@@ -685,7 +685,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
-    gold=(250,184,60); navy=(25,45,78); border=(76,105,150); white=(255,255,255); black=(15,23,42)
+    gold=(245,190,82); navy=(38,57,87); border=(86,117,153); white=(255,255,255); black=(24,39,61)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
@@ -700,6 +700,8 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
         bottom=min(safe_bottom-10,top+52)
     left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
+    # Fine liseré doré : identité premium sans surcharger l’en-tête.
+    draw.rounded_rectangle((left+16,top+5,right-16,top+8),radius=2,fill=gold)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
@@ -1051,6 +1053,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
                 draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
+    """Carte d’explication compacte, lisible et harmonisée avec la palette commune."""
     cfg=_layout("quiz", "1")
     if cfg.get("explanation_auto_below_timer", False):
         timer_size=max(24,int(cfg.get("timer_size",58)))
@@ -1059,45 +1062,40 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
             timer_cy=min(1500, answer_bottom + timer_size + 22)
         else:
             timer_cy=int(cfg.get("timer_y",1045))
-        timer_r=timer_size
-        y1=min(1450, timer_cy + timer_r + 10)
+        y1=min(1430, timer_cy + timer_size + 8)
     else:
-        y1=int(cfg["explanation_y"])
+        y1=int(cfg.get("explanation_y",1375))
     p=ease_out(progress)
-    primary=_hex_rgb(cfg["primary"],theme["accent"])
-    box_w=max(420,min(1020,int(cfg.get("explanation_width",964))))
+    primary=(245,190,82)
+    box_w=max(420,min(980,int(cfg.get("explanation_width",940))))
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
-    # Maquette Bleu Nuit & Or : aucun pictogramme dans la carte d'explication.
-    # Titre doré centré, description blanche centrée, comme le visuel approuvé.
-    title_font=get_font(min(36,int(cfg["explanation_size"]*.95)),cfg.get("font_family","DejaVu Sans"))
-    title_text="EXPLICATION :"
+    font_size=max(24,min(32,int(cfg.get("explanation_size",30))))
+    title_font=get_font(26,cfg.get("font_family","DejaVu Sans"))
+    f=get_font(font_size,cfg.get("font_family","DejaVu Sans"))
+    lines=wrap_text(clean_text(explanation or "Bravo !"),f,max(300,box_w-72))[:4]
+    # Hauteur proportionnelle au texte, avec une limite pour préserver la zone basse des réseaux.
+    box_h=max(176,min(246,112+len(lines)*int(font_size*1.25)))
+    y2=min(1650,y1+box_h)
+    if y2-y1 < 150:
+        y1=max(1120,y2-176)
+    # Dessiner le panneau AVANT le texte pour éviter que le fond ne recouvre le titre.
+    if cfg.get("explanation_frame_enabled",True):
+        draw.rounded_rectangle((left,y1,right,y2),radius=22,fill=(31,48,72),outline=(245,190,82),width=2)
+        draw.rounded_rectangle((left+22,y1+8,left+int((right-left-44)*p)+22,y1+12),radius=2,fill=primary)
+    title_text="EXPLICATION"
     tw=text_width(draw,title_text,title_font)
-    draw.text(((left+right-tw)/2,y1+26),title_text,font=title_font,fill=primary)
-    f=get_font(int(cfg["explanation_size"])); lines=wrap_text(explanation or "Bravo !",f,max(300,box_w-100))[:5]
-    if cfg.get("explanation_auto_height", False):
-        needed_h=int(118 + max(1,len(lines))*int(cfg["explanation_size"]*1.32))
-        box_h=max(205,min(int(cfg.get("explanation_h",320)),needed_h))
-    else:
-        box_h=int(cfg.get("explanation_h",320))
-    y2=min(1645,y1+box_h)
-    is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
-    if cfg.get("explanation_frame_enabled", True):
-        fill=(15,23,42) if is_blue_gold and cfg.get("explanation_frame_bg_enabled",True) else ((6,13,28) if cfg.get("explanation_frame_bg_enabled",True) else None)
-        outline=(245,158,11) if is_blue_gold and cfg.get("explanation_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),primary) if cfg.get("explanation_border_enabled",True) else None)
-        draw.rounded_rectangle((left,y1,right,y2),radius=20 if is_blue_gold else int(cfg.get("border_radius",cfg["explanation_radius"])),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
-        if cfg.get("explanation_border_enabled",True) or cfg.get("explanation_frame_bg_enabled",True):
-            draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+6),radius=3,fill=primary)
-    yy=y1+82; global_word=0
+    draw.text(((left+right-tw)/2,y1+24),title_text,font=title_font,fill=primary)
+    yy=y1+66; global_word=0
     for line in lines:
-        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f); totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
+        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
+        totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            # Karaoké explication : changement de couleur uniquement, sans cadre
-            # ni fond autour du mot actif pour éviter tout scintillement visuel.
-            draw.text((x,yy),w,font=f,fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255)))
+            draw.text((x,yy),w,font=f,fill=primary if current else (248,250,252))
             x+=ww+space; global_word+=1
-        yy+=int(cfg["explanation_size"]*1.35)
+        yy+=int(font_size*1.22)
+
 
 def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
     cfg=_layout(module, style); color=_hex_rgb(cfg.get("timer_color"),theme["accent"])
