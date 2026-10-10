@@ -681,65 +681,65 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """V31.30 — en-tête commun aux 4 styles : LOGO | TITRE | COMPTEUR.
-    Les trois zones ont la même largeur et restent dans la zone sûre.
+    """En-tête SuspenseLingo à deux niveaux, commun au preview et au rendu vidéo.
+    Rangée 1 : marque à gauche, compteur dans une capsule dorée à droite.
+    Rangée 2 : libellé CATÉGORIE doré puis nom de catégorie blanc.
     """
     ff=cfg.get("font_family","Lato")
-    gold=(245,190,82); navy=(31,53,81); border=(104,139,177); white=(255,255,255); black=(22,38,59)
+    gold=(245,190,82); navy=(24,43,70); border=(92,126,164); white=(255,255,255); ink=(18,31,49)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
-    # V31.32 — l'en-tête doit rester entièrement dans la zone sûre, avec
-    # une marge interne supplémentaire pour ne jamais toucher le masque.
-    safe_margin_top=24; safe_margin_bottom=24
-    top=max(safe_top+safe_margin_top,top)
-    header_h=max(58,min(78,int(cfg.get("header_h",72))))
-    bottom=min(safe_bottom-safe_margin_bottom,top+header_h)
-    if bottom-top < 52:
-        top=max(safe_top+10, safe_bottom-62)
-        bottom=min(safe_bottom-10,top+52)
+    top=max(safe_top+20,top)
     left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
-    draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
-    third=(right-left)/3.0
-    # Zone 1 : logo
+    # Deux lignes clairement séparées, en conservant le header dans la zone sûre.
+    header_h=144
+    if top+header_h > safe_bottom-18:
+        top=max(safe_top+8, safe_bottom-header_h-18)
+    bottom=min(safe_bottom-8,top+header_h)
+    if bottom-top < 112:
+        bottom=min(HEIGHT-30,top+112)
+    draw.rounded_rectangle((left,top,right,bottom),radius=22,fill=navy,outline=border,width=2)
+
+    pad=22
+    brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
     if cfg.get("brand_show",True):
-        brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",31)),ff); bh=text_height(bf,brand)
-        bx=left+18; by=top+(bottom-top-bh)//2
-        # Badge de marque : petit monogramme + capsule pour donner plus de
-        # présence à SuspenseLingo sans modifier la mécanique du quiz.
-        icon_r=max(12,min(18,(bottom-top)//4))
-        icx=bx+icon_r; icy=top+(bottom-top)//2
+        # Petit monogramme doré, puis nom de chaîne : une seule occurrence.
+        icon_r=17; icx=left+pad+icon_r; icy=top+35
         draw.ellipse((icx-icon_r,icy-icon_r,icx+icon_r,icy+icon_r),fill=gold)
-        sf=get_font(max(14,int(icon_r*1.25)),ff)
-        stxt="S"; ssw=text_width(draw,stxt,sf); ssh=text_height(sf,stxt)
-        draw.text((icx-ssw/2,icy-ssh/2-1),stxt,font=sf,fill=black)
-        text_x=bx+icon_r*2+10
-        if cfg.get("brand_bg_enabled",True):
-            tw=text_width(draw,brand,bf); pad_x=10; pad_y=7
-            draw.rounded_rectangle((text_x-pad_x,by-pad_y,text_x+tw+pad_x,by+bh+pad_y),radius=12,fill=_hex_rgb(cfg.get("brand_bg"),(32,56,94)),outline=border,width=1)
-        draw.text((text_x,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
-    # Zone 2 : titre
-    title=clean_text(title) or "Culture Générale"
-    if title.lower().startswith("quiz "): title=title[5:].strip()
-    if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(int(cfg.get("title_size",32)),ff); th=text_height(tf,title)
-    center_x=left+third*1.5; max_tw=int(third-24)
-    while text_width(draw,title,tf)>max_tw and tf.size>24:
-        tf=get_font(tf.size-1,ff); th=text_height(tf,title)
-    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
-    draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
-    # Zone 3 : compteur
-    score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    # Le badge reste intégralement dans le troisième tiers et dans le masque sûr.
-    third_left=left+2*third; third_right=right
-    pill_w=min(max(78,sw+24),max(78,int(third-18)))
-    pill_h=min(max(40,sh+10),max(40,header_h-10))
-    cx=(third_left+third_right)/2
-    px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
-    py=top+(bottom-top-pill_h)/2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
-    draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
+        sf=get_font(21,ff); sw=text_width(draw,"S",sf); sh=text_height(sf,"S")
+        draw.text((icx-sw/2,icy-sh/2-1),"S",font=sf,fill=ink)
+        bf=get_font(min(34,max(24,int(cfg.get("brand_size",31)))),ff)
+        bh=text_height(bf,brand); bx=icx+icon_r+11; by=icy-bh/2
+        max_brand_right=right-180
+        while text_width(draw,brand,bf)>max(100,max_brand_right-bx) and bf.size>20:
+            bf=get_font(bf.size-1,ff); bh=text_height(bf,brand); by=icy-bh/2
+        draw.text((bx+1,by+2),brand,font=bf,fill=(7,16,29))
+        draw.text((bx,by),brand,font=bf,fill=gold)
+
+    score=f"{q_num}/{total}"
+    score_font=get_font(max(27,int(cfg.get("score_size",31))),ff)
+    sw=text_width(draw,score,score_font); sh=text_height(score_font,score)
+    pill_w=max(94,sw+30); pill_h=max(48,sh+14)
+    px=right-pad-pill_w; py=icy-pill_h//2
+    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=pill_h//2,fill=gold)
+    draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=score_font,fill=ink)
+
+    divider_y=top+66
+    draw.line((left+pad,divider_y,right-pad,divider_y),fill=(74,100,133),width=2)
+    label_font=get_font(19,ff)
+    draw.text((left+pad,top+79),"CATÉGORIE",font=label_font,fill=gold)
+    category=clean_text(title) or "Culture Générale"
+    if category.lower().startswith("quiz "):
+        category=category[5:].strip()
+    cat_font=get_font(max(25,min(36,int(cfg.get("title_size",32)))),ff)
+    max_cat_w=right-left-2*pad
+    while text_width(draw,category,cat_font)>max_cat_w and cat_font.size>20:
+        cat_font=get_font(cat_font.size-1,ff)
+    # Le nom de catégorie est aligné à gauche et peut rester sur une seule ligne lisible.
+    cat_y=top+105
+    draw.text((left+pad+1,cat_y+2),category,font=cat_font,fill=(7,16,29))
+    draw.text((left+pad,cat_y),category,font=cat_font,fill=white)
     return top, bottom
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
