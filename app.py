@@ -336,19 +336,19 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    # V32.11 : palette unique lumineuse et cohérente pour tous les styles.
+    # V32.12 : palette unique lumineuse et cohérente pour tous les styles.
     # Les motifs de fond restent déterminés séparément par le sujet choisi.
-    "Bleu Nuit & Or": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Chocolat Noir & Or": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Violet Neon": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Emeraude Mint": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Noir Carbone": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Midnight Sapphire": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Crimson Noir": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Royal Violet": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Black Gold": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Arctic Cyan": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Cyber Pink": {"bg": (29, 43, 66), "bg2": (49, 69, 96), "card": (38, 56, 81), "card2": (54, 75, 103), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Bleu Nuit & Or": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Chocolat Noir & Or": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Violet Neon": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Emeraude Mint": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Noir Carbone": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Midnight Sapphire": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Crimson Noir": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Royal Violet": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Black Gold": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Arctic Cyan": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    "Cyber Pink": {"bg": (38, 58, 86), "bg2": (62, 88, 122), "card": (60, 85, 119), "card2": (78, 108, 145), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
 }
 
 VOICES_FR = {
@@ -685,7 +685,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     Les trois zones ont la même largeur et restent dans la zone sûre.
     """
     ff=cfg.get("font_family","Lato")
-    gold=(245,190,82); navy=(38,57,87); border=(86,117,153); white=(255,255,255); black=(24,39,61)
+    gold=(245,190,82); navy=(31,53,81); border=(104,139,177); white=(255,255,255); black=(22,38,59)
     left=int(cfg.get("social_safe_left",40)); right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y", int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
@@ -700,8 +700,6 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
         bottom=min(safe_bottom-10,top+52)
     left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
-    # Fine liseré doré : identité premium sans surcharger l’en-tête.
-    draw.rounded_rectangle((left+16,top+5,right-16,top+8),radius=2,fill=gold)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
@@ -956,43 +954,35 @@ def _layout(module="quiz", style=None):
     return out
 
 def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1):
+    """Question sans panneau ni cadre; taille de police adaptative à la longueur."""
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
-    base_size=int(cfg["question_size"]); maxw=int(cfg.get("question_width",900))
-    # Priorité à la lisibilité : on essaie d'abord 2 lignes, puis 3 lignes avant de réduire
-    # excessivement la police. La question reste toujours dans son cadre.
-    size=base_size; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
-    while len(lines)>3 and size>32:
-        size-=2; f=get_font(size,ff); lines=wrap_text(question,f,maxw)
+    maxw=int(cfg.get("question_width",940)); center_x=int(cfg.get("question_x",540))
+    size=max(28,min(68,int(cfg.get("question_size",50))))
+    # Ajustement automatique : privilégier 1-2 lignes, accepter 3 si nécessaire.
+    f=get_font(size,ff); lines=wrap_text(clean_text(question),f,maxw)
+    while (len(lines)>3 or (len(lines)>2 and size>42)) and size>30:
+        size-=2; f=get_font(size,ff); lines=wrap_text(clean_text(question),f,maxw)
     lines=lines[:3]
-    hi=_highlight_words(question); yy=int(cfg["question_y"]);
-    line_h=int(size*1.18)
-    box_top=yy-18; box_bottom=yy+len(lines)*line_h+22
-    radius=int(cfg["question_box_radius"])
-    box_w=int(cfg.get("question_width",964)); center_x=int(cfg.get("question_x",540)); left=max(20,center_x-box_w//2); right=min(WIDTH-20,center_x+box_w//2)
-    if cfg.get("question_frame_enabled", True):
-        is_blue_gold = theme.get("accent") == (245,158,11) and theme.get("bg") == (11,16,33)
-        fill=(21,28,51) if is_blue_gold and cfg.get("question_frame_bg_enabled",True) else ((6,12,28,218) if cfg.get("question_frame_bg_enabled",True) else None)
-        outline=(51,65,85) if is_blue_gold and cfg.get("question_border_enabled",True) else (_hex_rgb(cfg.get("border_color"),_hex_rgb(cfg["primary"],theme["accent"])) if cfg.get("question_border_enabled",True) else None)
-        draw.rounded_rectangle((left,box_top,right,box_bottom),radius=int(cfg.get("border_radius",radius)),fill=fill,outline=outline,width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2))))
-    global_word=0
+    yy=int(y); line_h=int(size*1.20); global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1)
-        x=center_x-totalw/2+int(5*math.sin(phase*math.pi*2*cfg["motion_strength"]))
+        x=center_x-totalw/2+int(3*math.sin(phase*math.pi*2*cfg.get("motion_strength",0.5)))
         for w,ww in zip(words,widths):
-            current=(active_word >= 0 and global_word == int(active_word))
-            fill=_hex_rgb(cfg["primary"],theme["accent"]) if current else _hex_rgb(cfg["text"],(255,255,255))
-            draw.text((x+2,yy+3),w,font=f,fill=(0,0,0)); draw.text((x,yy),w,font=f,fill=fill)
+            current=(active_word>=0 and global_word==int(active_word))
+            fill=_hex_rgb(cfg.get("primary"),theme["accent"]) if current else (255,255,255)
+            # ombre très légère pour contraste, sans fond ni cadre
+            draw.text((x+1,yy+2),w,font=f,fill=(25,39,58)); draw.text((x,yy),w,font=f,fill=fill)
             x+=ww+space; global_word+=1
         yy+=line_h
-    return box_bottom
+    return yy
 
 def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_progress=0.0, phase=0.0):
     cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
     configured_h=int(cfg.get("answer_h",92)); gap=int(cfg.get("answer_gap",14)); start_y=int(cfg.get("answer_y",690))
-    base_size=int(cfg.get("answer_size",31)); padding=int(cfg.get("answer_text_padding",24))
+    base_size=min(48,int(cfg.get("answer_size",34))+3); padding=int(cfg.get("answer_text_padding",22))
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
     badge_size=max(36,min(72,int(cfg.get("answer_badge_size",54))))
     for i,opt in enumerate(options[:4]):
@@ -1025,7 +1015,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         if correct:
             fill=(16,185,129) if is_blue_gold else _hex_rgb(cfg["correct"],theme["success"]); outline=(52,211,153) if is_blue_gold else _hex_rgb(cfg.get("correct"),theme["success"]); width=2 if is_blue_gold else max(2,int(cfg.get("border_width",2))+1)
         else:
-            fill=(30,41,59) if is_blue_gold else (_hex_rgb(cfg["answer"],(17,48,91)) if i%2==0 else _hex_rgb(cfg["answer2"],(20,55,101))); outline=(51,65,85) if is_blue_gold else _hex_rgb(cfg.get("border_color"),(210,225,250)); width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2)))
+            fill=(55,78,108) if is_blue_gold else (_hex_rgb(cfg["answer"],(57,83,116)) if i%2==0 else _hex_rgb(cfg["answer2"],(68,96,132))); outline=(126,157,193) if is_blue_gold else _hex_rgb(cfg.get("border_color"),(222,235,250)); width=2 if is_blue_gold else max(1,int(cfg.get("border_width",2)))
             if correct_idx is not None:
                 fill=tuple(int(c*.55) for c in fill); outline=tuple(int(c*.55) for c in outline)
         if cfg.get("answer_cards_enabled",True):
@@ -1053,48 +1043,44 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
                 draw.line((cx-2,cy+7,cx+10,cy-9),fill=_hex_rgb(cfg["correct"],theme["success"]),width=4)
 
 def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-1):
-    """Carte d’explication compacte, lisible et harmonisée avec la palette commune."""
+    """Carte d'explication sans fond noir, compacte, bordure dorée et police adaptative."""
     cfg=_layout("quiz", "1")
     if cfg.get("explanation_auto_below_timer", False):
         timer_size=max(24,int(cfg.get("timer_size",58)))
         if cfg.get("timer_auto_below_answers",True):
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
-            timer_cy=min(1500, answer_bottom + timer_size + 22)
-        else:
-            timer_cy=int(cfg.get("timer_y",1045))
-        y1=min(1430, timer_cy + timer_size + 8)
-    else:
-        y1=int(cfg.get("explanation_y",1375))
-    p=ease_out(progress)
-    primary=(245,190,82)
-    box_w=max(420,min(980,int(cfg.get("explanation_width",940))))
+            timer_cy=min(1450,answer_bottom+timer_size+18)
+        else: timer_cy=int(cfg.get("timer_y",1045))
+        y1=min(1390,timer_cy+timer_size+8)
+    else: y1=max(1050,int(cfg.get("explanation_y",1335))-24)
+    p=ease_out(progress); primary=(245,190,82)
+    box_w=max(500,min(1000,int(cfg.get("explanation_width",940))))
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
-    font_size=max(24,min(32,int(cfg.get("explanation_size",30))))
-    title_font=get_font(26,cfg.get("font_family","DejaVu Sans"))
+    text=clean_text(explanation or "Bravo !")
+    # Taille auto selon la longueur; largeur utile sans dépasser 4 lignes.
+    font_size=32 if len(text)<100 else 29 if len(text)<180 else 26 if len(text)<270 else 23
     f=get_font(font_size,cfg.get("font_family","DejaVu Sans"))
-    lines=wrap_text(clean_text(explanation or "Bravo !"),f,max(300,box_w-72))[:4]
-    # Hauteur proportionnelle au texte, avec une limite pour préserver la zone basse des réseaux.
-    box_h=max(176,min(246,112+len(lines)*int(font_size*1.25)))
-    y2=min(1650,y1+box_h)
-    if y2-y1 < 150:
-        y1=max(1120,y2-176)
-    # Dessiner le panneau AVANT le texte pour éviter que le fond ne recouvre le titre.
-    if cfg.get("explanation_frame_enabled",True):
-        draw.rounded_rectangle((left,y1,right,y2),radius=22,fill=(31,48,72),outline=(245,190,82),width=2)
-        draw.rounded_rectangle((left+22,y1+8,left+int((right-left-44)*p)+22,y1+12),radius=2,fill=primary)
-    title_text="EXPLICATION"
-    tw=text_width(draw,title_text,title_font)
-    draw.text(((left+right-tw)/2,y1+24),title_text,font=title_font,fill=primary)
-    yy=y1+66; global_word=0
+    lines=wrap_text(text,f,max(360,box_w-64))[:5]
+    title_font=get_font(25,cfg.get("font_family","DejaVu Sans")); title="EXPLICATION"
+    title_h=text_height(title_font,title)
+    line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
+    box_h=max(138,min(250,box_h)); y2=min(1645,y1+box_h)
+    # Aucun remplissage : le fond animé reste visible à travers la carte.
+    draw.rounded_rectangle((left,y1,right,y2),radius=22,outline=primary,width=3)
+    draw.rounded_rectangle((left+22,y1+7,left+int((right-left-44)*p)+22,y1+11),radius=2,fill=primary)
+    tw=text_width(draw,title,title_font)
+    draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
+    yy=y1+18+title_h+20; global_word=0
     for line in lines:
         words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
         totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            draw.text((x,yy),w,font=f,fill=primary if current else (248,250,252))
+            draw.text((x+1,yy+2),w,font=f,fill=(25,39,58))
+            draw.text((x,yy),w,font=f,fill=primary if current else (250,252,255))
             x+=ww+space; global_word+=1
-        yy+=int(font_size*1.22)
+        yy+=line_h
 
 
 def draw_inline_timer(draw, theme, cx, cy, timer, fraction=1.0, module="quiz", style="1"):
