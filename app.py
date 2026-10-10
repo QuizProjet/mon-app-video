@@ -698,7 +698,9 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     if bottom-top < 52:
         top=max(safe_top+10, safe_bottom-62)
         bottom=min(safe_bottom-10,top+52)
-    left=max(32,min(left,WIDTH-120)); right=max(left+120,min(right,WIDTH-32))
+    # Largeur réglable de l’en-tête, centrée dans le canevas et contenue dans la zone sûre.
+    header_w=max(520,min(int(cfg.get("header_width",right-left)),right-left))
+    center=(left+right)//2; left=max(32,center-header_w//2); right=min(WIDTH-32,left+header_w); left=max(32,right-header_w)
     draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
@@ -914,7 +916,7 @@ def _layout(module="quiz", style=None):
         legacy_prefix = "q_"
     defaults={
         "font_family":"Lato",
-        "show_title":True,"header_y":120,"header_h":74,"title_x":540,"title_y":139,"title_size":38,
+        "show_title":True,"header_y":120,"header_h":74,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
         "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
         "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
@@ -1067,9 +1069,9 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     title_font=get_font(25,cfg.get("font_family","DejaVu Sans")); title="EXPLICATION"
     title_h=text_height(title_font,title)
     line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
-    box_h=max(138,min(250,box_h)); y2=min(1645,y1+box_h)
-    # Aucun remplissage : le fond animé reste visible à travers la carte.
-    draw.rounded_rectangle((left,y1,right,y2),radius=22,outline=primary,width=3)
+    box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
+    # Fond transparent : conserve le visuel animé et évite un panneau noir.
+    draw.rounded_rectangle((left,y1,right,y2),radius=22,outline=primary,width=2)
     draw.rounded_rectangle((left+22,y1+7,left+int((right-left-44)*p)+22,y1+11),radius=2,fill=primary)
     tw=text_width(draw,title,title_font)
     draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
@@ -1431,7 +1433,7 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     ff=cfg.get("font_family","DejaVu Sans"); theme=THEMES[theme_name]
     base=bg_file.copy() if isinstance(bg_file,Image.Image) else make_base(theme_name,bg_file)
     # Assombrissement réglable : le fond reste visible mais le texte reste lisible.
-    alpha=int(clamp(cfg["bg_opacity"],0,42))
+    alpha=int(clamp(cfg["bg_opacity"],0,90))
     if alpha:
         ov=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,alpha)); base=Image.alpha_composite(base.convert("RGBA"),ov).convert("RGB")
     phase=float(motion or 0.0)*max(.25,float(cfg["motion_strength"]))
@@ -3196,7 +3198,7 @@ def render_layout_editor(module, style="1"):
     style = str(style)
     p = ("q2_" if is_quiz and style=="2" else "q1_" if is_quiz else "v2_" if style=="2" else "v1_")
     defaults = {
-        "font_family":"Lato", "show_title":True, "title_x":540, "title_y":139, "title_size":38,
+        "font_family":"Lato", "show_title":True, "title_x":540, "title_y":139, "title_size":38, "header_width":1000,
         "question_x":540, "question_y":250 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
         "answer_y":550 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
@@ -3346,17 +3348,17 @@ def render_layout_editor(module, style="1"):
                 st.slider("Espace entre lignes",0,24,key=p+"table_gap",step=2)
         with c2:
             st.markdown("**🧭 En-tête — position dans la zone sûre**")
-            if is_quiz and style=="1":
+            if is_quiz:
                 st.slider("↕ En-tête Y — haut 0 • bas 1920",80,500,key=p+"header_y")
-                st.slider("Hauteur de l’en-tête",60,110,key=p+"header_h")
+                st.slider("Largeur de l’en-tête",520,1040,key=p+"header_width",step=10)
+                st.slider("Hauteur de l’en-tête",52,110,key=p+"header_h")
             st.markdown("**Titre**")
             st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
             st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
-            if is_quiz and style=="1":
-                st.markdown("**Réponses — Style 1**")
+            if is_quiz:
+                st.markdown("**Réponses — position**")
                 st.slider("↔ Réponses X — bord gauche du bloc",20,180,key=p+"answer_x")
                 st.slider("↕ Réponses Y — haut du bloc",300,1050,key=p+"answer_y")
-            if is_quiz and style=="1":
                 st.markdown("**💡 Explication — position libre**")
                 st.slider("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"explanation_x")
             st.caption("📐 Repère vidéo : X = horizontal (0→1080) • Y = vertical (0→1920). Ces valeurs sont des coordonnées vidéo, pas des pixels d’écran.")
@@ -3375,14 +3377,14 @@ def render_layout_editor(module, style="1"):
             st.slider("Largeur",500,1020,key=p+"question_width")
             if is_quiz and style=="1":
                 st.slider("Arrondi du cadre question",0,48,key=p+"question_box_radius")
-            if is_quiz and style=="1":
-                st.markdown("**Réponses**")
-                st.slider("Largeur des cartes",700,1000,key=p+"answer_width")
-                st.slider("Hauteur des cartes",55,140,key=p+"answer_h")
+            if is_quiz:
+                st.markdown("**Cartes de réponse**")
+                st.slider("Largeur des cartes",600,1020,key=p+"answer_width",step=10)
+                st.slider("Hauteur des cartes",50,150,key=p+"answer_h",step=5)
         with c2:
             st.markdown("**Titre**")
             st.slider("Taille du titre",22,86,key=p+"title_size")
-            if is_quiz and style=="1":
+            if is_quiz:
                 st.slider("Taille du texte des réponses",20,62,key=p+"answer_size")
                 st.slider("Espacement des réponses",4,32,key=p+"answer_gap")
                 st.slider("Arrondi des réponses",0,48,key=p+"answer_radius")
@@ -3390,13 +3392,13 @@ def render_layout_editor(module, style="1"):
                 st.checkbox("Hauteur automatique des cartes",key=p+"answer_auto_height")
                 st.slider("Marge du texte dans les cartes",12,40,key=p+"answer_text_padding")
                 st.slider("Taille du compteur",20,72,key=p+"score_size")
-                st.markdown("**Compteur 1/15 — position indépendante**")
+                st.markdown("**Compteur — position indépendante**")
                 st.slider("↔ Compteur X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"score_x")
                 st.slider("↕ Compteur Y — haut 0 • bas 1920",40,600,key=p+"score_y")
-                st.markdown("**Explication**")
+                st.markdown("**Cadre d’explication**")
                 st.slider("Taille du texte de l'explication",20,62,key=p+"explanation_size")
                 st.slider("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
-                st.slider("Hauteur de l'explication",180,520,key=p+"explanation_h",step=10)
+                st.slider("Hauteur de l'explication",120,520,key=p+"explanation_h",step=10)
                 st.caption("💡 X = gauche ↔ droite • Y = haut ↕ bas. Désactive l’automatique pour placer l’explication librement.")
             elif is_quiz and style=="2":
                 st.slider("Largeur de l'historique",600,1000,key=p+"history_width")
@@ -3498,7 +3500,7 @@ def render_layout_editor(module, style="1"):
             st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
         c1,c2=st.columns(2)
         with c1:
-            st.slider("Assombrissement",0,80,key=p+"bg_opacity")
+            st.slider("Fond : lumineux ↔ sombre",0,90,key=p+"bg_opacity",help="0 = fond sans assombrissement, 90 = fond fortement assombri.")
             st.slider("Zoom",1.00,1.25,key=p+"bg_zoom",step=.01)
         with c2:
             st.slider("Déplacement X",-120,120,key=p+"bg_x")
