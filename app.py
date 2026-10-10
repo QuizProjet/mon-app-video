@@ -336,19 +336,18 @@ VIDEO_CRF = 21
 _BASE_CACHE = {}
 
 THEMES = {
-    # V32.12 : palette unique lumineuse et cohérente pour tous les styles.
-    # Les motifs de fond restent déterminés séparément par le sujet choisi.
-    "Bleu Nuit & Or": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Chocolat Noir & Or": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Violet Neon": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Emeraude Mint": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Noir Carbone": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Midnight Sapphire": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Crimson Noir": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Royal Violet": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Black Gold": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Arctic Cyan": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
-    "Cyber Pink": {"bg": (55, 83, 119), "bg2": (91, 124, 163), "card": (83, 116, 154), "card2": (108, 145, 184), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (232, 240, 250)},
+    # Palettes distinctes : chaque nom correspond désormais à un rendu réellement différent.
+    "Bleu Nuit & Or": {"bg": (30, 49, 78), "bg2": (64, 91, 130), "card": (43, 65, 98), "card2": (64, 91, 130), "accent": (245, 190, 82), "success": (32, 185, 129), "danger": (239, 83, 93), "muted": (225, 235, 248)},
+    "Chocolat Noir & Or": {"bg": (49, 34, 30), "bg2": (104, 70, 54), "card": (70, 48, 41), "card2": (119, 80, 59), "accent": (244, 190, 91), "success": (42, 180, 119), "danger": (224, 76, 76), "muted": (246, 229, 211)},
+    "Violet Neon": {"bg": (30, 18, 58), "bg2": (91, 42, 143), "card": (48, 28, 83), "card2": (83, 45, 130), "accent": (230, 90, 255), "success": (47, 225, 167), "danger": (255, 73, 135), "muted": (239, 225, 255)},
+    "Emeraude Mint": {"bg": (15, 54, 48), "bg2": (37, 111, 91), "card": (22, 76, 65), "card2": (42, 124, 99), "accent": (126, 241, 199), "success": (19, 190, 125), "danger": (238, 82, 93), "muted": (222, 250, 239)},
+    "Noir Carbone": {"bg": (20, 23, 29), "bg2": (54, 61, 72), "card": (31, 36, 44), "card2": (65, 73, 85), "accent": (246, 181, 61), "success": (34, 190, 123), "danger": (238, 70, 79), "muted": (232, 236, 243)},
+    "Midnight Sapphire": {"bg": (8, 28, 58), "bg2": (21, 76, 133), "card": (13, 45, 86), "card2": (25, 83, 143), "accent": (92, 207, 255), "success": (37, 210, 151), "danger": (255, 89, 109), "muted": (221, 240, 255)},
+    "Crimson Noir": {"bg": (48, 15, 27), "bg2": (126, 30, 52), "card": (68, 20, 38), "card2": (145, 34, 58), "accent": (255, 177, 115), "success": (43, 194, 128), "danger": (255, 75, 85), "muted": (255, 226, 230)},
+    "Royal Violet": {"bg": (36, 24, 69), "bg2": (93, 67, 151), "card": (51, 36, 91), "card2": (106, 79, 166), "accent": (226, 194, 255), "success": (47, 202, 143), "danger": (245, 85, 108), "muted": (241, 233, 255)},
+    "Black Gold": {"bg": (15, 17, 20), "bg2": (49, 43, 30), "card": (28, 29, 31), "card2": (66, 56, 34), "accent": (255, 204, 71), "success": (41, 190, 121), "danger": (235, 70, 75), "muted": (245, 239, 218)},
+    "Arctic Cyan": {"bg": (15, 43, 57), "bg2": (52, 116, 139), "card": (21, 62, 78), "card2": (46, 130, 151), "accent": (105, 238, 255), "success": (29, 198, 142), "danger": (255, 91, 108), "muted": (225, 250, 255)},
+    "Cyber Pink": {"bg": (45, 17, 43), "bg2": (128, 34, 101), "card": (65, 23, 61), "card2": (148, 42, 115), "accent": (255, 114, 207), "success": (45, 220, 162), "danger": (255, 80, 120), "muted": (255, 229, 247)},
 }
 
 VOICES_FR = {
@@ -851,14 +850,14 @@ def _load_saved_settings():
         pass
     for saved in sources:
         for k,v in saved.items():
-            if k.startswith(("q1_","q2_","v1_","v2_")) and k not in st.session_state:
+            if (k.startswith(("q1_","q2_","v1_","v2_")) or k in ("tq","tv","global_visual_theme")) and k not in st.session_state:
                 st.session_state[k]=v
     st.session_state["_qvp_settings_loaded"]=True
 
 def _save_settings():
     keys=[]
     for k in st.session_state.keys():
-        if k.startswith(("q_","v_","q1_","q2_","v1_","v2_")):
+        if k.startswith(("q_","v_","q1_","q2_","v1_","v2_")) or k in ("tq","tv","global_visual_theme"):
             keys.append(k)
     data={}
     for k in keys:
@@ -875,7 +874,33 @@ def _save_settings():
     except Exception:
         pass
 
+
+def _sync_global_visual_theme(source_key="tq"):
+    """Le choix visuel général est partagé par les quatre styles et enregistré."""
+    chosen = st.session_state.get(source_key, "Bleu Nuit & Or")
+    if chosen not in THEMES:
+        chosen = "Bleu Nuit & Or"
+    st.session_state["global_visual_theme"] = chosen
+    st.session_state["tq"] = chosen
+    st.session_state["tv"] = chosen
+    _save_settings()
+
+def _sync_theme_from_quiz():
+    _sync_global_visual_theme("tq")
+
+def _sync_theme_from_vocab():
+    _sync_global_visual_theme("tv")
+
+
 _load_saved_settings()
+
+
+# Synchronise les sélecteurs Quiz/Vocabulaire à partir du dernier thème enregistré.
+_saved_theme = st.session_state.get("global_visual_theme")
+if _saved_theme in THEMES:
+    st.session_state.setdefault("tq", _saved_theme)
+    st.session_state.setdefault("tv", _saved_theme)
+
 
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
@@ -3555,7 +3580,7 @@ if nav=="quiz":
         voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
         quiz_tts_rate=VOICE_PROFILES[voice_profile]["rate"]
     with g2:
-        theme_q=st.selectbox("Style visuel",list(THEMES),key="tq")
+        theme_q=st.selectbox("Style visuel (commun aux 4 styles)",list(THEMES),key="tq",on_change=_sync_theme_from_quiz)
         st.caption("Le Style visuel règle les couleurs. Le fond automatique affiche des motifs selon le Sujet : empreintes pour Animaux, symboles π √ + ÷ ∞ × pour Mathématiques, formes historiques pour Histoire, voiture pour Automobile.")
         style_q=st.radio("Structure",["Style 1 — 4 réponses + révélation","Style 2 — Cumulatif"],key="styleq_compact")
         nb_q=st.slider("Questions",1,15,3,key="nbq")
@@ -3986,7 +4011,7 @@ else:
     with v2:
         voice_tr_name=st.selectbox("Voix traduction",list(VOICES_MAP[langue_v]),key="vtr")
         voice_tr=VOICES_MAP[langue_v][voice_tr_name]
-        theme_v=st.selectbox("Style visuel",list(THEMES),key="tv")
+        theme_v=st.selectbox("Style visuel (commun aux 4 styles)",list(THEMES),key="tv",on_change=_sync_theme_from_vocab)
         style_v=st.radio("Structure",["Style 1 — Mot → minuteur → traduction","Style 2 — Cumulatif"],key="stylev_compact")
     v3,v4=st.columns(2,gap="medium")
     with v3:
