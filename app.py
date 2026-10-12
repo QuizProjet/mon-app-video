@@ -1646,17 +1646,47 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
 
 # ------------------------- TTS ------------------------------
 async def _tts(text,voice,path,rate="+15%"):
-    comm=edge_tts.Communicate(clean_text(text),voice,rate=rate,boundary="WordBoundary")
-    audio=bytearray(); words=[]
-    async for chunk in comm.stream():
-        if chunk["type"]=="audio": audio.extend(chunk["data"])
-        elif chunk["type"]=="WordBoundary":
-            word=clean_text(chunk.get("text",""))
-            if word:
-                start=chunk["offset"]/10_000_000; dur=chunk["duration"]/10_000_000
-                words.append({"text":word,"start":start,"end":start+dur})
-    with open(path,"wb") as f: f.write(audio)
-    return words
+    """Synthèse Edge TTS avec reprises limitées en cas de refus réseau temporaire.
+    Chaque tentative repart avec une connexion neuve et n'écrit le fichier qu'une
+    fois l'audio reçu intégralement, pour éviter de conserver un MP3 partiel.
+    """
+    last_error = None
+    for attempt in range(3):
+        audio=bytearray(); words=[]
+        try:
+            comm=edge_tts.Communicate(clean_text(text),voice,rate=rate,boundary="WordBoundary")
+            async for chunk in comm.stream():
+                if chunk["type"]=="audio":
+                    audio.extend(chunk["data"])
+                elif chunk["type"]=="WordBoundary":
+                    word=clean_text(chunk.get("text",""))
+                    if word:
+                        start=chunk["offset"]/10_000_000; dur=chunk["duration"]/10_000_000
+                        words.append({"text":word,"start":start,"end":start+dur})
+            if not audio:
+                raise RuntimeError("Edge TTS n'a renvoyé aucun audio.")
+            with open(path,"wb") as f:
+                f.write(audio)
+            return words
+        except Exception as exc:
+            last_error = exc
+            # Efface tout éventuel fichier incomplet de cette tentative.
+            try:
+                if os.path.exists(path): os.remove(path)
+            except OSError:
+                pass
+            if attempt < 2:
+                await asyncio.sleep(1.5 * (attempt + 1))
+    msg=str(last_error or "Erreur inconnue")
+    if "403" in msg or "Invalid response status" in msg:
+        raise RuntimeError(
+            "Microsoft Edge TTS a refusé la connexion (403) après 3 tentatives. "
+            "Les questions sont déjà générées, mais la voix est indisponible. "
+            "Redémarre l'application et vérifie la version de edge-tts dans requirements.txt; "
+            "si le problème persiste, le service Microsoft doit être remplacé ou rétabli. "
+            f"Détail technique : {msg}"
+        ) from last_error
+    raise RuntimeError(f"Échec de la synthèse vocale après 3 tentatives : {msg}") from last_error
 
 def run_async(coro):
     try: loop=asyncio.get_event_loop()
