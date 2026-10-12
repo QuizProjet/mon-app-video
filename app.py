@@ -1705,8 +1705,37 @@ async def _tts(text,voice,path,rate="+15%"):
         gTTS(text=text, lang=lang, slow=False).save(path)
         if not os.path.exists(path) or os.path.getsize(path) < 256:
             raise RuntimeError("Le service vocal de secours n'a pas créé un MP3 valide.")
-        # Sans alignement temporel du fournisseur de secours, word_timed_frames
-        # affichera l'image normale sur toute la phrase. Le montage continue.
+
+        # gTTS ignore le paramètre de débit Edge (rate). Accélérer le MP3
+        # après synthèse pour éviter la narration anormalement lente.
+        # En secours, on vise au minimum 1.20x; si le profil choisi demande
+        # davantage, on respecte ce débit. Cette opération ne modifie pas
+        # les fichiers des effets sonores ni la musique.
+        rate_match = re.search(r"([+-]\\d+(?:\\.\\d+)?)%", str(rate or "+0%"))
+        requested_rate = float(rate_match.group(1)) / 100.0 if rate_match else 0.0
+        tempo = max(1.20, 1.0 + requested_rate)
+        if abs(tempo - 1.0) > 0.001:
+            sped_path = path + ".sped.mp3"
+            try:
+                subprocess.run(
+                    [get_ffmpeg(), "-y", "-i", path, "-vn",
+                     "-filter:a", f"atempo={tempo:.3f}",
+                     "-codec:a", "libmp3lame", "-q:a", "3", sped_path],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=True, timeout=90
+                )
+                if not os.path.exists(sped_path) or os.path.getsize(sped_path) < 256:
+                    raise RuntimeError("Le fichier audio accéléré est invalide.")
+                os.replace(sped_path, path)
+            finally:
+                try:
+                    if os.path.exists(sped_path):
+                        os.remove(sped_path)
+                except OSError:
+                    pass
+
+        # gTTS ne fournit pas les WordBoundaries Edge : le montage continue
+        # avec un affichage stable pendant la phrase.
         return []
     except Exception as fallback_exc:
         try:
