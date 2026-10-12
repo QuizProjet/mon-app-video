@@ -3,3 +3,4 @@ google-generativeai
 edge-tts
 imageio-ffmpeg
 pillow
+gTTS
