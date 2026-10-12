@@ -1646,47 +1646,81 @@ def draw_vocab_frame(items,idx,langue,theme_name,channel,bg_file=None,phase="mot
 
 # ------------------------- TTS ------------------------------
 async def _tts(text,voice,path,rate="+15%"):
-    """Synthèse Edge TTS avec nouvelles tentatives en cas de refus/erreur réseau transitoire.
+    """TTS principal Edge avec secours gTTS si Microsoft refuse la connexion.
 
-    Edge TTS dépend d'un service Microsoft externe : un 403 persistant ne peut pas être
-    corrigé localement, mais une nouvelle connexion peut résoudre un refus temporaire.
+    Le secours conserve le montage vidéo et sa durée audio. Les WordBoundaries
+    Edge ne sont pas disponibles en secours : l'animation revient donc à une
+    image stable pendant la phrase au lieu de faire échouer toute la vidéo.
     """
+    text = clean_text(text)
+    if not text:
+        raise RuntimeError("Texte vocal vide : synthèse annulée.")
+
     last_error = None
-    for attempt in range(3):
-        audio=bytearray(); words=[]
+    # Deux essais maximum pour les erreurs transitoires. En cas de 403, on
+    # bascule directement vers le service de secours, sans trois attentes.
+    for attempt in range(2):
+        audio = bytearray()
+        words = []
         try:
-            comm=edge_tts.Communicate(clean_text(text),voice,rate=rate,boundary="WordBoundary")
+            comm = edge_tts.Communicate(text, voice, rate=rate, boundary="WordBoundary")
             async for chunk in comm.stream():
-                if chunk["type"]=="audio":
+                if chunk["type"] == "audio":
                     audio.extend(chunk["data"])
-                elif chunk["type"]=="WordBoundary":
-                    word=clean_text(chunk.get("text",""))
+                elif chunk["type"] == "WordBoundary":
+                    word = clean_text(chunk.get("text", ""))
                     if word:
-                        start=chunk["offset"]/10_000_000; dur=chunk["duration"]/10_000_000
-                        words.append({"text":word,"start":start,"end":start+dur})
+                        start = chunk["offset"] / 10_000_000
+                        dur = chunk["duration"] / 10_000_000
+                        words.append({"text": word, "start": start, "end": start + dur})
             if not audio:
                 raise RuntimeError("Edge TTS n'a retourné aucun audio.")
-            with open(path,"wb") as f:
+            with open(path, "wb") as f:
                 f.write(audio)
             return words
         except Exception as exc:
             last_error = exc
-            # Nettoie tout fichier incomplet éventuel avant une nouvelle tentative.
             try:
-                if os.path.exists(path): os.remove(path)
+                if os.path.exists(path):
+                    os.remove(path)
             except OSError:
                 pass
-            if attempt < 2:
-                await asyncio.sleep(1.5 * (2 ** attempt))
-    message = str(last_error or "erreur inconnue")
-    if "403" in message or "Invalid response status" in message:
+            msg = str(exc).lower()
+            is_forbidden = "403" in msg or "invalid response status" in msg or "forbidden" in msg
+            if is_forbidden:
+                break
+            if attempt == 0:
+                await asyncio.sleep(1.0)
+
+    # Secours réseau distinct, facultatif dans l'environnement : ajouter
+    # gTTS aux dépendances. Langue déduite du code vocal Edge (fr-FR-..., etc.).
+    try:
+        from gtts import gTTS
+        locale = str(voice or "fr-FR").split("-")
+        lang = locale[0].lower() if locale else "fr"
+        # gTTS accepte notamment fr, en, es, ar, de et it.
+        supported = {"fr", "en", "es", "ar", "de", "it", "pt", "nl", "pl", "ru", "tr", "ja", "ko", "zh"}
+        if lang not in supported:
+            lang = "fr"
+        gTTS(text=text, lang=lang, slow=False).save(path)
+        if not os.path.exists(path) or os.path.getsize(path) < 256:
+            raise RuntimeError("Le service vocal de secours n'a pas créé un MP3 valide.")
+        # Sans alignement temporel du fournisseur de secours, word_timed_frames
+        # affichera l'image normale sur toute la phrase. Le montage continue.
+        return []
+    except Exception as fallback_exc:
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+        primary = str(last_error or "erreur inconnue")
         raise RuntimeError(
-            "Microsoft Edge TTS a refusé la connexion (HTTP 403) après 3 tentatives. "
-            "Vérifie le réseau et mets à jour edge-tts dans les dépendances, puis relance. "
-            "Le service Edge TTS étant externe, un refus persistant nécessite une voix de secours. "
-            f"Détail : {message}"
-        ) from last_error
-    raise RuntimeError(f"Échec de la synthèse vocale après 3 tentatives : {message}") from last_error
+            "La voix Edge TTS a échoué et la voix de secours gTTS n'a pas pu "
+            "produire l'audio. Vérifie que gTTS est installé (requirements.txt) "
+            "et que le réseau autorise son accès. "
+            f"Erreur Edge : {primary}. Erreur secours : {fallback_exc}"
+        ) from fallback_exc
 
 def run_async(coro):
     try: loop=asyncio.get_event_loop()
