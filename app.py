@@ -911,11 +911,11 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
         "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
         "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
-        "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
+        "q1_answer_size": 36, "q1_answer_badge_size": 58, "q1_answer_text_padding": 24,
         "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 64, "q1_timer_text_size": 55,
         "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
         "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
-        "q1_explanation_size": 30,
+        "q1_explanation_size": 35,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
         "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
         "q1_border_color": "#334155", "q1_border_width": 2, "q1_border_radius": 20,
@@ -923,8 +923,8 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_answer_cards_enabled": True, "q1_answer_badges_enabled": True,
         "q1_answer_frame_bg_enabled": True, "q1_answer_border_enabled": True,
         "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
-        "q1_header_y": 120, "q1_header_h": 74, "q1_score_x": 965, "q1_score_y": 130, "q1_score_size": 31,
-        "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+        "q1_header_y": 145, "q1_header_h": 78, "q1_score_x": 965, "q1_score_y": 130, "q1_score_size": 31,
+        "q1_brand_x": 70, "q1_brand_y": 164, "q1_brand_size": 40, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
         "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
@@ -941,16 +941,16 @@ def _layout(module="quiz", style=None):
         legacy_prefix = "q_"
     defaults={
         "font_family":"Lato",
-        "show_title":True,"header_y":120,"header_h":74,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
+        "show_title":True,"header_y":145,"header_h":78,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
         "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
-        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
+        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":96,"answer_gap":18,"answer_size":36,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
         "timer_y":1110,"timer_x":540,"timer_size":62,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
-        "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
-        "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
+        "brand_x":70,"brand_y":164,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
+        "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":280,"explanation_size":35,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
@@ -1678,15 +1678,26 @@ async def _tts(text,voice,path,rate="+15%"):
             if attempt < 2:
                 await asyncio.sleep(1.5 * (attempt + 1))
     msg=str(last_error or "Erreur inconnue")
+    # V32.17 : solution de secours facultative via gTTS (réseau requis).
+    # Elle ne fournit pas de WordBoundary : les séquences vidéo restent basées sur la durée audio.
+    try:
+        from gtts import gTTS
+        voice_text = str(voice or "")
+        lang = "fr" if voice_text.startswith("fr-") or "Vivienne" in voice_text or "Henri" in voice_text or "Remy" in voice_text else (voice_text.split("-")[0] if "-" in voice_text else "en")
+        lang = {"ar":"ar", "es":"es", "de":"de", "it":"it", "en":"en", "fr":"fr"}.get(lang, "fr")
+        gTTS(text=clean_text(text), lang=lang, slow=False).save(path)
+        if os.path.exists(path) and os.path.getsize(path) > 1000:
+            return []
+        raise RuntimeError("gTTS n'a pas produit de fichier audio valide")
+    except Exception as fallback_error:
+        detail = f"Edge TTS: {msg} | gTTS: {fallback_error}"
     if "403" in msg or "Invalid response status" in msg:
         raise RuntimeError(
-            "Microsoft Edge TTS a refusé la connexion (403) après 3 tentatives. "
-            "Les questions sont déjà générées, mais la voix est indisponible. "
-            "Redémarre l'application et vérifie la version de edge-tts dans requirements.txt; "
-            "si le problème persiste, le service Microsoft doit être remplacé ou rétabli. "
-            f"Détail technique : {msg}"
+            "Edge TTS a refusé la connexion après 3 tentatives et la voix de secours gTTS a également échoué. "
+            "Les questions CSV restent chargées. Vérifie la connexion réseau et installe gTTS via requirements.txt. "
+            f"Détail technique : {detail}"
         ) from last_error
-    raise RuntimeError(f"Échec de la synthèse vocale après 3 tentatives : {msg}") from last_error
+    raise RuntimeError(f"Échec Edge TTS et voix de secours : {detail}") from last_error
 
 def run_async(coro):
     try: loop=asyncio.get_event_loop()
@@ -3255,14 +3266,14 @@ def render_layout_editor(module, style="1"):
     defaults = {
         "font_family":"Lato", "show_title":True, "title_x":540, "title_y":139, "title_size":38, "header_width":1000,
         "question_x":540, "question_y":250 if is_quiz else 500, "question_size":50 if is_quiz else 58, "question_width":920,
-        "answer_y":550 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":82, "answer_gap":14, "answer_size":33 if is_quiz else 42, "answer_radius":22,
+        "answer_y":550 if is_quiz else 760, "answer_x":70, "answer_width":940, "answer_h":92, "answer_gap":16, "answer_size":37 if is_quiz else 44, "answer_radius":22,
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
-        "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
+        "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":340, "explanation_size":35,
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
         "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
+        "brand_x":70, "brand_y":164, "brand_size":40, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
