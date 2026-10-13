@@ -691,7 +691,9 @@ def draw_lightning_icon(draw, theme, cx, cy, size=28):
 
 def draw_brand(draw, theme, channel, progress=None):
     cfg=_layout("quiz", "1")
-    if channel and bool(cfg.get("brand_show",True)):
+    # Quand l’en-tête principal affiche déjà la marque, ne pas dessiner
+    # une seconde marque historique dans la même scène.
+    if channel and bool(cfg.get("brand_show",True)) and not bool(cfg.get("header_logo_is_primary",False)):
         text=clean_text(channel) or "SuspenseLingo"
         f=get_font(int(cfg.get("brand_size",28)),cfg.get("font_family","DejaVu Sans"))
         x=int(cfg.get("brand_x",55)); y=int(cfg.get("brand_y",34))
@@ -2975,7 +2977,7 @@ def _qvp_image_data_uri(image):
 
 def render_clickable_preview(image, module, style, cfg, selected):
     """Aperçu 9:16 compact. La sélection et les commandes sont gérées par Streamlit sous l'aperçu."""
-    max_w=360
+    max_w=300
     max_h=int(max_w*16/9)
     thumb=image.copy().resize((max_w,max_h),Image.Resampling.LANCZOS)
     # L'ancienne couche de hotspots HTML est volontairement supprimée : elle était lourde
@@ -4162,7 +4164,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
@@ -4484,7 +4486,7 @@ else:
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
         except MemoryError:
