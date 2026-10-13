@@ -5,6 +5,7 @@ import edge_tts
 import json
 import os
 import re
+import unicodedata
 import tempfile
 import math
 import time
@@ -466,7 +467,9 @@ def get_font(size, family=None):
 def clean_text(text):
     if text is None:
         return ""
-    return re.sub(r"\s+", " ", str(text).replace("\n", " ")).strip()
+    # NFC regroupe les accents combinés (ex. e + accent) sans translittérer le français.
+    value = unicodedata.normalize("NFC", str(text)).replace("\n", " ")
+    return re.sub(r"\s+", " ", value).strip()
 
 def text_width(draw, text, font):
     box = draw.textbbox((0, 0), str(text), font=font)
@@ -700,12 +703,12 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Largeur réglable de l’en-tête, centrée dans le canevas et contenue dans la zone sûre.
     header_w=max(520,min(int(cfg.get("header_width",right-left)),right-left))
     center=(left+right)//2; left=max(32,center-header_w//2); right=min(WIDTH-32,left+header_w); left=max(32,right-header_w)
-    draw.rounded_rectangle((left,top,right,bottom),radius=20,fill=navy,outline=border,width=2)
+    draw.rectangle((left,top,right,bottom),fill=navy,outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(int(cfg.get("brand_size",31)),ff); bh=text_height(bf,brand)
+        bf=get_font(max(38,int(cfg.get("brand_size",31))),ff); bh=text_height(bf,brand)
         bx=left+18; by=top+(bottom-top-bh)//2
         # Badge de marque : petit monogramme + capsule pour donner plus de
         # présence à SuspenseLingo sans modifier la mécanique du quiz.
@@ -724,7 +727,7 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     title=clean_text(title) or "Culture Générale"
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
-    tf=get_font(int(cfg.get("title_size",32)),ff); th=text_height(tf,title)
+    tf=get_font(max(36,int(cfg.get("title_size",32))),ff); th=text_height(tf,title)
     center_x=left+third*1.5; max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
@@ -737,9 +740,9 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     pill_w=min(max(78,sw+24),max(78,int(third-18)))
     pill_h=min(max(40,sh+10),max(40,header_h-10))
     cx=(third_left+third_right)/2
-    px=max(third_left+9,min(cx-pill_w/2,third_right-9-pill_w))
+    px=max(third_left+8,third_right-pill_w-8)
     py=top+(bottom-top-pill_h)/2
-    draw.rounded_rectangle((px,py,px+pill_w,py+pill_h),radius=min(16,pill_h//2),fill=gold)
+    draw.rectangle((px,py,px+pill_w,py+pill_h),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
 
@@ -911,11 +914,11 @@ if _saved_theme in THEMES:
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
 if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
-        "q1_question_x": 540, "q1_question_y": 300, "q1_question_size": 52, "q1_question_width": 960,
-        "q1_answer_x": 60, "q1_answer_y": 570, "q1_answer_width": 960, "q1_answer_h": 100, "q1_answer_gap": 12,
-        "q1_answer_size": 35, "q1_answer_badge_size": 56, "q1_answer_text_padding": 22,
-        "q1_timer_x": 540, "q1_timer_y": 1080, "q1_timer_size": 74, "q1_timer_text_size": 62,
-        "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
+        "q1_question_x": 540, "q1_question_y": 285, "q1_question_size": 60, "q1_question_width": 980,
+        "q1_answer_x": 45, "q1_answer_y": 545, "q1_answer_width": 990, "q1_answer_h": 108, "q1_answer_gap": 10,
+        "q1_answer_size": 41, "q1_answer_badge_size": 60, "q1_answer_text_padding": 20, "q1_answer_auto_height": True,
+        "q1_timer_x": 540, "q1_timer_y": 1040, "q1_timer_size": 68, "q1_timer_text_size": 60,
+        "q1_timer_auto_below_answers": True, "q1_explanation_auto_below_timer": False,
         "q1_explanation_x": 540, "q1_explanation_y": 1280, "q1_explanation_width": 960, "q1_explanation_h": 220,
         "q1_explanation_size": 32,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
@@ -924,9 +927,9 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_question_frame_enabled": True, "q1_question_frame_bg_enabled": True, "q1_question_border_enabled": True,
         "q1_answer_cards_enabled": True, "q1_answer_badges_enabled": True,
         "q1_answer_frame_bg_enabled": False, "q1_answer_border_enabled": False,
-        "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
-        "q1_header_y": 120, "q1_header_h": 74, "q1_score_x": 965, "q1_score_y": 130, "q1_score_size": 31,
-        "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 36, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+        "q1_explanation_frame_enabled": False, "q1_explanation_frame_bg_enabled": False, "q1_explanation_border_enabled": False,
+        "q1_header_y": 120, "q1_header_h": 74, "q1_score_x": 1000, "q1_score_y": 130, "q1_score_size": 36,
+        "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 40, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
         "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
@@ -944,20 +947,20 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"header_y":120,"header_h":74,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
-        "question_x":540,"question_y":300,"question_size":52,"question_width":960,"question_box_radius":24,
-        "answer_y":570,"answer_x":60,"answer_width":960,"answer_h":100,"answer_gap":12,"answer_size":35,"answer_radius":20,"answer_badge_size":56,"answer_text_padding":22,"answer_auto_height":False,
+        "question_x":540,"question_y":285,"question_size":60,"question_width":980,"question_box_radius":24,
+        "answer_y":545,"answer_x":45,"answer_width":990,"answer_h":108,"answer_gap":10,"answer_size":41,"answer_radius":0,"answer_badge_size":60,"answer_text_padding":20,"answer_auto_height":True,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1080,"timer_x":540,"timer_size":74,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
-        "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
+        "timer_y":1040,"timer_x":540,"timer_size":68,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
+        "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
-        "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
-        "brand_x":70,"brand_y":139,"brand_size":36,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
+        "score_x":1000,"score_y":130,"score_size":36,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
+        "brand_x":70,"brand_y":139,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
         "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":False,"answer_border_enabled":False,
-        "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
+        "explanation_frame_enabled":False,"explanation_frame_bg_enabled":False,"explanation_border_enabled":False,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":10,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
         "primary":"#F59E0B","answer":"#1E293B","answer2":"#1E293B",
@@ -987,10 +990,10 @@ def _draw_question_rich(draw, question, theme, y=205, phase=0.0, active_word=-1)
     cfg=_layout("quiz", "1")
     ff=cfg.get("font_family","DejaVu Sans")
     maxw=int(cfg.get("question_width",940)); center_x=int(cfg.get("question_x",540))
-    size=max(28,min(68,int(cfg.get("question_size",50))))
+    size=max(34,min(74,int(cfg.get("question_size",58))))
     # Ajustement automatique : privilégier 1-2 lignes, accepter 3 si nécessaire.
     f=get_font(size,ff); lines=wrap_text(clean_text(question),f,maxw)
-    while (len(lines)>3 or (len(lines)>2 and size>42)) and size>30:
+    while (len(lines)>3 or (len(lines)>2 and size>48)) and size>34:
         size-=2; f=get_font(size,ff); lines=wrap_text(clean_text(question),f,maxw)
     lines=lines[:3]
     yy=int(y); line_h=int(size*1.20); global_word=0
@@ -1011,7 +1014,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
     cfg=_layout("quiz", "1"); ff=cfg.get("font_family","DejaVu Sans")
     left=int(cfg.get("answer_x",80)); right=min(WIDTH-20,left+int(cfg.get("answer_width",920)))
     configured_h=int(cfg.get("answer_h",92)); gap=int(cfg.get("answer_gap",14)); start_y=int(cfg.get("answer_y",690))
-    base_size=min(48,int(cfg.get("answer_size",34))+3); padding=int(cfg.get("answer_text_padding",22))
+    base_size=min(54,max(38,int(cfg.get("answer_size",40))+3)); padding=int(cfg.get("answer_text_padding",22))
     anim=str(cfg["animation"]); speed=max(0.25,float(cfg["animation_speed"])); strength=max(0.0,float(cfg["animation_strength"]))
     badge_size=max(36,min(72,int(cfg.get("answer_badge_size",54))))
     for i,opt in enumerate(options[:4]):
@@ -1052,7 +1055,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         if cfg.get("answer_cards_enabled",True):
             card_fill=fill if cfg.get("answer_frame_bg_enabled",True) else None
             card_outline=outline if cfg.get("answer_border_enabled",True) else None
-            draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=int(cfg.get("border_radius",cfg["answer_radius"])),fill=card_fill,outline=card_outline,width=width)
+            draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=0,fill=card_fill,outline=card_outline,width=width)
         badge_x=left+10+xpad; badge_y=int(y+(card_h-badge_size)/2)
         badge_fill=(245,158,11) if (is_blue_gold and not correct) else (_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white")
         if cfg.get("answer_badges_enabled",True):
@@ -1098,8 +1101,8 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
     box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
     # Fond transparent : conserve le visuel animé et évite un panneau noir.
-    draw.rounded_rectangle((left,y1,right,y2),radius=22,outline=primary,width=2)
-    draw.rounded_rectangle((left+22,y1+7,left+int((right-left-44)*p)+22,y1+11),radius=2,fill=primary)
+    draw.rectangle((left,y1,right,y1),fill=primary)
+    draw.rectangle((left,y1,left+int((right-left)*p),y1+4),fill=primary)
     tw=text_width(draw,title,title_font)
     draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
     yy=y1+18+title_h+20; global_word=0
@@ -1535,8 +1538,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
     img=add_top_glow(make_base(theme_name,bg_file),theme,1.25*p)
     draw=ImageDraw.Draw(img)
     brand=clean_text(channel or "SuspenseLingo")
-    bf=get_font(34,ff); bw=text_width(draw,brand,bf)
-    draw.text(((WIDTH-bw)/2,300),brand,font=bf,fill=theme["accent"])
+    bf=get_font(42,ff); bw=text_width(draw,brand,bf)
+    draw.text(((WIDTH-bw)/2,275),brand,font=bf,fill=theme["accent"])
     _motivation_icon(draw,theme,"end",540,485,78,p)
     lf=get_font(32,ff); label="NEXT CHALLENGE"; lw=text_width(draw,label,lf)
     draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
@@ -1555,7 +1558,7 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
         visible=f"Ton score sur {score_total} ?"
     # Intro: avoid rendering the same short hook as both headline and subtitle.
     is_short_intro = str(module)=="quiz" and visible.strip().upper() in {"PRÊT ?", "PRÊT!", "PRÊT"}
-    f=get_font(64 if not is_french_score else 70,ff)
+    f=get_font(76 if not is_french_score else 84,ff)
     lines=wrap_text(visible,f,850)[:2] or ["See you next time!"]
     y=735-int(45*(1-ease_out(p)))
     for line in lines:
@@ -1570,8 +1573,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
         sub="Teste tes connaissances !"
     else:
         sub=cta_subs.get(str(language),cta_subs["Français"])
-    sf=get_font(29,ff); sw=text_width(draw,sub,sf)
-    draw.text(((WIDTH-sw)/2,1115),sub,font=sf,fill=(220,228,242))
+    sf=get_font(36,ff); sw=text_width(draw,sub,sf)
+    draw.text(((WIDTH-sw)/2,1160),sub,font=sf,fill=(220,228,242))
     draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
     draw.rounded_rectangle((180,1270,180+int(720*clamp(p)),1284),radius=7,fill=theme["accent"])
     sf2=get_font(21,ff); sw2=text_width(draw,brand,sf2)
@@ -3960,7 +3963,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
             with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                 with tempfile.TemporaryDirectory() as tmp:
                     tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
-                    clips=[]; total=len(st.session_state.q_data)
+                    clips=[]; total=min(3,len(st.session_state.q_data))
 
                     # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
                     if clean_text(mot_start_q):
@@ -3975,7 +3978,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         # → Q3 + R1/R2 → etc.
                         # Le titre reste fixe et UNE SEULE question active occupe toujours le même emplacement.
                         # Chaque réponse révélée est ensuite conservée dans l'historique ; la question précédente disparaît. 
-                        items=st.session_state.q_data[:15]
+                        items=st.session_state.q_data[:3]
                         total=len(items)
                         for idx,q in enumerate(items):
                             bg_question=bg_q
@@ -4022,7 +4025,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     # Style 2 reste entièrement cumulatif : pas de pages d'explication séparées.
                     else:
                         # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
-                        for idx,q in enumerate(st.session_state.q_data):
+                        for idx,q in enumerate(st.session_state.q_data[:3]):
                             corr="ABCD".index(q["reponse_correcte"])
                             bg_question = selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
                             qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
@@ -4091,7 +4094,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         final_cta_text=(final_cta_text+" "+short_cta).strip()
                     # Le score affiché et prononcé suit le nombre réel de questions du quiz.
                     # Ne jamais coder en dur « sur 5 » : le quiz peut contenir 1 à 15 questions.
-                    actual_question_count = max(1, len(st.session_state.get("q_data", []) or []))
+                    actual_question_count = max(1, min(3, len(st.session_state.get("q_data", []) or [])))
                     if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
                         final_cta_text=f"Ton score sur {actual_question_count} ? Dis-le en commentaire et abonne-toi !"
                     if final_cta_text:
