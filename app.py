@@ -465,11 +465,47 @@ def get_font(size, family=None):
     return ImageFont.load_default()
 
 def clean_text(text):
+    """Nettoyage Unicode sans effacer ni inventer les accents français."""
     if text is None:
         return ""
-    # NFC regroupe les accents combinés (ex. e + accent) sans translittérer le français.
-    value = unicodedata.normalize("NFC", str(text)).replace("\n", " ")
-    return re.sub(r"\s+", " ", value).strip()
+    value = unicodedata.normalize("NFC", str(text))
+    value = value.replace("\\ufeff", "").replace("\\x00", "")
+    value = value.replace("\\r\\n", "\\n").replace("\\r", "\\n").replace("\\n", " ")
+    return re.sub(r"\\s+", " ", value).strip()
+
+
+_SUSPICIOUS_FRENCH_PATTERNS = [
+    (r"\\brsultat\\b", "résultat"),
+    (r"\\bprimtre\\b", "périmètre"),
+    (r"\\bcarr de ct\\b", "carré de côté"),
+    (r"\\ufffd|(?:Ã.|Â.|â€)", "encodage UTF-8"),
+]
+
+
+def find_text_corruption(text):
+    """Repère les corruptions fréquentes sans inventer les lettres manquantes."""
+    value = clean_text(text)
+    for pattern, expected in _SUSPICIOUS_FRENCH_PATTERNS:
+        if re.search(pattern, value, flags=re.IGNORECASE):
+            return f"Texte probablement corrompu : « {value} » (vérifier : {expected})."
+    return ""
+
+
+def validate_quiz_texts(data):
+    """Bloque la génération si une chaîne du quiz semble déjà corrompue."""
+    issues = []
+    for i, item in enumerate(data or [], start=1):
+        fields = [("question", item.get("question", "")),
+                  ("explication", item.get("explication", ""))]
+        fields.extend((f"réponse {letter}", answer)
+                      for letter, answer in zip("ABCD", item.get("options", [])))
+        for label, value in fields:
+            warning = find_text_corruption(value)
+            if warning:
+                issues.append(f"Question {i}, {label} : {warning}")
+    if issues:
+        raise ValueError("Des caractères semblent manquants ou corrompus. Corrige le texte avant de générer la vidéo :\\n- " + "\\n- ".join(issues))
+    return data
 
 def text_width(draw, text, font):
     box = draw.textbbox((0, 0), str(text), font=font)
@@ -2405,7 +2441,15 @@ def gemini_generate_text(prompt):
 
 def parse_quiz_csv(uploaded_file):
     """Lit un CSV manuel avec colonnes question,A,B,C,D,reponse_correcte,explication."""
-    raw = uploaded_file.getvalue().decode("utf-8-sig", errors="replace")
+    raw_bytes = uploaded_file.getvalue()
+    try:
+        raw = raw_bytes.decode("utf-8-sig", errors="strict")
+    except UnicodeDecodeError:
+        # Secours pour les anciens CSV Windows-1252. Évite l'insertion de  .
+        try:
+            raw = raw_bytes.decode("cp1252", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Le CSV n'est ni en UTF-8 ni en Windows-1252 valide. Réexporte-le en CSV UTF-8 depuis Excel.") from exc
     try: dialect = csv.Sniffer().sniff(raw[:4096], delimiters=",;\t")
     except csv.Error: dialect = csv.excel
     reader = csv.DictReader(io.StringIO(raw), dialect=dialect)
@@ -2421,7 +2465,7 @@ def parse_quiz_csv(uploaded_file):
         exp=clean_text(row.get(fields["explication"],"")) if "explication" in fields else ""
         if q and all(opts) and ans in "ABCD": data.append({"question":q,"options":opts,"reponse_correcte":ans,"explication":exp})
     if not data: raise ValueError("Aucune question valide trouvée dans le CSV.")
-    return data[:10]
+    return validate_quiz_texts(data[:10])
 
 def csv_template():
     return "question,A,B,C,D,reponse_correcte,explication\nQuelle est la capitale de la France ?,Paris,Londres,Rome,Berlin,A,Paris est la capitale de la France.\n"
@@ -3817,9 +3861,10 @@ Chaque objet doit respecter EXACTEMENT cette structure :
 IMPORTANT : options est une LISTE de 4 chaînes dans l'ordre A, B, C, D.
 reponse_correcte est UNIQUEMENT une lettre parmi A, B, C ou D.
 Les 4 options doivent être plausibles et une seule correcte.
+IMPORTANT ORTHOGRAPHE/ENCODAGE : écris un français correct avec tous les accents (é, è, ê, ë, à, â, î, ï, ô, ù, û, ç). N'omets jamais une lettre. Relis chaque question, option et explication. Utilise du texte Unicode normal.
 Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
                             res_text,_=gemini_generate_text(prompt)
-                            data=normalize_questions(parse_json(res_text))
+                            data=validate_quiz_texts(normalize_questions(parse_json(res_text)))
                             if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
                             st.session_state.q_data=data[:nb_q]
                             st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
@@ -3835,9 +3880,9 @@ Retourne UNIQUEMENT le tableau JSON, sans ``` et sans texte avant ou après.'''
                             prompt=f'''Génère exactement {nb_q} questions DIFFERENTES en {QUIZ_LANGUAGE_LABELS[quiz_language]} sur « {th_q} ».
 Le sujet « {th_q} » est une contrainte stricte : toutes les questions, réponses et explications doivent correspondre directement à cette thématique, sans mélange de catégories.
 Format strict : [{{"question":"...","options":["A","B","C","D"],"reponse_correcte":"A","explication":"..."}}].
-Une seule bonne réponse. Retourne uniquement le JSON.'''
+Une seule bonne réponse. Écris un français correctement accentué en Unicode (é, è, ê, à, ç, etc.) ; ne supprime aucune lettre et relis chaque chaîne. Retourne uniquement le JSON.'''
                             res_text,_=gemini_generate_text(prompt)
-                            data=normalize_questions(parse_json(res_text))
+                            data=validate_quiz_texts(normalize_questions(parse_json(res_text)))
                             if len(data)<nb_q: raise ValueError(f"Gemini n'a fourni que {len(data)} questions sur {nb_q}.")
                             st.session_state.q_data=data[:nb_q]
                             st.session_state.q_ai_cache=[dict(x) for x in st.session_state.q_data]
