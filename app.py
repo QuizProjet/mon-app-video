@@ -23,7 +23,7 @@ import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # ============================================================
-# QUIZVIDEO PRO — STUDIO
+# SuspenseLingo Studio — V32.27 : entête réglable, aperçu compact, logo unique
 # V19 — Motivation milieu supprimée; TTS nettoyé; accroches localisées; suspense audio renforcé
 # V23 — Stabilisation interface : colonne droite sticky, aperçu live, génération pro. Aucune fonctionnalité vidéo supprimée.
 # ============================================================
@@ -189,8 +189,8 @@ button[kind="primary"]{font-weight:850!important}
 /* V12 — aperçu réduit + édition directe par clic */
 .qvp-main-layout{gap:18px!important}
 .qvp-preview-stage{display:flex!important;justify-content:center!important;}
-.qvp-preview-stage [data-testid="stImage"]{width:100%!important;max-width:360px!important;}
-.qvp-preview-stage img{max-width:360px!important;height:auto!important;}
+.qvp-preview-stage [data-testid="stImage"]{width:100%!important;max-width:300px!important;}
+.qvp-preview-stage img{max-width:300px!important;height:auto!important;}
 .qvp-click-preview{position:relative;background-size:100% 100%;background-repeat:no-repeat;border-radius:16px;box-shadow:0 18px 38px rgba(15,23,42,.18);border:1px solid #cbd5e1;overflow:hidden;margin:8px auto 10px;}
 .qvp-hotspot{position:absolute;display:flex;align-items:flex-start;justify-content:flex-start;text-decoration:none!important;border:1px dashed rgba(255,255,255,.25);background:rgba(0,0,0,.02);border-radius:7px;transition:.15s ease;}
 .qvp-hotspot span{font-size:8px;line-height:1;padding:3px 5px;border-radius:0 0 5px 0;background:rgba(15,23,42,.76);color:white;opacity:.55;font-weight:750;}
@@ -326,6 +326,7 @@ button[kind="primary"]{font-weight:850!important}
     position:static !important;
   }
 }
+div[data-testid="stVideo"] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -691,7 +692,7 @@ def draw_lightning_icon(draw, theme, cx, cy, size=28):
 
 def draw_brand(draw, theme, channel, progress=None):
     cfg=_layout("quiz", "1")
-    if channel and bool(cfg.get("brand_show",True)):
+    if channel and bool(cfg.get("brand_show",True)) and not bool(cfg.get("header_logo_is_primary", True)):
         text=clean_text(channel) or "SuspenseLingo"
         f=get_font(int(cfg.get("brand_size",28)),cfg.get("font_family","DejaVu Sans"))
         x=int(cfg.get("brand_x",55)); y=int(cfg.get("brand_y",34))
@@ -739,13 +740,17 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     # Largeur réglable de l’en-tête, centrée dans le canevas et contenue dans la zone sûre.
     header_w=max(520,min(int(cfg.get("header_width",right-left)),right-left))
     center=(left+right)//2; left=max(32,center-header_w//2); right=min(WIDTH-32,left+header_w); left=max(32,right-header_w)
-    draw.rectangle((left,top,right,bottom),fill=navy,outline=border,width=2)
+    if cfg.get("header_bg_enabled", True):
+        draw.rectangle((left,top,right,bottom),fill=navy,outline=border if cfg.get("header_frame_enabled", True) else None,width=2)
+    elif cfg.get("header_frame_enabled", True):
+        draw.rectangle((left,top,right,bottom),outline=border,width=2)
     third=(right-left)/3.0
     # Zone 1 : logo
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
         bf=get_font(max(38,int(cfg.get("brand_size",31))),ff); bh=text_height(bf,brand)
-        bx=left+18; by=top+(bottom-top-bh)//2
+        bx=int(cfg.get("brand_x",left+18)); by=int(cfg.get("brand_y",top+(bottom-top-bh)//2))
+        bx=max(12,min(WIDTH-text_width(draw,brand,bf)-48,bx)); by=max(8,min(HEIGHT-bh-8,by))
         # Badge de marque : petit monogramme + capsule pour donner plus de
         # présence à SuspenseLingo sans modifier la mécanique du quiz.
         icon_r=max(12,min(18,(bottom-top)//4))
@@ -764,10 +769,10 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     if title.lower().startswith("quiz "): title=title[5:].strip()
     if len(title)>22: title=title[:22].rstrip()+"…"
     tf=get_font(max(36,int(cfg.get("title_size",32))),ff); th=text_height(tf,title)
-    center_x=left+third*1.5; max_tw=int(third-24)
+    center_x=int(cfg.get("title_x",left+third*1.5)); title_y=int(cfg.get("title_y",top+(bottom-top)//2)); max_tw=int(third-24)
     while text_width(draw,title,tf)>max_tw and tf.size>24:
         tf=get_font(tf.size-1,ff); th=text_height(tf,title)
-    tw=text_width(draw,title,tf); tx=center_x-tw/2; ty=top+(bottom-top-th)//2
+    tw=text_width(draw,title,tf); tx=max(8,min(WIDTH-tw-8,int(center_x-tw/2))); ty=max(8,min(HEIGHT-th-8,int(title_y-th//2)))
     draw.text((tx+2,ty+2),title,font=tf,fill=black); draw.text((tx,ty),title,font=tf,fill=white)
     # Zone 3 : compteur
     score=f"{q_num}/{total}"; sf=get_font(int(cfg.get("score_size",28)),ff); sw=text_width(draw,score,sf); sh=text_height(sf,score)
@@ -775,9 +780,9 @@ def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
     third_left=left+2*third; third_right=right
     pill_w=min(max(78,sw+24),max(78,int(third-18)))
     pill_h=min(max(40,sh+10),max(40,header_h-10))
-    cx=(third_left+third_right)/2
-    px=max(third_left+8,third_right-pill_w-8)
-    py=top+(bottom-top-pill_h)/2
+    cx=int(cfg.get("score_x",(third_left+third_right)/2))
+    px=max(8,min(WIDTH-pill_w-8,cx-pill_w//2))
+    py=max(8,min(HEIGHT-pill_h-8,int(cfg.get("score_y",top+(bottom-top)//2))-pill_h//2))
     draw.rectangle((px,py,px+pill_w,py+pill_h),fill=gold)
     draw.text((px+(pill_w-sw)/2,py+(pill_h-sh)/2-1),score,font=sf,fill=black)
     return top, bottom
@@ -990,7 +995,7 @@ def _layout(module="quiz", style=None):
         "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":1000,"score_y":130,"score_size":36,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
-        "brand_x":70,"brand_y":139,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
+        "brand_x":70,"brand_y":139,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B","header_frame_enabled":True,"header_bg_enabled":True,"header_logo_is_primary":True,
         "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
@@ -3399,7 +3404,7 @@ def render_layout_editor(module, style="1"):
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":False, "answer_border_enabled":False,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
         "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "brand_x":70, "brand_y":139, "brand_size":38, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
+        "brand_x":70, "brand_y":139, "brand_size":38, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B", "header_frame_enabled":True, "header_bg_enabled":True,
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":65 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
@@ -3486,6 +3491,10 @@ def render_layout_editor(module, style="1"):
             st.checkbox("Afficher le cadre de l'explication",key=p+"explanation_frame_enabled")
             st.checkbox("Afficher le fond de l'explication",key=p+"explanation_frame_bg_enabled")
             st.checkbox("Afficher la bordure de l'explication",key=p+"explanation_border_enabled")
+        st.markdown("**▭ En-tête : cadre et fond**")
+        hc1,hc2=st.columns(2)
+        with hc1: st.checkbox("Afficher le cadre de l’en-tête", key=p+"header_frame_enabled")
+        with hc2: st.checkbox("Afficher le fond de l’en-tête", key=p+"header_bg_enabled")
         st.markdown("**🏷️ Logo / nom de chaîne**")
         st.checkbox("Afficher SuspenseLingo en haut à gauche",key=p+"brand_show")
         st.checkbox("Fond derrière le logo",key=p+"brand_bg_enabled")
@@ -3544,6 +3553,9 @@ def render_layout_editor(module, style="1"):
                 st.slider("↕ En-tête Y — haut 0 • bas 1920",80,500,key=p+"header_y")
                 st.slider("Largeur de l’en-tête",520,1040,key=p+"header_width",step=10)
                 st.slider("Hauteur de l’en-tête",52,110,key=p+"header_h")
+            st.markdown("**Compteur — position indépendante**")
+            st.slider("↔ Compteur X — gauche ↔ droite",80,1040,key=p+"score_x")
+            st.slider("↕ Compteur Y — haut ↕ bas",40,600,key=p+"score_y")
             st.markdown("**Titre**")
             st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
             st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
@@ -4162,7 +4174,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
@@ -4484,7 +4496,7 @@ else:
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
         except MemoryError:
