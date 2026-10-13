@@ -789,24 +789,16 @@ def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0
 def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size, label=None, label_size=23, label_color=None, pulse=0.0):
     """Chronomètres Studio Pro. Option 1 utilise un cercle Bleu Nuit + bordure Or."""
     frac=clamp(fraction); style=str(style or "Double cercle")
-    if color == (245,158,11):
-        # Option 1 : badge circulaire fixe, exactement comme la spécification CSS.
-        bg=(30,41,59)
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(245,158,11),width=4)
-        tf=get_font(text_size); ts=str(timer if timer is not None else ""); th=text_height(tf,ts)
-        draw.text((cx-text_width(draw,ts,tf)/2,cy-th/2-3),ts,font=tf,fill=(245,158,11))
-        if label:
-            lf=get_font(label_size); lw=text_width(draw,label,lf); draw.text(((WIDTH-lw)/2,cy+r+16),label,font=lf,fill=label_color or (245,158,11))
-        return
+    # Tous les styles utilisent le style réellement choisi dans l'Éditeur Studio.
+    # Les fonds pleins sombres ont été supprimés : le décor reste visible à travers le minuteur.
     frac=clamp(fraction); style=str(style or "Double cercle")
-    bg=(7,12,26)
     white=(245,248,252)
     if style=="Double cercle":
         draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=max(3,int(r*.07)))
-        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),fill=bg,outline=white,width=max(2,int(r*.045)))
+        r2=max(8,int(r*.72)); draw.ellipse((cx-r2,cy-r2,cx+r2,cy+r2),outline=white,width=max(2,int(r*.045)))
         draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.09)))
     elif style=="Montre":
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=white,width=max(2,int(r*.045)))
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=white,width=max(2,int(r*.045)))
         draw.arc((cx-r+5,cy-r+5,cx+r-5,cy+r-5),-90,-90+int(360*frac),fill=color,width=max(4,int(r*.08)))
         # aiguilles
         angle=math.radians(-90+360*(1-frac)); hx=cx+int(math.cos(angle)*r*.48); hy=cy+int(math.sin(angle)*r*.48)
@@ -835,14 +827,14 @@ def _draw_timer_visual(draw, color, cx, cy, r, timer, fraction, style, text_size
             draw.polygon([(cx-10,y1-8),(cx+10,y1-8),(cx+int(18*frac),y1-sand_h),(cx-int(18*frac),y1-sand_h)],fill=color)
         draw.line((cx,cy-int(h*.1),cx,cy+int(h*.1)),fill=color,width=3)
     elif style=="Anneau progressif":
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=(255,255,255),width=3)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=(255,255,255),width=3)
         draw.arc((cx-r+6,cy-r+6,cx+r-6,cy+r-6),-90,-90+int(360*frac),fill=color,width=max(5,int(r*.14)))
     elif style=="Numérique":
         w=max(130,int(r*3.1)); h=max(62,int(r*1.05));
-        draw.rounded_rectangle((cx-w//2,cy-h//2,cx+w//2,cy+h//2),radius=int(h*.28),fill=bg,outline=color,width=max(3,int(r*.06)))
+        draw.rounded_rectangle((cx-w//2,cy-h//2,cx+w//2,cy+h//2),radius=int(h*.28),outline=color,width=max(3,int(r*.06)))
         draw.rounded_rectangle((cx-w//2+8,cy-h//2+8,cx-w//2+8+int((w-16)*frac),cy-h//2+13),radius=3,fill=color)
     else:
-        draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=bg,outline=color,width=3)
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=color,width=3)
     tf=get_font(text_size)
     ts=str(timer if timer is not None else "")
     th=text_height(tf,ts)
@@ -2470,6 +2462,48 @@ def parse_quiz_csv(uploaded_file):
 def csv_template():
     return "question,A,B,C,D,reponse_correcte,explication\nQuelle est la capitale de la France ?,Paris,Londres,Rome,Berlin,A,Paris est la capitale de la France.\n"
 
+
+def parse_vocab_csv(uploaded_file):
+    """Lit un CSV de vocabulaire avec colonnes français/traduction (ou fr/trad)."""
+    raw_bytes = uploaded_file.getvalue()
+    try:
+        raw = raw_bytes.decode("utf-8-sig", errors="strict")
+    except UnicodeDecodeError:
+        try:
+            raw = raw_bytes.decode("cp1252", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Le CSV n'est ni en UTF-8 ni en Windows-1252 valide. Réexporte-le en CSV UTF-8 depuis Excel.") from exc
+    try:
+        dialect = csv.Sniffer().sniff(raw[:4096], delimiters=",;\t")
+    except csv.Error:
+        dialect = csv.excel
+    reader = csv.DictReader(io.StringIO(raw), dialect=dialect)
+    if not reader.fieldnames:
+        raise ValueError("Le CSV ne contient pas de ligne d'en-tête.")
+    def _header_key(value):
+        decomposed = unicodedata.normalize("NFKD", clean_text(value).lower())
+        return re.sub(r"[^a-z]", "", "".join(ch for ch in decomposed if not unicodedata.combining(ch)))
+    fields = {_header_key(f): f for f in reader.fieldnames if f}
+    fr_names = ("fr", "francais", "mot", "motfrancais", "source", "word", "french")
+    tr_names = ("trad", "traduction", "translation", "translate", "mottraduit", "cible", "target")
+    fr_key = next((fields[k] for k in fr_names if k in fields), None)
+    tr_key = next((fields[k] for k in tr_names if k in fields), None)
+    if not fr_key or not tr_key:
+        raise ValueError("Colonnes requises : Français,Traduction (ou fr,trad).")
+    data = []
+    for row in reader:
+        fr = clean_text(row.get(fr_key, ""))
+        tr = clean_text(row.get(tr_key, ""))
+        if fr and tr:
+            data.append({"fr": fr, "trad": tr})
+    if not data:
+        raise ValueError("Aucun mot avec traduction valide n'a été trouvé dans le CSV.")
+    return data[:15]
+
+
+def vocab_csv_template():
+    return "Français,Traduction\nBonjour,Hello\nMerci,Thank you\nAu revoir,Goodbye\n"
+
 def normalize_questions(data):
     """Normalise plusieurs formats Gemini sans jeter les questions valides.
 
@@ -2996,10 +3030,12 @@ def render_clickable_preview(image, module, style, cfg, selected):
 # Marges recommandées/indicatives : elles servent à garder les éléments
 # importants loin des zones d'interface susceptibles de recouvrir la vidéo.
 SOCIAL_SAFE_PROFILES = {
-    "TikTok": {"top":0.10,"bottom":0.19,"left":0.03,"right":0.19},
-    "Instagram Reels": {"top":0.09,"bottom":0.18,"left":0.03,"right":0.16},
-    "YouTube Shorts": {"top":0.08,"bottom":0.14,"left":0.03,"right":0.12},
-    "Facebook Reels": {"top":0.09,"bottom":0.17,"left":0.03,"right":0.15},
+    # Marges conservatrices : évitent les commandes supérieures, la légende
+    # et la colonne d'actions latérale propres à chaque réseau.
+    "TikTok": {"top":0.13,"bottom":0.22,"left":0.04,"right":0.22},
+    "Instagram Reels": {"top":0.12,"bottom":0.21,"left":0.04,"right":0.19},
+    "YouTube Shorts": {"top":0.10,"bottom":0.17,"left":0.04,"right":0.15},
+    "Facebook Reels": {"top":0.12,"bottom":0.20,"left":0.04,"right":0.18},
 }
 SOCIAL_SAFE_PROFILES["Universel"] = {
     k:max(v[k] for v in SOCIAL_SAFE_PROFILES.values()) for k in ("top","bottom","left","right")
@@ -3141,11 +3177,11 @@ def apply_social_auto_layout(module="quiz", style="1"):
 def render_platform_safe_preview(image, key_prefix="platform_preview", module="quiz", style="1"):
     """Aperçu vertical 9:16 à l'échelle de travail, avec zones de sécurité par plateforme."""
     profiles={
-        "TikTok":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"TikTok"},
-        "Instagram Reels":{"top":0.09,"bottom":0.18,"left":0.03,"right":0.16,"label":"Instagram Reels"},
-        "YouTube Shorts":{"top":0.08,"bottom":0.14,"left":0.03,"right":0.12,"label":"YouTube Shorts"},
-        "Facebook Reels":{"top":0.09,"bottom":0.17,"left":0.03,"right":0.15,"label":"Facebook Reels"},
-        "Universel":{"top":0.10,"bottom":0.19,"left":0.03,"right":0.19,"label":"Universel"},
+        "TikTok":{"top":0.13,"bottom":0.22,"left":0.04,"right":0.22,"label":"TikTok"},
+        "Instagram Reels":{"top":0.12,"bottom":0.21,"left":0.04,"right":0.19,"label":"Instagram Reels"},
+        "YouTube Shorts":{"top":0.10,"bottom":0.17,"left":0.04,"right":0.15,"label":"YouTube Shorts"},
+        "Facebook Reels":{"top":0.12,"bottom":0.20,"left":0.04,"right":0.18,"label":"Facebook Reels"},
+        "Universel":{"top":0.13,"bottom":0.22,"left":0.04,"right":0.22,"label":"Universel"},
     }
     c1,c2=st.columns([1.35,0.9],gap="small")
     with c1:
@@ -3317,7 +3353,9 @@ def export_platform_video(video_data, platform, quality, tmpdir):
     else:
         width,height,crf=720,1280,"22"
     out=os.path.join(tmpdir, f"{platform}_{quality}.mp4")
-    vf=f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1"
+    # Mise à l'échelle proportionnelle, puis recadrage centré minimal si le master
+    # n'est pas exactement 9:16. Aucun étirement et aucune bande noire ajoutée.
+    vf=f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1"
     cmd=[get_ffmpeg(),"-y","-i",src,"-vf",vf,"-c:v","libx264","-preset","medium","-crf",crf,"-c:a","aac","-b:a","192k","-movflags","+faststart",out]
     subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     with open(out,"rb") as f: return f.read()
@@ -3447,7 +3485,8 @@ def render_layout_editor(module, style="1"):
     # manuels à chaque rerun Streamlit. Il s'applique au premier chargement
     # et uniquement lorsqu'on change de plateforme ou réactive l'automatique.
     _auto_on = bool(st.session_state.get(p+"social_auto_layout", False))
-    _auto_sig = f"{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
+    # Version de profil intégrée à la signature : applique une seule fois les nouvelles zones sûres après mise à jour.
+    _auto_sig = f"safezones_v2|{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
     if _auto_on:
         # V32 : la mise en page automatique ne doit plus réinitialiser les
         # réglages enregistrés à chaque nouvelle visite. La signature est
@@ -3672,6 +3711,10 @@ def render_layout_editor(module, style="1"):
             st.checkbox("Afficher le libellé",key=p+"timer_show_label")
             st.text_input("Libellé",key=p+"timer_label")
             st.color_picker("Couleur du minuteur",key=p+"timer_color")
+        if not (is_quiz and style=="1"):
+            st.caption("Le fond plein du minuteur est supprimé. Les styles Double cercle, Montre, Gouttes d’eau, Sablier, Anneau progressif et Numérique sont rendus directement selon ce choix.")
+        if is_quiz and style=="1":
+            st.caption("Si « Position automatique sous les 4 réponses » est activée, la position Y manuelle est volontairement ignorée.")
         st.markdown("**Effets sonores**")
         st.checkbox("Activer les effets sonores",key=p+"sfx_enabled")
         st.slider("Volume des effets",0.05,0.60,key=p+"sfx_volume",step=0.01)
@@ -4165,7 +4208,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
-                    st.markdown("<style>div[data-testid='stVideo']{max-width:260px!important;margin:0 auto!important}div[data-testid='stVideo'] video{height:auto!important;max-height:300px!important;width:100%!important;max-width:260px!important;aspect-ratio:9/16!important;object-fit:contain!important;margin:0 auto!important;display:block!important}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
@@ -4200,56 +4243,62 @@ else:
     st.markdown('<div class="qvp-settings-card"><div class="qvp-card-heading">🎯 3. CONTENU — Mots / traductions</div>',unsafe_allow_html=True)
     vg_key=_vocab_generation_key(nb_v,th_v,langue_v)
     with st.expander("Source, génération et édition des mots", expanded=not bool(st.session_state.get("v_data"))):
-        vb1,vb2=st.columns(2)
-        with vb1:
-            if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
-                if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
-                    st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
-                    st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
-                elif not api_key:
-                    st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                else:
-                    try:
-                        prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
-                        res_text,_=gemini_generate_text(prompt)
-                        data=parse_json(res_text)[:nb_v]
-                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                        st.session_state.v_data=data
-                        st.session_state.v_ai_cache=[dict(x) for x in data]
-                        st.session_state.v_ai_key=vg_key
-                        st.success("✅ Vocabulaire généré et mis en cache.")
-                    except Exception as e: st.error(f"Erreur Gemini : {e}")
-        with vb2:
-            if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
-                if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
-                else:
-                    try:
-                        prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
-                        res_text,_=gemini_generate_text(prompt)
-                        data=parse_json(res_text)[:nb_v]
-                        if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
-                        st.session_state.v_data=data
-                        st.session_state.v_ai_cache=[dict(x) for x in data]
-                        st.session_state.v_ai_key=vg_key
-                        st.success("✅ Nouveau lot vocabulaire généré.")
-                    except Exception as e: st.error(f"Erreur Gemini : {e}")
+        mode_v = st.radio("Source du contenu", ["🤖 IA Gemini", "📄 CSV"], horizontal=True, key="mode_v")
+        if mode_v == "🤖 IA Gemini":
+            vb1,vb2=st.columns(2)
+            with vb1:
+                if st.button("♻️ Charger / générer le vocabulaire",key="genv",use_container_width=True):
+                    if st.session_state.get("v_ai_key")==vg_key and st.session_state.get("v_ai_cache"):
+                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]
+                        st.success("✅ Vocabulaire déjà généré : cache réutilisé, 0 nouvelle requête Gemini.")
+                    elif not api_key:
+                        st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Génère exactement {nb_v} mots français DIFFERENTS avec leur traduction en {langue_v} sur le sujet « {th_v} ». Évite les répétitions et varie le vocabulaire. Retourne UNIQUEMENT un JSON valide: [{{"fr":"...","trad":"..."}}]'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=parse_json(res_text)[:nb_v]
+                            if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                            st.session_state.v_data=data
+                            st.session_state.v_source=f"IA • {th_v}"
+                            st.session_state.v_ai_cache=[dict(x) for x in data]
+                            st.session_state.v_ai_key=vg_key
+                            st.success("✅ Vocabulaire généré et mis en cache.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+            with vb2:
+                if st.button("⚠️ Nouveau lot IA vocabulaire (1 quota)",key="forcev",use_container_width=True):
+                    if not api_key: st.error("Ajoute ta clé API Gemini dans la barre latérale.")
+                    else:
+                        try:
+                            prompt=f'''Génère exactement {nb_v} mots français différents avec traduction en {langue_v} sur « {th_v} ». Retourne uniquement [{{"fr":"...","trad":"..."}}].'''
+                            res_text,_=gemini_generate_text(prompt)
+                            data=parse_json(res_text)[:nb_v]
+                            if len(data)<nb_v: raise ValueError(f"Gemini n'a fourni que {len(data)} mots sur {nb_v}.")
+                            st.session_state.v_data=data
+                            st.session_state.v_source=f"IA • {th_v}"
+                            st.session_state.v_ai_cache=[dict(x) for x in data]
+                            st.session_state.v_ai_key=vg_key
+                            st.success("✅ Nouveau lot vocabulaire généré.")
+                        except Exception as e: st.error(f"Erreur Gemini : {e}")
+        else:
+            st.markdown('<div class="qvp-card"><b>📄 Import CSV</b><div class="qvp-small">Colonnes : Français,Traduction (ou fr,trad). Maximum : 15 mots.</div></div>',unsafe_allow_html=True)
+            st.download_button("⬇️ Télécharger le modèle CSV vocabulaire", data=vocab_csv_template(), file_name="vocabulaire_template.csv", mime="text/csv", key="vocab_csv_template")
+            vocab_csv_file = st.file_uploader("Choisir ton fichier CSV de vocabulaire", type=["csv"], key="vocab_csv_upload")
+            if vocab_csv_file is not None:
+                try:
+                    imported_vocab = parse_vocab_csv(vocab_csv_file)
+                    # N'écrase les données que si le contenu importé a changé.
+                    import_sig = _stable_hash(imported_vocab)
+                    if st.session_state.get("_vocab_csv_last_sig") != import_sig:
+                        st.session_state.v_data = imported_vocab
+                        st.session_state.v_source = "CSV manuel"
+                        st.session_state._vocab_csv_last_sig = import_sig
+                    st.success(f"✅ {len(imported_vocab)} mots importés depuis le CSV.")
+                    st.dataframe([{"#":i+1,"Français":x["fr"],"Traduction":x["trad"]} for i,x in enumerate(imported_vocab)],use_container_width=True,hide_index=True)
+                except Exception as e:
+                    st.error(f"CSV invalide : {e}")
         if st.session_state.get("v_data"):
-            st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
-            # V32.26 safe addition: CSV export for the vocabulary workflow (especially Style 2).
-            vocab_csv_rows=[{"fr":clean_text(x.get("fr","")),"trad":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
-            vocab_csv_buffer=io.StringIO()
-            csv_writer=csv.DictWriter(vocab_csv_buffer, fieldnames=["fr","trad"], lineterminator="\n")
-            csv_writer.writeheader()
-            csv_writer.writerows(vocab_csv_rows)
-            st.download_button(
-                "⬇️ Télécharger le vocabulaire en CSV",
-                data="\ufeff"+vocab_csv_buffer.getvalue(),
-                file_name="suspenselingo_vocabulaire_style2.csv" if style_v.startswith("Style 2") else "suspenselingo_vocabulaire.csv",
-                mime="text/csv; charset=utf-8",
-                key="download_vocab_csv_style2" if style_v.startswith("Style 2") else "download_vocab_csv_style1",
-                use_container_width=True,
-                help="Exporte les mots et traductions actuellement enregistrés dans le tableau ci-dessus."
-            )
+            st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s) • {st.session_state.get('v_source','source IA ou manuelle')}")
             st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
             vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
             edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={"Français":st.column_config.TextColumn("Français",width="medium"),"Traduction":st.column_config.TextColumn("Traduction",width="medium")},hide_index=True)
@@ -4258,12 +4307,12 @@ else:
                 if st.button("💾 Enregistrer les modifications",key="savevedit",use_container_width=True):
                     saved=_save_vocab_editor(edited_v)
                     if saved:
-                        st.session_state.v_data=saved; st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
+                        st.session_state.v_data=saved; st.session_state.v_source=st.session_state.get("v_source","Contenu modifié"); st.success(f"✅ {len(saved)} mot(s) enregistré(s), sans appel Gemini.")
                     else: st.error("Aucun mot valide à enregistrer.")
             with ve2:
                 if st.button("↩️ Restaurer le dernier lot IA",key="restorev",use_container_width=True):
                     if st.session_state.get("v_ai_cache"):
-                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]; st.success("✅ Lot IA restauré, 0 quota consommé.")
+                        st.session_state.v_data=[dict(x) for x in st.session_state.v_ai_cache]; st.session_state.v_source="IA restaurée"; st.success("✅ Lot IA restauré, 0 quota consommé.")
                     else: st.info("Aucun lot IA en cache.")
     st.markdown('</div>',unsafe_allow_html=True)
 
@@ -4502,7 +4551,7 @@ else:
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
-                    st.markdown("<style>div[data-testid='stVideo']{max-width:260px!important;margin:0 auto!important}div[data-testid='stVideo'] video{height:auto!important;max-height:300px!important;width:100%!important;max-width:260px!important;aspect-ratio:9/16!important;object-fit:contain!important;margin:0 auto!important;display:block!important}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
         except MemoryError:
