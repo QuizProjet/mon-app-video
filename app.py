@@ -1528,7 +1528,7 @@ def draw_vocab_style2_outro(message, subtitle, theme_name, channel, bg_file=None
     draw_brand(draw,theme,channel)
     return img
 
-def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français"):
+def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",style="1",language="Français",total_questions=None):
     theme=THEMES[theme_name]
     ff=_layout(module, style).get("font_family","DejaVu Sans")
     p=ease_back(progress)
@@ -1543,7 +1543,16 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
     visible=_motivation_text_clean(text)
     is_french_score = str(language)=="Français" and ("Ton score" in visible or "score sur 5" in visible.lower())
     if is_french_score:
-        visible="Ton score sur 5 ?"
+        # Le dénominateur du score doit toujours correspondre au nombre réel de questions.
+        try:
+            score_total = max(1, int(total_questions)) if total_questions is not None else None
+        except (TypeError, ValueError):
+            score_total = None
+        if score_total is None:
+            import re
+            match = re.search(r"score\s+sur\s+(\d+)", visible, re.IGNORECASE)
+            score_total = int(match.group(1)) if match else 5
+        visible=f"Ton score sur {score_total} ?"
     # Intro: avoid rendering the same short hook as both headline and subtitle.
     is_short_intro = str(module)=="quiz" and visible.strip().upper() in {"PRÊT ?", "PRÊT!", "PRÊT"}
     f=get_font(64 if not is_french_score else 70,ff)
@@ -4080,15 +4089,17 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     short_cta=clean_text(outro_q)
                     if short_cta and short_cta not in final_cta_text:
                         final_cta_text=(final_cta_text+" "+short_cta).strip()
-                    # Réduit les phrases finales trop longues aux versions courtes standardisées.
+                    # Le score affiché et prononcé suit le nombre réel de questions du quiz.
+                    # Ne jamais coder en dur « sur 5 » : le quiz peut contenir 1 à 15 questions.
+                    actual_question_count = max(1, len(st.session_state.get("q_data", []) or []))
                     if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
-                        final_cta_text="Ton score sur 5 ? Dis-le en commentaire et abonne-toi !"
+                        final_cta_text=f"Ton score sur {actual_question_count} ? Dis-le en commentaire et abonne-toi !"
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
                         od=audio_duration(oa)
                         if od>0.15:
-                            of=save_frames([(draw_hook(final_cta_text,theme_q,channel_q,bg_q,p,language=quiz_language),od/6)
+                            of=save_frames([(draw_hook(final_cta_text,theme_q,channel_q,bg_q,p,language=quiz_language,total_questions=actual_question_count),od/6)
                                             for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"outro")
                             oo=os.path.join(tmp,"outro.mp4"); make_segment(of,oa,oo,tmp); clips.append(oo)
 
