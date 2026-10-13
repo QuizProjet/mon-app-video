@@ -938,6 +938,25 @@ def _sync_theme_from_vocab():
 
 _load_saved_settings()
 
+# V32.28 : migration visuelle ciblée. Ne remplace que les anciennes valeurs par défaut;
+# les positions que l'utilisateur a personnalisées sont conservées.
+if not st.session_state.get("_v32_28_layout_migrated"):
+    _visual_migration = {
+        "q1_question_y": (285, 300), "q1_question_size": (60, 62),
+        "q1_answer_y": (545, 590), "q1_answer_h": (108, 116),
+        "q1_answer_gap": (10, 14), "q1_answer_size": (41, 43),
+        "q1_answer_badge_size": (60, 64), "q1_answer_text_padding": (20, 22),
+        "q1_timer_size": (68, 86), "q1_timer_text_size": (60, 72),
+        "q1_explanation_y": (1280, 1370), "q1_explanation_h": (220, 250),
+        "q1_explanation_size": (32, 34),
+    }
+    for _vk, (_old, _new) in _visual_migration.items():
+        if st.session_state.get(_vk) == _old:
+            st.session_state[_vk] = _new
+    if st.session_state.get("q1_explanation_auto_below_timer") is False:
+        st.session_state["q1_explanation_auto_below_timer"] = True
+    st.session_state["_v32_28_layout_migrated"] = True
+
 
 # Synchronise les sélecteurs Quiz/Vocabulaire à partir du dernier thème enregistré.
 _saved_theme = st.session_state.get("global_visual_theme")
@@ -955,12 +974,12 @@ if _saved_theme in THEMES:
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
 if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
-        "q1_question_x": 540, "q1_question_y": 285, "q1_question_size": 60, "q1_question_width": 980,
-        "q1_answer_x": 45, "q1_answer_y": 545, "q1_answer_width": 990, "q1_answer_h": 108, "q1_answer_gap": 10,
-        "q1_answer_size": 41, "q1_answer_badge_size": 60, "q1_answer_text_padding": 20, "q1_answer_auto_height": True,
-        "q1_timer_x": 540, "q1_timer_y": 1040, "q1_timer_size": 68, "q1_timer_text_size": 60,
-        "q1_timer_auto_below_answers": True, "q1_explanation_auto_below_timer": False,
-        "q1_explanation_x": 540, "q1_explanation_y": 1280, "q1_explanation_width": 960, "q1_explanation_h": 220,
+        "q1_question_x": 540, "q1_question_y": 300, "q1_question_size": 62, "q1_question_width": 980,
+        "q1_answer_x": 45, "q1_answer_y": 590, "q1_answer_width": 990, "q1_answer_h": 116, "q1_answer_gap": 14,
+        "q1_answer_size": 43, "q1_answer_badge_size": 64, "q1_answer_text_padding": 22, "q1_answer_auto_height": True,
+        "q1_timer_x": 540, "q1_timer_y": 1240, "q1_timer_size": 86, "q1_timer_text_size": 72,
+        "q1_timer_auto_below_answers": True, "q1_explanation_auto_below_timer": True,
+        "q1_explanation_x": 540, "q1_explanation_y": 1370, "q1_explanation_width": 960, "q1_explanation_h": 250,
         "q1_explanation_size": 32,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
         "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
@@ -988,20 +1007,20 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"header_y":120,"header_h":74,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
-        "question_x":540,"question_y":285,"question_size":60,"question_width":980,"question_box_radius":24,
-        "answer_y":545,"answer_x":45,"answer_width":990,"answer_h":108,"answer_gap":10,"answer_size":41,"answer_radius":0,"answer_badge_size":60,"answer_text_padding":20,"answer_auto_height":True,
+        "question_x":540,"question_y":300,"question_size":62,"question_width":980,"question_box_radius":24,
+        "answer_y":590,"answer_x":45,"answer_width":990,"answer_h":116,"answer_gap":14,"answer_size":43,"answer_radius":0,"answer_badge_size":64,"answer_text_padding":22,"answer_auto_height":True,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1040,"timer_x":540,"timer_size":68,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
-        "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
+        "timer_y":1240,"timer_x":540,"timer_size":86,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":72,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
+        "timer_auto_below_answers":True,"explanation_auto_below_timer":True,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":1000,"score_y":130,"score_size":36,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
         "brand_x":70,"brand_y":139,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B","header_frame_enabled":True,"header_bg_enabled":True,"header_logo_is_primary":True,
-        "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
+        "explanation_x":540,"explanation_y":1370,"explanation_width":960,"explanation_h":250,"explanation_size":34,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
         "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":False,"answer_border_enabled":False,
-        "explanation_frame_enabled":False,"explanation_frame_bg_enabled":False,"explanation_border_enabled":False,
+        "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":10,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
         "primary":"#F59E0B","answer":"#1E293B","answer2":"#1E293B",
@@ -1126,7 +1145,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
             answer_bottom=int(cfg.get("answer_y",630))+4*int(cfg.get("answer_h",82))+3*int(cfg.get("answer_gap",12))
             timer_cy=min(1450,answer_bottom+timer_size+18)
         else: timer_cy=int(cfg.get("timer_y",1045))
-        y1=min(1390,timer_cy+timer_size+8)
+        y1=min(1430,timer_cy+timer_size+18)
     else: y1=max(1050,int(cfg.get("explanation_y",1335))-24)
     p=ease_out(progress); primary=(245,190,82)
     box_w=max(500,min(1000,int(cfg.get("explanation_width",940))))
@@ -1140,7 +1159,7 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     title_font=get_font(25,cfg.get("font_family","DejaVu Sans")); title="EXPLICATION"
     title_h=text_height(title_font,title)
     line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
-    box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
+    box_h=max(150,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1710,y1+box_h)
     # Fond transparent : conserve le visuel animé et évite un panneau noir.
     draw.rectangle((left,y1,right,y1),fill=primary)
     draw.rectangle((left,y1,left+int((right-left)*p),y1+4),fill=primary)
@@ -3554,8 +3573,18 @@ def render_layout_editor(module, style="1"):
                 st.slider("Largeur de l’en-tête",520,1040,key=p+"header_width",step=10)
                 st.slider("Hauteur de l’en-tête",52,110,key=p+"header_h")
             st.markdown("**Compteur — position indépendante**")
-            st.slider("↔ Compteur X — gauche ↔ droite",80,1040,key=p+"score_x")
-            st.slider("↕ Compteur Y — haut ↕ bas",40,600,key=p+"score_y")
+            _score_x_editor_key = p + "editor_score_x"
+            _score_y_editor_key = p + "editor_score_y"
+            if _score_x_editor_key not in st.session_state:
+                st.session_state[_score_x_editor_key] = int(st.session_state.get(p+"score_x", 965))
+            if _score_y_editor_key not in st.session_state:
+                st.session_state[_score_y_editor_key] = int(st.session_state.get(p+"score_y", 130))
+            def _sync_score_x_editor():
+                st.session_state[p+"score_x"] = int(st.session_state[_score_x_editor_key])
+            def _sync_score_y_editor():
+                st.session_state[p+"score_y"] = int(st.session_state[_score_y_editor_key])
+            st.slider("↔ Compteur X — gauche ↔ droite",80,1040,key=_score_x_editor_key,on_change=_sync_score_x_editor)
+            st.slider("↕ Compteur Y — haut ↕ bas",40,600,key=_score_y_editor_key,on_change=_sync_score_y_editor)
             st.markdown("**Titre**")
             st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
             st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
