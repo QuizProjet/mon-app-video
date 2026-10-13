@@ -902,6 +902,7 @@ if _saved_theme in THEMES:
     st.session_state.setdefault("tv", _saved_theme)
 
 
+# V32.23 — audit CTA, intro sans doublon, en-tête plus lisible et aperçu compact.
 # V32.21 — corrections ciblées après inspection de la vidéo TikTok réelle.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
@@ -922,10 +923,10 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_border_color": "#334155", "q1_border_width": 2, "q1_border_radius": 20,
         "q1_question_frame_enabled": True, "q1_question_frame_bg_enabled": True, "q1_question_border_enabled": True,
         "q1_answer_cards_enabled": True, "q1_answer_badges_enabled": True,
-        "q1_answer_frame_bg_enabled": True, "q1_answer_border_enabled": True,
+        "q1_answer_frame_bg_enabled": False, "q1_answer_border_enabled": False,
         "q1_explanation_frame_enabled": True, "q1_explanation_frame_bg_enabled": True, "q1_explanation_border_enabled": True,
         "q1_header_y": 120, "q1_header_h": 74, "q1_score_x": 965, "q1_score_y": 130, "q1_score_size": 31,
-        "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 28, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
+        "q1_brand_x": 70, "q1_brand_y": 139, "q1_brand_size": 36, "q1_brand_color": "#F59E0B", "q1_brand_show": True,
         "q1_social_auto_layout": True, "q1_social_platform": "Universel",
     }
     for _k, _v in _blue_gold_preset.items():
@@ -950,12 +951,12 @@ def _layout(module="quiz", style=None):
         "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
-        "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
+        "brand_x":70,"brand_y":139,"brand_size":36,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
         "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
-        "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":True,"answer_border_enabled":True,
+        "answer_cards_enabled":True,"answer_badges_enabled":True,"answer_frame_bg_enabled":False,"answer_border_enabled":False,
         "explanation_frame_enabled":True,"explanation_frame_bg_enabled":True,"explanation_border_enabled":True,
         "animation":"Glissement","animation_speed":1.0,"animation_strength":1.0,
         "bg_opacity":10,"motion_strength":1.0,"bg_zoom":1.02,"bg_x":0,"bg_y":0,
@@ -1540,7 +1541,13 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
     lf=get_font(32,ff); label="NEXT CHALLENGE"; lw=text_width(draw,label,lf)
     draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
     visible=_motivation_text_clean(text)
-    f=get_font(64,ff); lines=wrap_text(visible,f,850)[:3] or ["See you next time!"]
+    is_french_score = str(language)=="Français" and ("Ton score" in visible or "score sur 5" in visible.lower())
+    if is_french_score:
+        visible="Ton score sur 5 ?"
+    # Intro: avoid rendering the same short hook as both headline and subtitle.
+    is_short_intro = str(module)=="quiz" and visible.strip().upper() in {"PRÊT ?", "PRÊT!", "PRÊT"}
+    f=get_font(64 if not is_french_score else 70,ff)
+    lines=wrap_text(visible,f,850)[:2] or ["See you next time!"]
     y=735-int(45*(1-ease_out(p)))
     for line in lines:
         tw=text_width(draw,line,f)
@@ -1548,7 +1555,12 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
         draw.text(((WIDTH-tw)/2,y),line,font=f,fill="white")
         y+=88
     cta_subs={"Français":"Abonne-toi à SuspenseLingo !","Anglais":"Follow SuspenseLingo for the next quiz!","Espagnol":"¡Suscríbete a SuspenseLingo!","Arabe":"اشترك في SuspenseLingo!","Allemand":"Abonniere SuspenseLingo!","Italien":"Iscriviti a SuspenseLingo!"}
-    sub=cta_subs.get(str(language),cta_subs["Français"])
+    if is_french_score:
+        sub="Dis-le en commentaire & abonne-toi !"
+    elif is_short_intro:
+        sub="Teste tes connaissances !"
+    else:
+        sub=cta_subs.get(str(language),cta_subs["Français"])
     sf=get_font(29,ff); sw=text_width(draw,sub,sf)
     draw.text(((WIDTH-sw)/2,1115),sub,font=sf,fill=(220,228,242))
     draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
@@ -2571,11 +2583,16 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
     lang_defaults=QUIZ_MOTIVATION_DEFAULTS.get(str(language),QUIZ_MOTIVATION_DEFAULTS["Français"])
     labels={"start":lang_defaults["start_label"],"mid":lang_defaults["mid_label"],"end":lang_defaults["end_label"]}
     label=labels.get(kind,lang_defaults["mid_label"])
-    lf=get_font(34)
-    lw=text_width(draw,label,lf)
-    draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
-
     visible=_motivation_text_clean(text)
+    # V32.23 : sur l'intro française courte, ne pas afficher « PRÊT ? »
+    # une deuxième fois dans le petit label au-dessus du titre principal.
+    is_short_intro = (kind == "start" and str(language) == "Français"
+                      and visible.strip().upper().replace("!", "?") in {"PRÊT ?", "PRÊT"})
+    if not is_short_intro:
+        lf=get_font(34)
+        lw=text_width(draw,label,lf)
+        draw.text(((WIDTH-lw)/2,610),label,font=lf,fill=theme["accent"])
+
     f=get_font(68)
     lines=wrap_text(visible,f,850)[:3] or ["Keep going!"]
     y=760-int(45*(1-p))
@@ -2966,8 +2983,8 @@ def apply_social_auto_layout(module="quiz", style="1"):
         if explanation_y+explanation_h > progress_y-12:
             explanation_y=progress_y-12-explanation_h
         vals={
-            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":28,
-            p+"title_x":center,p+"title_y":header_y+18,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":29,
+            p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":38,
+            p+"title_x":center,p+"title_y":header_y+16,p+"title_size":35,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":31,
             p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":52,
             p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":35,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":62,p+"timer_auto_below_answers":False,
@@ -3323,10 +3340,10 @@ def render_layout_editor(module, style="1"):
         "history_x":80, "history_y":690, "history_width":920, "history_row_h":74, "history_gap":10, "history_size":29,
         "show_explanation":True, "explanation_x":540, "explanation_y":1160, "explanation_width":964, "explanation_h":320, "explanation_size":31,
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
-        "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":True, "answer_border_enabled":True,
+        "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":False, "answer_border_enabled":False,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
         "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
-        "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
+        "brand_x":70, "brand_y":139, "brand_size":38, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":65 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
@@ -4065,7 +4082,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                         final_cta_text=(final_cta_text+" "+short_cta).strip()
                     # Réduit les phrases finales trop longues aux versions courtes standardisées.
                     if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
-                        final_cta_text="Ton score ? Écris-le en commentaire ! Abonne-toi à SuspenseLingo !"
+                        final_cta_text="Ton score sur 5 ? Dis-le en commentaire et abonne-toi !"
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
@@ -4086,6 +4103,7 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
@@ -4407,6 +4425,7 @@ else:
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
+                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:480px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
         except MemoryError:
