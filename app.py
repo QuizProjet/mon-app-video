@@ -4165,7 +4165,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_quiz_video_data"] = data
                     st.success("✅ Short Quiz terminé avec ta mise en page.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo']{max-width:260px!important;margin:0 auto!important}div[data-testid='stVideo'] video{height:auto!important;max-height:300px!important;width:100%!important;max-width:260px!important;aspect-ratio:9/16!important;object-fit:contain!important;margin:0 auto!important;display:block!important}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger quizvideo_pro_custom.mp4",data=data,file_name="quizvideo_pro_custom.mp4",mime="video/mp4",key="dq7")
         except Exception as e:
@@ -4235,6 +4235,21 @@ else:
                     except Exception as e: st.error(f"Erreur Gemini : {e}")
         if st.session_state.get("v_data"):
             st.success(f"Vocabulaire prêt : {len(st.session_state.v_data)} mot(s)")
+            # V32.26 safe addition: CSV export for the vocabulary workflow (especially Style 2).
+            vocab_csv_rows=[{"fr":clean_text(x.get("fr","")),"trad":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
+            vocab_csv_buffer=io.StringIO()
+            csv_writer=csv.DictWriter(vocab_csv_buffer, fieldnames=["fr","trad"], lineterminator="\n")
+            csv_writer.writeheader()
+            csv_writer.writerows(vocab_csv_rows)
+            st.download_button(
+                "⬇️ Télécharger le vocabulaire en CSV",
+                data="\ufeff"+vocab_csv_buffer.getvalue(),
+                file_name="suspenselingo_vocabulaire_style2.csv" if style_v.startswith("Style 2") else "suspenselingo_vocabulaire.csv",
+                mime="text/csv; charset=utf-8",
+                key="download_vocab_csv_style2" if style_v.startswith("Style 2") else "download_vocab_csv_style1",
+                use_container_width=True,
+                help="Exporte les mots et traductions actuellement enregistrés dans le tableau ci-dessus."
+            )
             st.markdown("### ✏️ Modifier ou ajouter des mots — sans quota Gemini")
             vocab_rows=[{"Français":clean_text(x.get("fr","")),"Traduction":clean_text(x.get("trad",""))} for x in st.session_state.v_data]
             edited_v=st.data_editor(vocab_rows,num_rows="dynamic",use_container_width=True,key="vocab_editor",column_config={"Français":st.column_config.TextColumn("Français",width="medium"),"Traduction":st.column_config.TextColumn("Traduction",width="medium")},hide_index=True)
@@ -4487,7 +4502,7 @@ else:
                     with open(final,"rb") as f: data=f.read()
                     st.session_state["last_vocab_video_data"] = data
                     st.success("✅ Short Vocabulaire Pro terminé.")
-                    st.markdown("<style>div[data-testid='stVideo'] video{max-height:320px!important;width:auto!important;max-width:100%!important;margin:0 auto;display:block}</style>",unsafe_allow_html=True)
+                    st.markdown("<style>div[data-testid='stVideo']{max-width:260px!important;margin:0 auto!important}div[data-testid='stVideo'] video{height:auto!important;max-height:300px!important;width:100%!important;max-width:260px!important;aspect-ratio:9/16!important;object-fit:contain!important;margin:0 auto!important;display:block!important}</style>",unsafe_allow_html=True)
                     st.video(data)
                     st.download_button("⬇️ Télécharger vocabulaire_pro.mp4",data=data,file_name="vocabulaire_pro.mp4",mime="video/mp4",key="dv4")
         except MemoryError:
