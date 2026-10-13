@@ -691,9 +691,7 @@ def draw_lightning_icon(draw, theme, cx, cy, size=28):
 
 def draw_brand(draw, theme, channel, progress=None):
     cfg=_layout("quiz", "1")
-    # Quand l’en-tête principal affiche déjà la marque, ne pas dessiner
-    # une seconde marque historique dans la même scène.
-    if channel and bool(cfg.get("brand_show",True)) and not bool(cfg.get("header_logo_is_primary",False)):
+    if channel and bool(cfg.get("brand_show",True)):
         text=clean_text(channel) or "SuspenseLingo"
         f=get_font(int(cfg.get("brand_size",28)),cfg.get("font_family","DejaVu Sans"))
         x=int(cfg.get("brand_x",55)); y=int(cfg.get("brand_y",34))
@@ -1615,8 +1613,8 @@ def draw_hook(text,theme_name,channel,bg_file=None,progress=1.0,module="quiz",st
     draw.text(((WIDTH-sw)/2,1160),sub,font=sf,fill=(220,228,242))
     draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
     draw.rounded_rectangle((180,1270,180+int(720*clamp(p)),1284),radius=7,fill=theme["accent"])
-    sf2=get_font(21,ff); sw2=text_width(draw,brand,sf2)
-    draw.text(((WIDTH-sw2)/2,1450),brand,font=sf2,fill=theme["muted"])
+    # Le nom de chaîne est déjà affiché en haut de cette première page.
+    # Ne pas le répéter en bas, hors du cadre.
     return img
 
 def draw_explanation_scene(question,answer,explanation,theme_name,channel,bg_file=None,active_word=-1,pulse=0.0,progress=1.0,q_num=1,total=1,video_title="Culture Générale"):
@@ -2977,7 +2975,7 @@ def _qvp_image_data_uri(image):
 
 def render_clickable_preview(image, module, style, cfg, selected):
     """Aperçu 9:16 compact. La sélection et les commandes sont gérées par Streamlit sous l'aperçu."""
-    max_w=300
+    max_w=360
     max_h=int(max_w*16/9)
     thumb=image.copy().resize((max_w,max_h),Image.Resampling.LANCZOS)
     # L'ancienne couche de hotspots HTML est volontairement supprimée : elle était lourde
