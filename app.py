@@ -902,7 +902,7 @@ if _saved_theme in THEMES:
     st.session_state.setdefault("tv", _saved_theme)
 
 
-# V32.20 — lisibilité Shorts : réponses et minuteur agrandis, explication mieux dimensionnée.
+# V32.21 — corrections ciblées après inspection de la vidéo TikTok réelle.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
 # V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
@@ -910,13 +910,13 @@ if _saved_theme in THEMES:
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
 if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
-        "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
-        "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
-        "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
-        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 80, "q1_timer_text_size": 62,
+        "q1_question_x": 540, "q1_question_y": 300, "q1_question_size": 52, "q1_question_width": 960,
+        "q1_answer_x": 60, "q1_answer_y": 570, "q1_answer_width": 960, "q1_answer_h": 100, "q1_answer_gap": 12,
+        "q1_answer_size": 35, "q1_answer_badge_size": 56, "q1_answer_text_padding": 22,
+        "q1_timer_x": 540, "q1_timer_y": 1080, "q1_timer_size": 74, "q1_timer_text_size": 62,
         "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
-        "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
-        "q1_explanation_size": 30,
+        "q1_explanation_x": 540, "q1_explanation_y": 1280, "q1_explanation_width": 960, "q1_explanation_h": 220,
+        "q1_explanation_size": 32,
         "q1_primary": "#F59E0B", "q1_answer": "#1E293B", "q1_answer2": "#1E293B",
         "q1_correct": "#10B981", "q1_text": "#FFFFFF", "q1_muted": "#E2E8F0",
         "q1_border_color": "#334155", "q1_border_width": 2, "q1_border_radius": 20,
@@ -943,15 +943,15 @@ def _layout(module="quiz", style=None):
     defaults={
         "font_family":"Lato",
         "show_title":True,"header_y":120,"header_h":74,"header_width":1000,"title_x":540,"title_y":139,"title_size":38,
-        "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
-        "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
+        "question_x":540,"question_y":300,"question_size":52,"question_width":960,"question_box_radius":24,
+        "answer_y":570,"answer_x":60,"answer_width":960,"answer_h":100,"answer_gap":12,"answer_size":35,"answer_radius":20,"answer_badge_size":56,"answer_text_padding":22,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1110,"timer_x":540,"timer_size":78,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
+        "timer_y":1080,"timer_x":540,"timer_size":74,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
         "brand_x":70,"brand_y":139,"brand_size":28,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
-        "explanation_x":540,"explanation_y":1375,"explanation_width":940,"explanation_h":250,"explanation_size":30,
+        "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
         "social_auto_layout":True,"social_platform":"Universel","social_progress_y":1530,
         "question_frame_enabled":True,"question_frame_bg_enabled":True,"question_border_enabled":True,
@@ -2953,10 +2953,10 @@ def apply_social_auto_layout(module="quiz", style="1"):
         # grandes et moins d'espace perdu sous le quiz, tout en restant dans
         # la zone sûre de la plateforme sélectionnée.
         header_h=72; header_y=safe_top; header_bottom=header_y+header_h
-        question_y=header_bottom+34; question_reserved_h=190; question_bottom=question_y+question_reserved_h
-        answer_h=94; answer_gap=13; answer_y=question_bottom+16
+        question_y=header_bottom+30; question_reserved_h=180; question_bottom=question_y+question_reserved_h
+        answer_h=100; answer_gap=12; answer_y=question_bottom+12
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=68; timer_y=answers_bottom+32; explanation_h=230
+        timer_size=74; timer_y=answers_bottom+26; explanation_h=220
         explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-18
         available=progress_y-explanation_h-18
         if explanation_y>available:
@@ -2968,10 +2968,10 @@ def apply_social_auto_layout(module="quiz", style="1"):
         vals={
             p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":28,
             p+"title_x":center,p+"title_y":header_y+18,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":29,
-            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":49,
-            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":34,
+            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":52,
+            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":35,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":62,p+"timer_auto_below_answers":False,
-            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,p+"explanation_size":31,
+            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,p+"explanation_size":32,
             p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
