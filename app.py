@@ -2672,11 +2672,14 @@ def draw_motivation_scene(text,theme_name,channel,bg_file=None,progress=1.0,phas
     # Barre de progression discrète : 0→100 selon l'étape de la scène.
     draw.rounded_rectangle((180,1270,900,1284),radius=7,fill=(55,62,78))
     draw.rounded_rectangle((180,1270,180+int(720*p),1284),radius=7,fill=theme["accent"])
-    draw_brand(draw,theme,brand,None)
-    sf2=get_font(21)
-    sig="SuspenseLingo  •  Quiz"
-    sw2=text_width(draw,sig,sf2)
-    draw.text(((WIDTH-sw2)/2,1450),sig,font=sf2,fill=theme["muted"])
+    # Sur la première page, le nom de chaîne est déjà affiché en haut du cadre.
+    # Ne pas ajouter un second logo en dehors du cadre.
+    if kind != "start":
+        draw_brand(draw,theme,brand,None)
+        sf2=get_font(21)
+        sig="SuspenseLingo  •  Quiz"
+        sw2=text_width(draw,sig,sf2)
+        draw.text(((WIDTH-sw2)/2,1450),sig,font=sf2,fill=theme["muted"])
     return img
 
 
