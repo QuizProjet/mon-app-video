@@ -421,14 +421,14 @@ QUIZ_LANGUAGE_LABELS = {"Français":"français","Anglais":"anglais","Espagnol":"
 # V29 — profils de narration. Ils utilisent les voix déjà disponibles et ajoutent une intention claire.
 VOICE_PROFILES = {
     "🎙️ Suspense — tension progressive": {"rate": "+2%", "prefer": 0},
-    "🔥 Énergique — rythme rapide": {"rate": "+10%", "prefer": 1},
+    "🔥 Énergique — rythme rapide": {"rate": "+10%", "prefer": 0},
     "😈 Défi — ton provocateur": {"rate": "+6%", "prefer": 0},
     "🎯 Animateur Quiz — naturel": {"rate": "+4%", "prefer": 1},
     "⚡ Intense — pression maximale": {"rate": "+15%", "prefer": 1},
 }
 
 QUIZ_MOTIVATION_DEFAULTS = {
-    "Français": {"start":"Prêt ? C'est parti !", "end":"Bravo ! À bientôt pour un nouveau quiz !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
+    "Français": {"start":"Prêt ?", "end":"Bravo ! À bientôt pour un nouveau quiz !", "start_label":"PRÊT ?", "mid_label":"CONTINUE !", "end_label":"QUIZ TERMINÉ", "start_sub":"Teste tes connaissances !", "end_sub":"À bientôt pour un nouveau défi."},
     "Anglais": {"start":"Ready? Let's go!", "end":"Great job! See you in the next quiz!", "start_label":"READY?", "mid_label":"KEEP GOING", "end_label":"QUIZ COMPLETE", "start_sub":"Test your knowledge!", "end_sub":"See you in the next challenge."},
     "Espagnol": {"start":"¿Listo? ¡Empezamos!", "end":"¡Bravo! ¡Hasta el próximo quiz!", "start_label":"¿LISTO?", "mid_label":"¡SIGUE!", "end_label":"QUIZ TERMINADO", "start_sub":"¡Pon a prueba tus conocimientos!", "end_sub":"Hasta el próximo desafío."},
     "Arabe": {"start":"هل أنت مستعد؟ لنبدأ!", "end":"أحسنت! نلتقي في الاختبار القادم!", "start_label":"مستعد؟", "mid_label":"تابع!", "end_label":"انتهى الاختبار", "start_sub":"اختبر معلوماتك!", "end_sub":"إلى التحدي القادم."},
@@ -912,7 +912,7 @@ if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
         "q1_question_x": 540, "q1_question_y": 315, "q1_question_size": 47, "q1_question_width": 940,
         "q1_answer_x": 70, "q1_answer_y": 600, "q1_answer_width": 940, "q1_answer_h": 90, "q1_answer_gap": 16,
         "q1_answer_size": 31, "q1_answer_badge_size": 54, "q1_answer_text_padding": 24,
-        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 64, "q1_timer_text_size": 55,
+        "q1_timer_x": 540, "q1_timer_y": 1110, "q1_timer_size": 80, "q1_timer_text_size": 62,
         "q1_timer_auto_below_answers": False, "q1_explanation_auto_below_timer": False,
         "q1_explanation_x": 540, "q1_explanation_y": 1375, "q1_explanation_width": 940, "q1_explanation_h": 250,
         "q1_explanation_size": 30,
@@ -945,7 +945,7 @@ def _layout(module="quiz", style=None):
         "question_x":540,"question_y":315,"question_size":47,"question_width":940,"question_box_radius":24,
         "answer_y":600,"answer_x":80,"answer_width":920,"answer_h":90,"answer_gap":16,"answer_size":31,"answer_radius":20,"answer_badge_size":54,"answer_text_padding":24,"answer_auto_height":False,
         "history_x":80,"history_y":650,"history_width":920,"history_row_h":78,"history_gap":12,"history_text_x":540,"history_size":30,
-        "timer_y":1110,"timer_x":540,"timer_size":62,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
+        "timer_y":1110,"timer_x":540,"timer_size":78,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":False,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
         "score_x":965,"score_y":130,"score_size":31,"score_color":"#000000","score_bg":"#F59E0B","score_radius":22,"score_border":0,
@@ -3025,7 +3025,7 @@ def apply_social_auto_layout(module="quiz", style="1"):
         qw=min(int(st.session_state.get(p+"question_width",920)),safe_w)
         ty=max(qy+170, min(int(st.session_state.get(p+"translation_y",760)), safe_bottom-360))
         tw=min(int(st.session_state.get(p+"translation_width",850)),safe_w)
-        timer_size=min(int(st.session_state.get(p+"timer_size",62)),70)
+        timer_size=min(int(st.session_state.get(p+"timer_size",78)),90)
         timer_y=max(ty+120, min(int(st.session_state.get(p+"timer_y",760)), safe_bottom-160))
         st.session_state[p+"question_x"]=center; st.session_state[p+"question_y"]=qy; st.session_state[p+"question_width"]=qw
         st.session_state[p+"translation_x"]=center; st.session_state[p+"translation_y"]=ty; st.session_state[p+"translation_width"]=tw
@@ -3327,7 +3327,7 @@ def render_layout_editor(module, style="1"):
         "score_x":965, "score_y":130, "score_size":32, "score_radius":22, "score_color":"#FFCD40", "score_bg":"#070D1C",
         "brand_x":70, "brand_y":139, "brand_size":31, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
-        "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":52 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
+        "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":65 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
         "timer_show_label":False, "timer_label":"RÉFLÉCHIS", "timer_label_size":23, "timer_color":"#FFCD40", "timer_label_color":"#FFCD40",
         "primary":"#FFCD40", "answer":"#11305B", "answer2":"#143765", "correct":"#2EDA7B", "text":"#FFFFFF", "muted":"#A5B5D0",
@@ -3667,7 +3667,7 @@ if nav=="quiz":
         else:
             th_q=subject_choice
         quiz_language=st.selectbox("🌍 Langue du Quiz",list(QUIZ_LANGUAGES.keys()),key="quiz_language")
-        voice_profile=st.selectbox("🎙️ Profil vocal",list(VOICE_PROFILES),index=0,key="voice_profile_q")
+        voice_profile=st.selectbox("🎙️ Profil vocal",list(VOICE_PROFILES),index=1,key="voice_profile_q")
         voice_options=list(QUIZ_LANGUAGES[quiz_language].keys())
         voice_q_name=st.selectbox("Voix",voice_options,index=min(VOICE_PROFILES[voice_profile]["prefer"],len(voice_options)-1),key=f"vq_{quiz_language}")
         voice_q=QUIZ_LANGUAGES[quiz_language][voice_q_name]
@@ -3730,7 +3730,7 @@ if nav=="quiz":
     mm1,mm2=st.columns(2,gap="medium")
     motivation_presets={
         "Français":{
-            "start":["Prêt ? C'est parti !","À toi de jouer !","C'est parti pour le défi !","Concentre-toi… la première question arrive !","Voyons si tu peux faire un sans-faute !"],
+            "start":["Prêt ?","À toi de jouer !","C'est parti pour le défi !","Concentre-toi… la première question arrive !","Voyons si tu peux faire un sans-faute !"],
             "end":["Bravo ! À bientôt pour un nouveau quiz !","Bien joué ! Rendez-vous pour le prochain défi !","Merci d'avoir joué ! À très vite !","Alors, quel est ton score ? À bientôt !","Prêt pour le prochain quiz ?"]
         },
         "Anglais":{"start":["Ready? Let's go!","Your turn!","Let's start the challenge!","Focus… the first question is coming!","Can you get a perfect score?"],"end":["Great job! See you in the next quiz!","Well played! See you for the next challenge!","Thanks for playing! See you soon!","So, what's your score? See you next time!","Ready for the next quiz?"]},
@@ -4046,27 +4046,25 @@ Une seule bonne réponse. Retourne uniquement le JSON.'''
                             ex_mix_words=exp_words
                             eframes=word_timed_frames(exp_mix,ex_mix_words,lambda wi,prog: draw_quiz_frame(q["question"],q["options"],theme_q,idx+1,total,channel_q,bg_question,entrance=1.0,correct_idx=corr,reveal_progress=min(1,prog*3),pulse=0.15*(1-prog),motion=2.0+prog,video_title=th_q,explanation=exp_text,explanation_progress=1.0,explanation_active_word=wi),edur)
                             frames.extend(eframes)
-                            # Micro-pause de 0,5 s pour laisser assimiler la bonne réponse.
+                            # Micro-pause courte de 0,2 s pour garder un rythme Shorts dynamique.
                             pause_audio=os.path.join(tmp,f"exp_pause_{idx}.m4a")
-                            subprocess.run([get_ffmpeg(),"-y","-i",exp_mix,"-af","apad=pad_dur=0.50","-t",f"{edur+0.50:.3f}","-c:a","aac","-b:a","160k",pause_audio],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+                            subprocess.run([get_ffmpeg(),"-y","-i",exp_mix,"-af","apad=pad_dur=0.20","-t",f"{edur+0.20:.3f}","-c:a","aac","-b:a","160k",pause_audio],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
                             if frames:
-                                frames.append((frames[-1][0],0.50))
+                                frames.append((frames[-1][0],0.20))
                             exp_mix=pause_audio
                             concat_audio_files([q_with_fx,countdown_sfx,exp_mix],full_audio_raw)
                             out=os.path.join(tmp,f"qfull_{idx}.mp4")
                             make_segment(save_frames(frames,tmp,f"qfull_{idx}"),full_audio,out,tmp,1.0)
                             clips.append(out)
 
-                    # Motivation de fin, avant le CTA existant.
-                    if clean_text(mot_end_q):
-                        ma=os.path.join(tmp,"mot_end.m4a"); synthesize_audio(_motivation_text_clean(mot_end_q),voice_q,ma,tts_rate); md=audio_duration(ma)
-                        if md>0.15:
-                            mf=save_frames([(draw_motivation_scene(mot_end_q,theme_q,channel_q,bg_q,p,kind="end",language=quiz_language),md/6) for p in [0.08,0.22,0.40,0.60,0.82,1.0]],tmp,"mot_end")
-                            me=os.path.join(tmp,"mot_end.mp4"); make_segment(mf,ma,me,tmp); clips.append(me)
-                    # CTA final + engagement : deux phrases courtes, une seule séquence vocale.
-                    final_cta_text=clean_text(outro_q)
-                    if clean_text(engagement_q) and clean_text(engagement_q) not in final_cta_text:
-                        final_cta_text=(final_cta_text+" "+clean_text(engagement_q)).strip()
+                    # Une seule carte de fin : CTA + score. Pas de carte motivation séparée.
+                    final_cta_text=clean_text(engagement_q)
+                    short_cta=clean_text(outro_q)
+                    if short_cta and short_cta not in final_cta_text:
+                        final_cta_text=(final_cta_text+" "+short_cta).strip()
+                    # Réduit les phrases finales trop longues aux versions courtes standardisées.
+                    if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
+                        final_cta_text="Ton score ? Écris-le en commentaire ! Abonne-toi à SuspenseLingo !"
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
