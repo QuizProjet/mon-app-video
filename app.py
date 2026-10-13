@@ -902,6 +902,7 @@ if _saved_theme in THEMES:
     st.session_state.setdefault("tv", _saved_theme)
 
 
+# V32.20 — lisibilité Shorts : réponses et minuteur agrandis, explication mieux dimensionnée.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
 # V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
@@ -2952,10 +2953,10 @@ def apply_social_auto_layout(module="quiz", style="1"):
         # grandes et moins d'espace perdu sous le quiz, tout en restant dans
         # la zone sûre de la plateforme sélectionnée.
         header_h=72; header_y=safe_top; header_bottom=header_y+header_h
-        question_y=header_bottom+38; question_reserved_h=205; question_bottom=question_y+question_reserved_h
-        answer_h=88; answer_gap=14; answer_y=question_bottom+20
+        question_y=header_bottom+34; question_reserved_h=190; question_bottom=question_y+question_reserved_h
+        answer_h=94; answer_gap=13; answer_y=question_bottom+16
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=60; timer_y=answers_bottom+42; explanation_h=220
+        timer_size=68; timer_y=answers_bottom+32; explanation_h=230
         explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-18
         available=progress_y-explanation_h-18
         if explanation_y>available:
@@ -2967,10 +2968,10 @@ def apply_social_auto_layout(module="quiz", style="1"):
         vals={
             p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":28,
             p+"title_x":center,p+"title_y":header_y+18,p+"title_size":32,p+"score_x":safe_right-50,p+"score_y":header_y+10,p+"score_size":29,
-            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,
-            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,
-            p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_auto_below_answers":False,
-            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,
+            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":49,
+            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":34,
+            p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":62,p+"timer_auto_below_answers":False,
+            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,p+"explanation_size":31,
             p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
