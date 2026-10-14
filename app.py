@@ -933,22 +933,14 @@ if _saved_theme in THEMES:
     st.session_state.setdefault("tv", _saved_theme)
 
 
-# V32.24 — correction persistance : ne pas réappliquer le preset Bleu Nuit & Or aux réglages manuels chargés.
 # V32.23 — audit CTA, intro sans doublon, en-tête plus lisible et aperçu compact.
 # V32.21 — corrections ciblées après inspection de la vidéo TikTok réelle.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
 # V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
 # V31.10 — preset géométrique du visuel approuvé « Bleu Nuit & Or ».
-# Appliqué uniquement lors d'une première installation sans réglages sauvegardés.
-# IMPORTANT : Streamlit réinitialise session_state à la nouvelle session. Le marqueur
-# ci-dessous ne suffit donc pas à protéger les réglages sauvegardés dans qvp_settings.json.
-# Si une configuration Style 1 existe déjà, ne jamais réappliquer le preset par-dessus.
-_has_saved_q1_layout = any(
-    key in st.session_state
-    for key in ("q1_question_x", "q1_question_y", "q1_answer_y", "q1_timer_y", "q1_explanation_y", "q1_social_platform")
-)
-if not st.session_state.get("_blue_gold_layout_v31_10_applied") and not _has_saved_q1_layout:
+# Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
+if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
         "q1_question_x": 540, "q1_question_y": 285, "q1_question_size": 60, "q1_question_width": 980,
         "q1_answer_x": 45, "q1_answer_y": 545, "q1_answer_width": 990, "q1_answer_h": 108, "q1_answer_gap": 10,
