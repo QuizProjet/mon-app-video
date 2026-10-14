@@ -933,14 +933,22 @@ if _saved_theme in THEMES:
     st.session_state.setdefault("tv", _saved_theme)
 
 
+# V32.24 — correction persistance : ne pas réappliquer le preset Bleu Nuit & Or aux réglages manuels chargés.
 # V32.23 — audit CTA, intro sans doublon, en-tête plus lisible et aperçu compact.
 # V32.21 — corrections ciblées après inspection de la vidéo TikTok réelle.
 # V31.13 — mise en page automatique réseaux sociaux + zones sûres.
 # V31.12 — visuel Bleu Nuit & Or appliqué directement au moteur Pillow/MoviePy.
 # V31.11 — mise en page Bleu Nuit & Or alignée sur la maquette approuvée et la spécification CSS utilisateur.
 # V31.10 — preset géométrique du visuel approuvé « Bleu Nuit & Or ».
-# Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
-if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
+# Appliqué uniquement lors d'une première installation sans réglages sauvegardés.
+# IMPORTANT : Streamlit réinitialise session_state à la nouvelle session. Le marqueur
+# ci-dessous ne suffit donc pas à protéger les réglages sauvegardés dans qvp_settings.json.
+# Si une configuration Style 1 existe déjà, ne jamais réappliquer le preset par-dessus.
+_has_saved_q1_layout = any(
+    key in st.session_state
+    for key in ("q1_question_x", "q1_question_y", "q1_answer_y", "q1_timer_y", "q1_explanation_y", "q1_social_platform")
+)
+if not st.session_state.get("_blue_gold_layout_v31_10_applied") and not _has_saved_q1_layout:
     _blue_gold_preset = {
         "q1_question_x": 540, "q1_question_y": 285, "q1_question_size": 60, "q1_question_width": 980,
         "q1_answer_x": 45, "q1_answer_y": 545, "q1_answer_width": 990, "q1_answer_h": 108, "q1_answer_gap": 10,
@@ -1120,29 +1128,48 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
     text=clean_text(explanation or "Bravo !")
-    # Taille auto selon la longueur; largeur utile sans dépasser 4 lignes.
-    font_size=32 if len(text)<100 else 29 if len(text)<180 else 26 if len(text)<270 else 23
-    f=get_font(font_size,cfg.get("font_family","DejaVu Sans"))
-    lines=wrap_text(text,f,max(360,box_w-64))[:5]
-    title_font=get_font(25,cfg.get("font_family","DejaVu Sans")); title="EXPLICATION"
+    # Respecte le réglage de taille Studio (il était auparavant ignoré).
+    font_size=max(20,min(62,int(cfg.get("explanation_size",38))))
+    font_family=cfg.get("font_family","DejaVu Sans")
+    f=get_font(font_size,font_family)
+    usable_width=max(360,box_w-64)
+    lines=wrap_text(text,f,usable_width)
+    # Évite que les textes longs débordent : réduit progressivement la police seulement si nécessaire.
+    while len(lines)>6 and font_size>20:
+        font_size-=2
+        f=get_font(font_size,font_family)
+        lines=wrap_text(text,f,usable_width)
+    title_font=get_font(max(24,min(32,int(font_size*0.78))),font_family)
+    title="EXPLICATION"
     title_h=text_height(title_font,title)
-    line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
-    box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
-    # Carte premium discrète : séparation nette de l'explication sans panneau noir opaque.
-    panel_top=max(0,y1-8); panel_bottom=min(HEIGHT-1,y2)
-    draw.rounded_rectangle((left,panel_top,right,panel_bottom),radius=max(12,min(24,int(cfg.get("explanation_radius",18)))),fill=(18,34,56),outline=(104,132,165),width=2)
-    draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+4),radius=2,fill=primary)
+    line_h=int(font_size*1.18)
+    # Positionnement dans la zone inférieure, sans panneau opaque.
+    max_content_h=HEIGHT-180-y1
+    if title_h+28+len(lines)*line_h > max_content_h and font_size>20:
+        font_size=max(20,int((max_content_h-title_h-28)/max(1,len(lines)*1.18)))
+        f=get_font(font_size,font_family)
+        lines=wrap_text(text,f,usable_width)
+        line_h=int(font_size*1.18)
+    # Ligne dorée et texte directement sur le fond vidéo : aucun rectangle noir ou opaque.
+    draw.rounded_rectangle((left,y1,right,y1+5),radius=2,fill=primary)
+    title_y=y1+18
     tw=text_width(draw,title,title_font)
-    draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
-    yy=y1+18+title_h+20; global_word=0
+    draw.text(((left+right-tw)/2,title_y),title,font=title_font,fill=primary,
+              stroke_width=1,stroke_fill=(16,31,51))
+    yy=title_y+title_h+18
+    global_word=0
     for line in lines:
-        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
-        totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
+        words=line.split()
+        widths=[text_width(draw,w,f) for w in words]
+        space=text_width(draw," ",f)
+        totalw=sum(widths)+space*max(0,len(words)-1)
+        x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            draw.text((x+1,yy+2),w,font=f,fill=(25,39,58))
-            draw.text((x,yy),w,font=f,fill=primary if current else (250,252,255))
-            x+=ww+space; global_word+=1
+            draw.text((x,yy),w,font=f,fill=primary if current else (250,252,255),
+                      stroke_width=2,stroke_fill=(18,35,58))
+            x+=ww+space
+            global_word+=1
         yy+=line_h
 
 
@@ -4066,7 +4093,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
             with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                 with tempfile.TemporaryDirectory() as tmp:
                     tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
-                    clips=[]; total=min(3,len(st.session_state.q_data))
+                    clips=[]; total=len(st.session_state.q_data)
 
                     # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
                     if clean_text(mot_start_q):
@@ -4081,7 +4108,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                         # → Q3 + R1/R2 → etc.
                         # Le titre reste fixe et UNE SEULE question active occupe toujours le même emplacement.
                         # Chaque réponse révélée est ensuite conservée dans l'historique ; la question précédente disparaît. 
-                        items=st.session_state.q_data[:3]
+                        items=st.session_state.q_data
                         total=len(items)
                         for idx,q in enumerate(items):
                             bg_question=bg_q
@@ -4128,7 +4155,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     # Style 2 reste entièrement cumulatif : pas de pages d'explication séparées.
                     else:
                         # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
-                        for idx,q in enumerate(st.session_state.q_data[:3]):
+                        for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
                             bg_question = selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
                             qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
@@ -4197,9 +4224,19 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                         final_cta_text=(final_cta_text+" "+short_cta).strip()
                     # Le score affiché et prononcé suit le nombre réel de questions du quiz.
                     # Ne jamais coder en dur « sur 5 » : le quiz peut contenir 1 à 15 questions.
-                    actual_question_count = max(1, min(3, len(st.session_state.get("q_data", []) or [])))
-                    if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
-                        final_cta_text=f"Ton score sur {actual_question_count} ? Dis-le en commentaire et abonne-toi !"
+                    actual_question_count = max(1, len(st.session_state.get("q_data", []) or []))
+                    # Les sélecteurs CTA et Engagement doivent réellement piloter le texte final.
+                    # En français, le dénominateur est calculé à partir du nombre de questions exportées.
+                    if quiz_language == "Français":
+                        score_prompt = f"Ton score sur {actual_question_count} ?"
+                        default_engagement = engagement_presets.get("Français", ["Quel est ton score ? Écris-le en commentaire !"])[0]
+                        engagement_is_default = engagement_choice == default_engagement
+                        parts = [score_prompt]
+                        if not engagement_is_default and clean_text(engagement_q):
+                            parts.append(clean_text(engagement_q))
+                        if clean_text(short_cta):
+                            parts.append(clean_text(short_cta))
+                        final_cta_text = " ".join(parts)
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
