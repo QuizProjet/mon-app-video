@@ -1083,7 +1083,7 @@ def _draw_answers(draw, options, theme, entrance=1.0, correct_idx=None, reveal_p
         if cfg.get("answer_cards_enabled",True):
             card_fill=fill if cfg.get("answer_frame_bg_enabled",True) else None
             card_outline=outline if cfg.get("answer_border_enabled",True) else None
-            draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=0,fill=card_fill,outline=card_outline,width=width)
+            draw.rounded_rectangle((left-extra+xpad,y-extra,right+extra+xpad,y+card_h+extra),radius=max(0,min(28,int(cfg.get("answer_radius",16)))),fill=card_fill,outline=card_outline,width=width)
         badge_x=left+10+xpad; badge_y=int(y+(card_h-badge_size)/2)
         badge_fill=(245,158,11) if (is_blue_gold and not correct) else (_hex_rgb(cfg["primary"],theme["accent"]) if not correct else "white")
         if cfg.get("answer_badges_enabled",True):
@@ -1128,9 +1128,10 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     title_h=text_height(title_font,title)
     line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
     box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
-    # Fond transparent : conserve le visuel animé et évite un panneau noir.
-    draw.rectangle((left,y1,right,y1),fill=primary)
-    draw.rectangle((left,y1,left+int((right-left)*p),y1+4),fill=primary)
+    # Carte premium discrète : séparation nette de l'explication sans panneau noir opaque.
+    panel_top=max(0,y1-8); panel_bottom=min(HEIGHT-1,y2)
+    draw.rounded_rectangle((left,panel_top,right,panel_bottom),radius=max(12,min(24,int(cfg.get("explanation_radius",18)))),fill=(18,34,56),outline=(104,132,165),width=2)
+    draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+4),radius=2,fill=primary)
     tw=text_width(draw,title,title_font)
     draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
     yy=y1+18+title_h+20; global_word=0
@@ -1499,11 +1500,15 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     nw,nh=int(WIDTH*scale),int(HEIGHT*scale); z=base.resize((nw,nh),Image.Resampling.LANCZOS)
     sx=max(0,min(nw-WIDTH,int((nw-WIDTH)*(0.5+0.12*math.sin(phase*math.pi*2)))+int(cfg.get("bg_x",0))))
     sy=max(0,min(nh-HEIGHT,int((nh-HEIGHT)*(0.5+0.10*math.cos(phase*math.pi*2)))+int(cfg.get("bg_y",0))))
-    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,1.0+0.55*pulse)
+    img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,0.62+0.22*pulse)
+    # Voile bleu nuit léger : calme les décors chargés derrière le texte sans
+    # remplacer le fond choisi ni masquer les animations personnalisées.
+    calm=Image.new("RGBA",(WIDTH,HEIGHT),(7,16,34,24))
+    img=Image.alpha_composite(img.convert("RGBA"),calm).convert("RGB")
     # Pas de grand panneau décoratif fixe : les cadres de chaque élément sont contrôlés séparément dans le Studio.
     draw=ImageDraw.Draw(img)
-    for k in range(9):
-        px=int((90+k*121+(phase*34*(1+k%3)))%1000)+40; py=int(250+((k*177+phase*55)%1420)); rr=2+(k%3); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
+    for k in range(6):
+        px=int((90+k*157+(phase*24*(1+k%3)))%1000)+40; py=int(280+((k*211+phase*38)%1320)); rr=1+(k%2); draw.ellipse((px-rr,py-rr,px+rr,py+rr),fill=_hex_rgb(cfg["primary"],theme["accent"]))
     if cfg["show_title"]:
         draw_header(draw,theme,q_num,total,video_title,phase)
     # Halo doré discret derrière la question pour renforcer la hiérarchie visuelle.
@@ -3064,12 +3069,14 @@ def apply_social_auto_layout(module="quiz", style="1"):
         # Gabarit PRO 9:16 : question plus présente, cartes de réponses plus
         # grandes et moins d'espace perdu sous le quiz, tout en restant dans
         # la zone sûre de la plateforme sélectionnée.
-        header_h=72; header_y=safe_top; header_bottom=header_y+header_h
-        question_y=header_bottom+30; question_reserved_h=180; question_bottom=question_y+question_reserved_h
-        answer_h=100; answer_gap=12; answer_y=question_bottom+12
+        header_h=72; header_y=safe_top+8; header_bottom=header_y+header_h
+        # Une hiérarchie plus nette : titre dégagé, réponses plus lisibles,
+        # puis minuteur et explication regroupés dans la zone utile.
+        question_y=header_bottom+34; question_reserved_h=172; question_bottom=question_y+question_reserved_h
+        answer_h=98; answer_gap=13; answer_y=question_bottom+14
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=74; timer_y=answers_bottom+26; explanation_h=220
-        explanation_y=timer_y+timer_size+24; progress_y=safe_bottom-18
+        timer_size=66; timer_y=answers_bottom+28; explanation_h=190
+        explanation_y=timer_y+timer_size+22; progress_y=safe_bottom-22
         available=progress_y-explanation_h-18
         if explanation_y>available:
             explanation_y=available; timer_y=explanation_y-timer_size-34
@@ -3080,10 +3087,13 @@ def apply_social_auto_layout(module="quiz", style="1"):
         vals={
             p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":38,
             p+"title_x":center,p+"title_y":header_y+16,p+"title_size":35,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":31,
-            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":52,
-            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":35,
-            p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":62,p+"timer_auto_below_answers":False,
-            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,p+"explanation_size":32,
+            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":54,
+            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":38,
+            p+"answer_radius":18,p+"answer_frame_bg_enabled":True,p+"answer_border_enabled":True,
+            p+"border_color":"#9BB2CC",p+"border_width":2,p+"answer_text_padding":22,p+"answer_badge_size":58,
+            p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":58,p+"timer_auto_below_answers":False,
+            p+"explanation_x":center,p+"explanation_y":explanation_y,p+"explanation_width":safe_w,p+"explanation_h":explanation_h,p+"explanation_size":31,
+            p+"explanation_frame_enabled":True,p+"explanation_frame_bg_enabled":True,p+"explanation_border_enabled":True,p+"explanation_radius":18,
             p+"explanation_auto_below_timer":False,p+"explanation_auto_height":False,p+"social_progress_y":progress_y,
         }
         for k,v in vals.items(): st.session_state[k]=v
@@ -3486,7 +3496,7 @@ def render_layout_editor(module, style="1"):
     # et uniquement lorsqu'on change de plateforme ou réactive l'automatique.
     _auto_on = bool(st.session_state.get(p+"social_auto_layout", False))
     # Version de profil intégrée à la signature : applique une seule fois les nouvelles zones sûres après mise à jour.
-    _auto_sig = f"safezones_v2|{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
+    _auto_sig = f"premium_layout_v3|{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
     if _auto_on:
         # V32 : la mise en page automatique ne doit plus réinitialiser les
         # réglages enregistrés à chaque nouvelle visite. La signature est
