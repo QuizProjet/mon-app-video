@@ -1120,29 +1120,48 @@ def draw_explanation_panel(draw, theme, explanation, progress=1.0, active_word=-
     center_x=max(box_w//2,min(WIDTH-box_w//2,int(cfg.get("explanation_x",540))))
     left=max(30,center_x-box_w//2); right=min(WIDTH-30,center_x+box_w//2)
     text=clean_text(explanation or "Bravo !")
-    # Taille auto selon la longueur; largeur utile sans dépasser 4 lignes.
-    font_size=32 if len(text)<100 else 29 if len(text)<180 else 26 if len(text)<270 else 23
-    f=get_font(font_size,cfg.get("font_family","DejaVu Sans"))
-    lines=wrap_text(text,f,max(360,box_w-64))[:5]
-    title_font=get_font(25,cfg.get("font_family","DejaVu Sans")); title="EXPLICATION"
+    # Respecte le réglage de taille Studio (il était auparavant ignoré).
+    font_size=max(20,min(62,int(cfg.get("explanation_size",38))))
+    font_family=cfg.get("font_family","DejaVu Sans")
+    f=get_font(font_size,font_family)
+    usable_width=max(360,box_w-64)
+    lines=wrap_text(text,f,usable_width)
+    # Évite que les textes longs débordent : réduit progressivement la police seulement si nécessaire.
+    while len(lines)>6 and font_size>20:
+        font_size-=2
+        f=get_font(font_size,font_family)
+        lines=wrap_text(text,f,usable_width)
+    title_font=get_font(max(24,min(32,int(font_size*0.78))),font_family)
+    title="EXPLICATION"
     title_h=text_height(title_font,title)
-    line_h=int(font_size*1.20); box_h=title_h+36+max(1,len(lines))*line_h+28
-    box_h=max(120,min(int(cfg.get("explanation_h",250)),box_h)); y2=min(1645,y1+box_h)
-    # Carte premium discrète : séparation nette de l'explication sans panneau noir opaque.
-    panel_top=max(0,y1-8); panel_bottom=min(HEIGHT-1,y2)
-    draw.rounded_rectangle((left,panel_top,right,panel_bottom),radius=max(12,min(24,int(cfg.get("explanation_radius",18)))),fill=(18,34,56),outline=(104,132,165),width=2)
-    draw.rounded_rectangle((left,y1,left+int((right-left)*p),y1+4),radius=2,fill=primary)
+    line_h=int(font_size*1.18)
+    # Positionnement dans la zone inférieure, sans panneau opaque.
+    max_content_h=HEIGHT-180-y1
+    if title_h+28+len(lines)*line_h > max_content_h and font_size>20:
+        font_size=max(20,int((max_content_h-title_h-28)/max(1,len(lines)*1.18)))
+        f=get_font(font_size,font_family)
+        lines=wrap_text(text,f,usable_width)
+        line_h=int(font_size*1.18)
+    # Ligne dorée et texte directement sur le fond vidéo : aucun rectangle noir ou opaque.
+    draw.rounded_rectangle((left,y1,right,y1+5),radius=2,fill=primary)
+    title_y=y1+18
     tw=text_width(draw,title,title_font)
-    draw.text(((left+right-tw)/2,y1+18),title,font=title_font,fill=primary)
-    yy=y1+18+title_h+20; global_word=0
+    draw.text(((left+right-tw)/2,title_y),title,font=title_font,fill=primary,
+              stroke_width=1,stroke_fill=(16,31,51))
+    yy=title_y+title_h+18
+    global_word=0
     for line in lines:
-        words=line.split(); widths=[text_width(draw,w,f) for w in words]; space=text_width(draw," ",f)
-        totalw=sum(widths)+space*max(0,len(words)-1); x=(left+right-totalw)/2
+        words=line.split()
+        widths=[text_width(draw,w,f) for w in words]
+        space=text_width(draw," ",f)
+        totalw=sum(widths)+space*max(0,len(words)-1)
+        x=(left+right-totalw)/2
         for w,ww in zip(words,widths):
             current=(active_word>=0 and global_word==int(active_word))
-            draw.text((x+1,yy+2),w,font=f,fill=(25,39,58))
-            draw.text((x,yy),w,font=f,fill=primary if current else (250,252,255))
-            x+=ww+space; global_word+=1
+            draw.text((x,yy),w,font=f,fill=primary if current else (250,252,255),
+                      stroke_width=2,stroke_fill=(18,35,58))
+            x+=ww+space
+            global_word+=1
         yy+=line_h
 
 
@@ -1503,7 +1522,8 @@ def draw_quiz_frame(question, options, theme_name, q_num, total, channel, bg_fil
     img=z.crop((sx,sy,sx+WIDTH,sy+HEIGHT)); img=add_top_glow(img,theme,0.62+0.22*pulse)
     # Voile bleu nuit léger : calme les décors chargés derrière le texte sans
     # remplacer le fond choisi ni masquer les animations personnalisées.
-    calm=Image.new("RGBA",(WIDTH,HEIGHT),(7,16,34,24))
+    calm_alpha = 48 if cfg.get("social_auto_layout", False) else 24
+    calm=Image.new("RGBA",(WIDTH,HEIGHT),(7,16,34,calm_alpha))
     img=Image.alpha_composite(img.convert("RGBA"),calm).convert("RGB")
     # Pas de grand panneau décoratif fixe : les cadres de chaque élément sont contrôlés séparément dans le Studio.
     draw=ImageDraw.Draw(img)
@@ -3075,8 +3095,9 @@ def apply_social_auto_layout(module="quiz", style="1"):
         question_y=header_bottom+34; question_reserved_h=172; question_bottom=question_y+question_reserved_h
         answer_h=98; answer_gap=13; answer_y=question_bottom+14
         answers_bottom=answer_y+4*answer_h+3*answer_gap
-        timer_size=66; timer_y=answers_bottom+28; explanation_h=190
-        explanation_y=timer_y+timer_size+22; progress_y=safe_bottom-22
+        timer_size=62; timer_y=answers_bottom+24; explanation_h=176
+        # draw_explanation_panel starts its card above explanation_y; reserve a real visual gap after the timer.
+        explanation_y=timer_y+timer_size+58; progress_y=safe_bottom-22
         available=progress_y-explanation_h-18
         if explanation_y>available:
             explanation_y=available; timer_y=explanation_y-timer_size-34
@@ -3087,8 +3108,8 @@ def apply_social_auto_layout(module="quiz", style="1"):
         vals={
             p+"header_y":header_y,p+"header_h":header_h,p+"brand_x":safe_left+16,p+"brand_y":header_y+20,p+"brand_size":38,
             p+"title_x":center,p+"title_y":header_y+16,p+"title_size":35,p+"score_x":safe_right-50,p+"score_y":header_y+8,p+"score_size":31,
-            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":54,
-            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":38,
+            p+"question_x":center,p+"question_y":question_y,p+"question_width":safe_w,p+"question_size":50,
+            p+"answer_x":safe_left,p+"answer_width":safe_w,p+"answer_y":answer_y,p+"answer_h":answer_h,p+"answer_gap":answer_gap,p+"answer_size":36,
             p+"answer_radius":18,p+"answer_frame_bg_enabled":True,p+"answer_border_enabled":True,
             p+"border_color":"#9BB2CC",p+"border_width":2,p+"answer_text_padding":22,p+"answer_badge_size":58,
             p+"timer_x":center,p+"timer_y":timer_y,p+"timer_size":timer_size,p+"timer_text_size":58,p+"timer_auto_below_answers":False,
@@ -3491,12 +3512,12 @@ def render_layout_editor(module, style="1"):
             if _pp+"social_auto_layout" not in st.session_state:
                 st.session_state[_pp+"social_auto_layout"] = True
         st.session_state["_social_auto_layout_v31_24_migrated"] = True
-    # V32 MISE EN PAGE PRO — l'automatique ne doit plus écraser les réglages
+    # V33 MISE EN PAGE PRO — l'automatique ne doit plus écraser les réglages
     # manuels à chaque rerun Streamlit. Il s'applique au premier chargement
     # et uniquement lorsqu'on change de plateforme ou réactive l'automatique.
     _auto_on = bool(st.session_state.get(p+"social_auto_layout", False))
     # Version de profil intégrée à la signature : applique une seule fois les nouvelles zones sûres après mise à jour.
-    _auto_sig = f"premium_layout_v3|{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
+    _auto_sig = f"premium_layout_v4|{module}|{style}|{st.session_state.get(p+"social_platform", "Universel")}"
     if _auto_on:
         # V32 : la mise en page automatique ne doit plus réinitialiser les
         # réglages enregistrés à chaque nouvelle visite. La signature est
@@ -3995,7 +4016,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
         if style_q_full.startswith("Style 2"):
             preview_state_q=st.radio("État",["Q1 + minuteur","Q2 + R1","Q3 + R1/R2"],horizontal=True,key=f"preview_state_q_{quiz_style_id}")
         else:
-            preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,key="preview_state_q")
+            preview_state_q=st.radio("État",["Question + réponses","Compte à rebours","Bonne réponse + explication"],horizontal=True,index=1,key="preview_state_q")
         try:
             cfg_q=_layout("quiz",quiz_style_id)
             sample_bg = bg_q if isinstance(bg_q, Image.Image) else selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
@@ -4064,7 +4085,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
             with st.spinner("Création du Short Quiz — mise en page personnalisée..."):
                 with tempfile.TemporaryDirectory() as tmp:
                     tic,ding,pop,whoosh=make_sfx(tmp); countdown_sfx=make_sfx_countdown(tic,ding,tmp)
-                    clips=[]; total=min(3,len(st.session_state.q_data))
+                    clips=[]; total=len(st.session_state.q_data)
 
                     # Motivation au début : ajoutée comme un clip séparé, sans modifier les questions.
                     if clean_text(mot_start_q):
@@ -4079,7 +4100,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                         # → Q3 + R1/R2 → etc.
                         # Le titre reste fixe et UNE SEULE question active occupe toujours le même emplacement.
                         # Chaque réponse révélée est ensuite conservée dans l'historique ; la question précédente disparaît. 
-                        items=st.session_state.q_data[:3]
+                        items=st.session_state.q_data
                         total=len(items)
                         for idx,q in enumerate(items):
                             bg_question=bg_q
@@ -4126,7 +4147,7 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                     # Style 2 reste entièrement cumulatif : pas de pages d'explication séparées.
                     else:
                         # STYLE 1 : question + 4 réponses, minuteur, révélation verte, explication.
-                        for idx,q in enumerate(st.session_state.q_data[:3]):
+                        for idx,q in enumerate(st.session_state.q_data):
                             corr="ABCD".index(q["reponse_correcte"])
                             bg_question = selected_video_background(theme_q, th_q, bg_mode_clean_q, uploaded_bg_q)
                             qa_raw=os.path.join(tmp,f"q_{idx}.mp3")
@@ -4195,9 +4216,19 @@ Une seule bonne réponse. Écris un français correctement accentué en Unicode 
                         final_cta_text=(final_cta_text+" "+short_cta).strip()
                     # Le score affiché et prononcé suit le nombre réel de questions du quiz.
                     # Ne jamais coder en dur « sur 5 » : le quiz peut contenir 1 à 15 questions.
-                    actual_question_count = max(1, min(3, len(st.session_state.get("q_data", []) or [])))
-                    if quiz_language == "Français" and cp != "Personnalisé" and engagement_choice != "Personnalisé":
-                        final_cta_text=f"Ton score sur {actual_question_count} ? Dis-le en commentaire et abonne-toi !"
+                    actual_question_count = max(1, len(st.session_state.get("q_data", []) or []))
+                    # Les sélecteurs CTA et Engagement doivent réellement piloter le texte final.
+                    # En français, le dénominateur est calculé à partir du nombre de questions exportées.
+                    if quiz_language == "Français":
+                        score_prompt = f"Ton score sur {actual_question_count} ?"
+                        default_engagement = engagement_presets.get("Français", ["Quel est ton score ? Écris-le en commentaire !"])[0]
+                        engagement_is_default = engagement_choice == default_engagement
+                        parts = [score_prompt]
+                        if not engagement_is_default and clean_text(engagement_q):
+                            parts.append(clean_text(engagement_q))
+                        if clean_text(short_cta):
+                            parts.append(clean_text(short_cta))
+                        final_cta_text = " ".join(parts)
                     if final_cta_text:
                         oa=os.path.join(tmp,"outro.m4a")
                         synthesize_audio(final_cta_text,voice_q,oa,tts_rate)
