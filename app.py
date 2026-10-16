@@ -719,68 +719,95 @@ def _highlight_words(question):
     return set(c.lower() for c in candidates[:max(2,min(4,len(candidates)))]) if candidates else set()
 
 def draw_unified_header(draw, cfg, q_num, total, title="Culture Générale"):
-    """En-tête néon épuré : marque/titre, séparateur doré et compteur circulaire."""
+    """En-tête SuspenseLingo : marque dorée, thème blanc, badge plein et anneaux néon."""
     ff=cfg.get("font_family","Lato")
-    gold=_hex_rgb(cfg.get("header_line_color", "#FFC752"),(255,199,82))
-    neon=_hex_rgb(cfg.get("score_neon_color", "#FFC752"),(255,199,82))
+    gold=_hex_rgb(cfg.get("header_line_color", "#F59E0B"),(245,158,11))
+    neon=_hex_rgb(cfg.get("score_neon_color", "#F59E0B"),(245,158,11))
+    disc=_hex_rgb(cfg.get("score_disc_color", "#F59E0B"),(245,158,11))
+    brand_color=_hex_rgb(cfg.get("brand_color", "#F59E0B"),(245,158,11))
+    score_color=_hex_rgb(cfg.get("score_color", "#070D1C"),(7,13,28))
     white=(255,255,255); dark=(7,13,28)
     safe_left=int(cfg.get("social_safe_left",40)); safe_right=int(cfg.get("social_safe_right",WIDTH-40))
     top=int(cfg.get("header_y",int(cfg.get("social_safe_top",120))))
     safe_top=int(cfg.get("social_safe_top",120)); safe_bottom=int(cfg.get("social_safe_bottom",HEIGHT-220))
     top=max(safe_top+10,top)
     header_h=max(58,min(110,int(cfg.get("header_h",74))))
-    bottom=min(safe_bottom-28,top+header_h)
+    bottom=min(safe_bottom-34,top+header_h)
     if bottom-top<48:
-        top=max(safe_top+6,safe_bottom-58); bottom=min(safe_bottom-8,top+52)
+        top=max(safe_top+6,safe_bottom-64); bottom=min(safe_bottom-12,top+52)
     header_w=max(520,min(int(cfg.get("header_width",1000)),safe_right-safe_left))
     center=(safe_left+safe_right)//2
     left=max(24,center-header_w//2); right=min(WIDTH-24,left+header_w); left=max(24,right-header_w)
 
-    # Logo à gauche : aucun panneau ni fond ajouté autour du nom.
+    # Compteur : réserver sa place d'abord afin que le thème ne chevauche jamais le badge.
+    diameter=max(48,min(100,int(cfg.get("score_circle_size",70))))
+    cx=right-diameter//2-8; cy=(top+bottom)//2; r=diameter//2
+    outer_r=r+9
+    # Marque à gauche, sans capsule ni fond.
+    brand_right=left+12
     if cfg.get("brand_show",True):
         brand=clean_text(cfg.get("brand_text") or "SuspenseLingo") or "SuspenseLingo"
-        bf=get_font(max(24,int(cfg.get("brand_size",38))),ff); bh=text_height(bf,brand)
+        bf=get_font(max(24,int(cfg.get("brand_size",34))),ff); bh=text_height(bf,brand)
         bx=left+12; by=top+(bottom-top-bh)//2
-        icon_size=max(12,min(18,(bottom-top)//4)); icx=bx+icon_size; icy=top+(bottom-top)//2
-        cup_w=icon_size+2; cup_top=icy-icon_size+2; cup_bottom=icy+5
-        draw.rounded_rectangle((icx-cup_w//2,cup_top,icx+cup_w//2,cup_bottom),radius=3,fill=gold)
-        draw.arc((icx-cup_w-5,icy-icon_size+3,icx+2,icy+7),70,285,fill=gold,width=2)
-        draw.arc((icx-2,icy-icon_size+3,icx+cup_w+5,icy+7),255,110,fill=gold,width=2)
-        draw.rectangle((icx-2,icy+5,icx+2,icy+icon_size-1),fill=gold)
-        draw.rounded_rectangle((icx-icon_size,icy+icon_size-2,icx+icon_size,icy+icon_size+2),radius=2,fill=gold)
-        draw.text((bx+icon_size*2+8,by),brand,font=bf,fill=_hex_rgb(cfg.get("brand_color"),gold))
+        icon_size=max(15,min(24,(bottom-top)//3)); icx=bx+icon_size; icy=top+(bottom-top)//2
+        # Trophée doré simple, plus net à petite taille.
+        cup_w=icon_size+3; cup_top=icy-icon_size+1; cup_bottom=icy+4
+        draw.rounded_rectangle((icx-cup_w//2,cup_top,icx+cup_w//2,cup_bottom),radius=3,fill=brand_color)
+        draw.arc((icx-cup_w-5,icy-icon_size+2,icx+2,icy+7),65,285,fill=brand_color,width=2)
+        draw.arc((icx-2,icy-icon_size+2,icx+cup_w+5,icy+7),255,115,fill=brand_color,width=2)
+        draw.rectangle((icx-2,icy+4,icx+2,icy+icon_size-2),fill=brand_color)
+        draw.rounded_rectangle((icx-icon_size,icy+icon_size-3,icx+icon_size,icy+icon_size+1),radius=2,fill=brand_color)
+        text_x=bx+icon_size*2+8
+        # Ombre noire subtile puis texte orange-doré.
+        draw.text((text_x+1,by+2),brand,font=bf,fill=(0,0,0))
+        draw.text((text_x,by),brand,font=bf,fill=brand_color)
+        brand_right=text_x+text_width(draw,brand,bf)
 
-    # Titre/thème au-dessus de la ligne, centré et sans cadre.
+    # Thème en blanc, dans la zone centrale disponible entre la marque et le badge.
     if cfg.get("show_title",True):
-        title=clean_text(title) or "Culture Générale"
+        title=clean_text(title) or "Culture générale"
         if title.lower().startswith("quiz "): title=title[5:].strip()
-        if len(title)>22: title=title[:22].rstrip()+"…"
-        tf=get_font(max(22,int(cfg.get("title_size",35))),ff)
-        max_tw=max(120,int((right-left)*.42))
-        while text_width(draw,title,tf)>max_tw and tf.size>20: tf=get_font(tf.size-1,ff)
+        if len(title)>25: title=title[:25].rstrip()+"…"
+        tf=get_font(max(22,int(cfg.get("title_size",32))),ff)
+        zone_left=max(left+int((right-left)*.34),brand_right+18)
+        zone_right=cx-outer_r-14
+        max_tw=max(100,zone_right-zone_left)
+        while text_width(draw,title,tf)>max_tw and tf.size>18:
+            tf=get_font(tf.size-1,ff)
         tw=text_width(draw,title,tf); th=text_height(tf,title)
-        tx=(left+right-tw)//2; ty=top+(bottom-top-th)//2
+        tx=zone_left+max(0,(max_tw-tw)//2); ty=top+(bottom-top-th)//2
         draw.text((tx,ty),title,font=tf,fill=white)
 
-    # Compteur à droite : cercle néon avec plusieurs contours pour l'effet lumineux.
+    # Badge plein or avec léger dégradé simulé et texte sombre centré.
     score=f"{q_num}/{total}"
-    sf=get_font(max(18,int(cfg.get("score_size",31))),ff)
+    sf=get_font(max(18,int(cfg.get("score_size",27))),ff)
     sw=text_width(draw,score,sf); sh=text_height(sf,score)
-    diameter=max(48,min(100,int(cfg.get("score_circle_size",66))))
-    cx=right-diameter//2-8; cy=(top+bottom)//2; r=diameter//2
-    # Halos doux dessinés avant le contour net (Pillow sans dépendance supplémentaire).
-    for pad,width in ((7,2),(4,2),(1,2)):
+    # halo extérieur discret
+    for pad,width in ((8,1),(5,2)):
         draw.ellipse((cx-r-pad,cy-r-pad,cx+r+pad,cy+r+pad),outline=neon,width=width)
-    draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=neon,width=max(2,int(cfg.get("score_circle_border",3))),fill=dark)
-    draw.text((cx-sw/2,cy-sh/2-1),score,font=sf,fill=_hex_rgb(cfg.get("score_color"),white))
+    # Dégradé vertical rendu par disques concentriques légèrement décalés.
+    draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=disc,outline=neon,width=max(2,int(cfg.get("score_circle_border",2))))
+    if bool(cfg.get("score_disc_gradient",True)):
+        highlight=(min(255,disc[0]+18),min(255,disc[1]+22),min(255,disc[2]+14))
+        inner_r=max(2,r-4)
+        draw.ellipse((cx-inner_r,cy-r+3,cx+inner_r,cy+inner_r),fill=highlight)
+        # Réaffirmer le bord net du disque.
+        draw.ellipse((cx-r,cy-r,cx+r,cy+r),outline=neon,width=max(2,int(cfg.get("score_circle_border",2))))
+    # Deux anneaux interrompus façon radar / néon.
+    if bool(cfg.get("score_radar_rings",True)):
+        for rr, start_angle in ((r+5,12),(r+10,0)):
+            for a0,a1 in ((start_angle,start_angle+72),(start_angle+92,start_angle+166),(start_angle+188,start_angle+250),(start_angle+272,start_angle+335)):
+                draw.arc((cx-rr,cy-rr,cx+rr,cy+rr),a0,a1,fill=neon,width=2)
+    draw.text((cx-sw/2,cy-sh/2-1),score,font=sf,fill=score_color)
 
-    # Ligne horizontale dorée de 2 px sur toute la largeur sûre, sous les éléments.
+    # Ligne séparatrice néon : halo diffus + trait principal, interrompu avant l'anneau externe.
     line_y=min(safe_bottom-12,bottom+int(cfg.get("header_line_gap",10)))
     line_w=max(1,min(6,int(cfg.get("header_line_width",2))))
-    # Petit halo + ligne principale, tous deux limités à la zone sûre.
     if bool(cfg.get("header_line_enabled",True)):
-        draw.line((safe_left,line_y,safe_right,line_y),fill=gold,width=min(4,line_w+2))
-        draw.line((safe_left,line_y,safe_right,line_y),fill=gold,width=line_w)
+        line_end=max(safe_left,min(safe_right,cx-outer_r-5))
+        # Halo inférieur discret, puis ligne centrale nette.
+        draw.line((safe_left,line_y+2,line_end,line_y+2),fill=gold,width=line_w+2)
+        draw.line((safe_left,line_y,line_end,line_y),fill=gold,width=line_w)
     return top,line_y
 
 def draw_header(draw, theme, q_num, total, title="Culture Générale", phase=0.0):
@@ -982,7 +1009,7 @@ def _layout(module="quiz", style=None):
         "timer_y":1040,"timer_x":540,"timer_size":68,"timer_style":"Double cercle","timer_color":"#F59E0B","timer_text_size":55,"timer_label_y":1175,"timer_label_size":23,"timer_show_label":False,"timer_label":"RÉFLÉCHIS","timer_label_color":"#F59E0B",
         "timer_auto_below_answers":True,"explanation_auto_below_timer":False,"explanation_auto_height":False,
         "face_size":30,"face_x":0,"face_y":0,"face_style":"Aucun","face_color":"#FFCD40","face_show":False,
-        "score_x":1000,"score_y":130,"score_size":31,"score_color":"#FFFFFF","score_bg":"#070D1C","score_radius":22,"score_border":0,"score_circle_size":66,"score_circle_border":3,"score_neon_color":"#FFC752","header_line_enabled":True,"header_line_color":"#FFC752","header_line_width":2,"header_line_gap":10,
+        "score_x":1000,"score_y":130,"score_size":27,"score_color":"#070D1C","score_disc_color":"#F59E0B","score_disc_gradient":True,"score_radar_rings":True,"score_bg":"#070D1C","score_radius":22,"score_border":0,"score_circle_size":70,"score_circle_border":2,"score_neon_color":"#F59E0B","header_line_enabled":True,"header_line_color":"#F59E0B","header_line_width":2,"header_line_gap":10,
         "brand_x":70,"brand_y":139,"brand_size":40,"brand_show":True,"brand_bg_enabled":False,"brand_bg":"#151D33","brand_color":"#F59E0B",
         "explanation_x":540,"explanation_y":1280,"explanation_width":960,"explanation_h":220,"explanation_size":32,
         "explanation_radius":24,"show_explanation":True,"show_timer":True,
@@ -2463,7 +2490,7 @@ def parse_quiz_csv(uploaded_file):
     try:
         raw = raw_bytes.decode("utf-8-sig", errors="strict")
     except UnicodeDecodeError:
-        # Secours pour les anciens CSV Windows-1252. Évite l'insertion de �.
+        # Secours pour les anciens CSV Windows-1252. Évite l'insertion de  .
         try:
             raw = raw_bytes.decode("cp1252", errors="strict")
         except UnicodeDecodeError as exc:
@@ -3471,8 +3498,8 @@ def render_layout_editor(module, style="1"):
         "question_frame_enabled":True, "question_frame_bg_enabled":True, "question_border_enabled":True,
         "answer_cards_enabled":True, "answer_badges_enabled":True, "answer_frame_bg_enabled":False, "answer_border_enabled":False,
         "explanation_frame_enabled":True, "explanation_frame_bg_enabled":True, "explanation_border_enabled":True,
-        "score_x":965, "score_y":130, "score_size":31, "score_radius":22, "score_color":"#FFFFFF", "score_bg":"#070D1C", "score_circle_size":66, "score_circle_border":3, "score_neon_color":"#FFC752", "header_line_enabled":True, "header_line_color":"#FFC752", "header_line_width":2, "header_line_gap":10,
-        "brand_x":70, "brand_y":139, "brand_size":38, "brand_show":True, "brand_bg_enabled":True, "brand_bg":"#20385E", "brand_color":"#F59E0B",
+        "score_x":965, "score_y":130, "score_size":27, "score_radius":22, "score_color":"#070D1C", "score_disc_color":"#F59E0B", "score_disc_gradient":True, "score_radar_rings":True, "score_bg":"#070D1C", "score_circle_size":70, "score_circle_border":2, "score_neon_color":"#F59E0B", "header_line_enabled":True, "header_line_color":"#F59E0B", "header_line_width":2, "header_line_gap":10,
+        "brand_x":70, "brand_y":139, "brand_size":34, "brand_show":True, "brand_bg_enabled":False, "brand_bg":"#20385E", "brand_color":"#F59E0B",
         "animation":"Glissement", "animation_speed":1.0, "animation_strength":1.0, "motion_strength":1.0,
         "show_timer":True, "timer_y":1075 if is_quiz else 760, "timer_x":540 if is_quiz else 810, "timer_size":65 if is_quiz else 62, "timer_text_size":52 if is_quiz else 58, "timer_style":"Double cercle",
         "timer_auto_below_answers":True, "explanation_auto_below_timer":False, "explanation_auto_height":False,
@@ -3624,8 +3651,12 @@ def render_layout_editor(module, style="1"):
                 st.slider("Espace sous l’en-tête",0,24,key=p+"header_line_gap")
                 st.color_picker("Couleur néon de la ligne",key=p+"header_line_color")
                 st.slider("Diamètre du cercle compteur",48,100,key=p+"score_circle_size")
-                st.slider("Épaisseur du cercle compteur",2,6,key=p+"score_circle_border")
-                st.color_picker("Couleur néon du compteur",key=p+"score_neon_color")
+                st.slider("Épaisseur du contour du disque",1,5,key=p+"score_circle_border")
+                st.color_picker("Couleur du disque compteur",key=p+"score_disc_color")
+                st.color_picker("Couleur du texte du compteur",key=p+"score_color")
+                st.color_picker("Couleur néon des anneaux",key=p+"score_neon_color")
+                st.checkbox("Dégradé lumineux dans le disque",key=p+"score_disc_gradient")
+                st.checkbox("Anneaux radar interrompus",key=p+"score_radar_rings")
             st.markdown("**Titre**")
             st.slider("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
             st.slider("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
