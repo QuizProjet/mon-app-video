@@ -1,0 +1,6 @@
+SuspenseLingo — réglages numériques seulement
+
+Base : SuspenseLingo_V5_Neon_Studio_CORRIGE_COMPLET.py
+Modification : uniquement le dictionnaire de valeurs par défaut du preset Bleu Nuit & Or pour y inscrire les chiffres demandés. L'organisation des commandes et le code de rendu/aperçu sont repris de la base sans modification.
+
+Important : les réglages par défaut ne s'appliquent qu'au premier chargement du preset dans une session neuve, conformément au mécanisme existant. Les réglages déjà présents en session ne sont pas écrasés.
