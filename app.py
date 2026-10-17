@@ -1003,7 +1003,6 @@ if _saved_theme in THEMES:
 # Appliqué une seule fois pour ne pas écraser ensuite les réglages manuels de l’Éditeur Studio.
 if not st.session_state.get("_blue_gold_layout_v31_10_applied"):
     _blue_gold_preset = {
-        # Valeurs par défaut demandées — seuls les chiffres de configuration sont ajustés.
         "q1_question_x": 540, "q1_question_y": 460, "q1_question_size": 51, "q1_question_width": 750,
         "q1_answer_x": 175, "q1_answer_y": 700, "q1_answer_width": 699, "q1_answer_h": 110, "q1_answer_gap": 14,
         "q1_answer_size": 45, "q1_answer_badge_size": 58, "q1_answer_text_padding": 22, "q1_answer_auto_height": False,
@@ -3597,276 +3596,255 @@ def render_layout_editor(module, style="1"):
     st.markdown('<div class="qvp-editor-title">🎨 ÉDITEUR STUDIO • PRO</div>', unsafe_allow_html=True)
     st.markdown('<div class="qvp-editor-subtitle">Chaque élément possède ses propres positions, tailles, couleurs et cadres. X = horizontal • Y = vertical • les réglages sont indépendants par style.</div>', unsafe_allow_html=True)
     st.info("🧭 **Comment lire X/Y :** X déplace de gauche à droite (0 → 1080). Y déplace de haut en bas (0 → 1920). Les coordonnées concernent la vidéo 1080×1920, pas la taille du téléphone affiché.")
-    tabs = st.tabs(["🧩 Structure","📐 Position","📏 Taille","🎨 Couleurs","🎞️ Animation","⏱️ Minuteur","🔤 Police","🌄 Fond","🎵 Musique"])
+    # Éditeur regroupé par élément : position, dimensions et apparence au même endroit.
+    tabs = st.tabs(["🏷️ En-tête & titre", "❓ Question / mot", "🅰️ Réponses / tableau", "⏱️ Minuteur", "💬 Explication / traduction", "🎨 Apparence & animation", "🌄 Fond", "🎵 Audio"])
 
     with tabs[0]:
-        if is_quiz:
-            if style=="1":
-                st.info("**Style 1 Pro** : question + 4 réponses → minuteur compact sous les réponses → révélation verte + carte d'explication adaptative. Le fond décoratif est volontairement plus discret pour garder le quiz au premier plan.")
-            else:
-                st.info("**Style 1** : question + 4 réponses → réflexion → révélation verte + explication.\n\n**Style 2** : titre fixe + une seule question active → réflexion → réponse ajoutée à l'historique → question suivante au même emplacement.")
-        else:
-            st.info("**Style 1** : mot/phrase → réflexion → traduction.\n\n**Style 2** : tableau cumulatif : français à gauche → minuteur dans la cellule traduction → traduction → nouvelle ligne sous la précédente, jusqu'à 15 lignes.")
+        st.markdown("### 🏷️ En-tête, logo et titre")
         st.checkbox("Afficher le titre", key=p+"show_title")
-        if is_quiz:
-            st.checkbox("Afficher l'explication", key=p+"show_explanation")
-        st.markdown("**🧱 Visibilité des éléments et cadres**")
-        vc1,vc2=st.columns(2)
-        with vc1:
-            st.checkbox("Afficher le cadre de la question",key=p+"question_frame_enabled")
-            st.checkbox("Afficher le fond du cadre question",key=p+"question_frame_bg_enabled")
-            st.checkbox("Afficher la bordure question",key=p+"question_border_enabled")
-            st.checkbox("Afficher les cartes des réponses",key=p+"answer_cards_enabled")
-            st.checkbox("Afficher les badges A/B/C/D",key=p+"answer_badges_enabled")
-        with vc2:
-            st.checkbox("Afficher le fond des cartes réponses",key=p+"answer_frame_bg_enabled")
-            st.checkbox("Afficher la bordure des cartes réponses",key=p+"answer_border_enabled")
-            st.checkbox("Afficher le cadre de l'explication",key=p+"explanation_frame_enabled")
-            st.checkbox("Afficher le fond de l'explication",key=p+"explanation_frame_bg_enabled")
-            st.checkbox("Afficher la bordure de l'explication",key=p+"explanation_border_enabled")
-        st.markdown("**🏷️ Logo / nom de chaîne**")
-        st.checkbox("Afficher SuspenseLingo en haut à gauche",key=p+"brand_show")
-        st.checkbox("Fond derrière le logo",key=p+"brand_bg_enabled")
-        c_brand1,c_brand2=st.columns(2)
-        with c_brand1:
-            st.number_input("Logo X — gauche ↔ droite",0,1080,key=p+"brand_x")
-            st.number_input("Logo Y — haut ↕ bas",80,500,key=p+"brand_y")
-        with c_brand2:
+        st.checkbox("Afficher SuspenseLingo", key=p+"brand_show")
+        st.checkbox("Fond derrière le logo", key=p+"brand_bg_enabled")
+        c1,c2=st.columns(2)
+        with c1:
+            st.number_input("Logo — position X",0,1080,key=p+"brand_x")
+            st.number_input("Logo — position Y",80,500,key=p+"brand_y")
+            st.number_input("Titre — position X",0,1080,key=p+"title_x")
+            st.number_input("Titre — position Y",20,320,key=p+"title_y")
+        with c2:
             st.number_input("Taille du logo / nom",16,60,key=p+"brand_size")
             st.color_picker("Couleur du logo",key=p+"brand_color")
-        c_auto1,c_auto2=st.columns(2)
-        with c_auto1: st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
-        with c_auto2: st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
-
-    with tabs[1]:
-        st.markdown("### 📱 Mise en page automatique — Réseaux sociaux")
-        if is_quiz and style=="1":
-            st.caption("🎯 Style 1 Pro : le mode automatique positionne la composition dans la zone sûre au premier chargement. Ensuite, tu peux déplacer librement la question, les réponses, le minuteur et l'explication depuis Position/Taille.")
-        elif is_quiz and style=="2":
-            st.caption("🎯 Style 2 : Q1 → Q2 + R1 → Q3 + R1/R2. L'automatique protège la question active et l'historique sans transformer la mise en page.")
-        elif (not is_quiz) and style=="2":
-            st.caption("🧩 Style 2 Vocabulaire : tableau cumulatif conservé. L'automatique ne fait que borner le tableau s'il dépasse la zone sûre.")
-        else:
-            st.caption("🗣️ Style 1 Vocabulaire : la mise en page existante est conservée ; seuls les débordements hors zone sûre sont corrigés.")
-        ac1,ac2=st.columns(2)
-        with ac1:
-            st.checkbox("Activer la mise en page automatique",key=p+"social_auto_layout")
-        with ac2:
-            st.selectbox("Plateforme cible",["Universel","TikTok","Instagram Reels","YouTube Shorts","Facebook Reels"],key=p+"social_platform")
-        if st.session_state.get(p+"social_auto_layout",False):
-            st.success(f"✓ Protection active : {st.session_state.get(p+"social_platform","Universel")}")
-        else:
-            st.info("🔓 Mode manuel : la mise en page actuelle est conservée.")
-        st.markdown("---")
-        c1,c2 = st.columns(2)
-        with c1:
-            st.markdown("**Position de l’élément principal**")
-            st.number_input("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"question_x")
-            st.number_input("↕ Y — haut 0 • bas 1920",60,1500,key=p+"question_y")
-            if is_quiz and style=="2":
-                st.markdown("**Historique — Style 2**")
-                st.number_input("Historique — X",0,220,key=p+"history_x")
-                st.number_input("Historique — Y",450,1300,key=p+"history_y")
-            if not is_quiz and style=="2":
-                st.markdown("**📋 Mise en page — Style 2**")
-                st.caption("Réglages essentiels, regroupés ici pour garder la page courte.")
-                st.number_input("Tableau — X",20,160,key=p+"table_x",step=5)
-                st.number_input("Tableau — Y",280,700,key=p+"table_y",step=5)
-                st.number_input("Largeur du tableau",700,1000,key=p+"table_width",step=10)
-                st.number_input("Séparation français / traduction",400,650,key=p+"table_split",step=10)
-                st.number_input("Hauteur d’une ligne",60,115,key=p+"table_row_h",step=5)
-                st.number_input("Espace entre lignes",0,24,key=p+"table_gap",step=2)
-        with c2:
-            st.markdown("**🧭 En-tête — position dans la zone sûre**")
-            if is_quiz:
-                st.number_input("↕ En-tête Y — haut 0 • bas 1920",80,500,key=p+"header_y")
-                st.number_input("Largeur de l’en-tête",520,1040,key=p+"header_width",step=10)
-                st.number_input("Hauteur de l’en-tête",52,110,key=p+"header_h")
-                st.markdown("**✨ Barre épurée néon**")
-                st.checkbox("Afficher la ligne séparatrice dorée",key=p+"header_line_enabled")
+            st.number_input("Taille du titre",22,86,key=p+"title_size")
+        if is_quiz:
+            st.markdown("#### En-tête vidéo et compteur")
+            st.number_input("Position Y de l’en-tête",80,500,key=p+"header_y")
+            st.number_input("Largeur de l’en-tête",520,1040,key=p+"header_width",step=10)
+            st.number_input("Hauteur de l’en-tête",52,110,key=p+"header_h")
+            st.checkbox("Afficher la ligne séparatrice dorée",key=p+"header_line_enabled")
+            h1,h2=st.columns(2)
+            with h1:
                 st.number_input("Épaisseur de la ligne",1,4,key=p+"header_line_width")
                 st.number_input("Espace sous l’en-tête",0,24,key=p+"header_line_gap")
                 st.color_picker("Couleur néon de la ligne",key=p+"header_line_color")
+            with h2:
                 st.number_input("Diamètre du cercle compteur",48,100,key=p+"score_circle_size")
                 st.number_input("Épaisseur du contour du disque",1,5,key=p+"score_circle_border")
+                st.number_input("Taille du texte du compteur",20,72,key=p+"score_size")
+                st.number_input("Compteur — position X",0,1080,key=p+"score_x")
+                st.number_input("Compteur — position Y",40,600,key=p+"score_y")
+            with st.expander("Apparence avancée du compteur"):
                 st.color_picker("Couleur du disque compteur",key=p+"score_disc_color")
                 st.color_picker("Couleur du texte du compteur",key=p+"score_color")
                 st.color_picker("Couleur néon des anneaux",key=p+"score_neon_color")
                 st.checkbox("Dégradé lumineux dans le disque",key=p+"score_disc_gradient")
                 st.checkbox("Anneaux radar interrompus",key=p+"score_radar_rings")
-            st.markdown("**Titre**")
-            st.number_input("↔ Titre X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"title_x")
-            st.number_input("↕ Titre Y — haut 0 • bas 1920",20,320,key=p+"title_y")
-            if is_quiz:
-                st.markdown("**Réponses — position**")
-                st.number_input("↔ Réponses X — bord gauche du bloc",20,180,key=p+"answer_x")
-                st.number_input("↕ Réponses Y — haut du bloc",300,1050,key=p+"answer_y")
-                st.markdown("**💡 Explication — position libre**")
-                st.number_input("↔ X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"explanation_x")
-            st.caption("📐 Repère vidéo : X = horizontal (0→1080) • Y = vertical (0→1920). Ces valeurs sont des coordonnées vidéo, pas des pixels d’écran.")
-            st.number_input("↕ Explication Y — haut 0 • bas 1920",120,1750,key=p+"explanation_y")
-            if not is_quiz and style=="2":
-                st.markdown("**⏱️ Minuteur — Style 2**")
-                st.number_input("Décalage X", -180, 180, key=p+"vocab_timer_offset_x", step=5)
-                st.number_input("Décalage Y", -50, 50, key=p+"vocab_timer_offset_y", step=5)
-                st.number_input("Taille du minuteur",24,70,key=p+"vocab_timer_size")
+        st.caption("Les contrôles ci-dessus concernent l’en-tête et le titre du rendu vidéo ; l’en-tête de l’application reste inchangé.")
+
+    with tabs[1]:
+        st.markdown("### ❓ Question ou mot principal")
+        if is_quiz:
+            if style=="1":
+                st.info("Style 1 Pro : question + quatre réponses, puis réflexion et révélation.")
+            else:
+                st.info("Style 2 : titre fixe et question active au-dessus de l’historique.")
+        elif style=="1":
+            st.info("Style 1 Vocabulaire : mot ou phrase française, réflexion, puis traduction.")
+        else:
+            st.info("Style 2 Vocabulaire : le mot français reste dans la ligne active du tableau cumulatif.")
+        st.markdown("#### Visibilité et cadre")
+        st.checkbox("Afficher le cadre de la question",key=p+"question_frame_enabled")
+        st.checkbox("Afficher le fond du cadre question",key=p+"question_frame_bg_enabled")
+        st.checkbox("Afficher la bordure question",key=p+"question_border_enabled")
+        if is_quiz and style=="1":
+            st.number_input("Arrondi du cadre question",0,48,key=p+"question_box_radius")
+        st.markdown("#### Position et dimensions")
+        q1,q2=st.columns(2)
+        with q1:
+            st.number_input("Question / mot — position X",0,1080,key=p+"question_x")
+            st.number_input("Question / mot — position Y",60,1500,key=p+"question_y")
+        with q2:
+            st.number_input("Taille du texte",22,110,key=p+"question_size")
+            st.number_input("Largeur du bloc",500,1020,key=p+"question_width")
+        st.markdown("#### Mise en page automatique")
+        st.checkbox("Activer la mise en page automatique",key=p+"social_auto_layout")
+        st.selectbox("Plateforme cible",["Universel","TikTok","Instagram Reels","YouTube Shorts","Facebook Reels"],key=p+"social_platform")
+        if st.session_state.get(p+"social_auto_layout",False):
+            st.success(f"✓ Protection active : {st.session_state.get(p+"social_platform","Universel")}")
+        else:
+            st.info("🔓 Mode manuel : la mise en page actuelle est conservée.")
+        if is_quiz and style=="2":
+            st.markdown("#### Historique associé à la question")
+            st.number_input("Historique — X",0,220,key=p+"history_x")
+            st.number_input("Historique — Y",450,1300,key=p+"history_y")
 
     with tabs[2]:
-        c1,c2 = st.columns(2)
-        with c1:
-            st.markdown("**Élément actif**")
-            st.number_input("Taille du texte",22,110,key=p+"question_size")
-            st.number_input("Largeur",500,1020,key=p+"question_width")
-            if is_quiz and style=="1":
-                st.number_input("Arrondi du cadre question",0,48,key=p+"question_box_radius")
-            if is_quiz:
-                st.markdown("**Cartes de réponse**")
+        st.markdown("### 🅰️ Réponses et badges" if is_quiz else "### 📋 Tableau de vocabulaire")
+        if is_quiz:
+            st.checkbox("Afficher les cartes des réponses",key=p+"answer_cards_enabled")
+            st.checkbox("Afficher les badges A/B/C/D",key=p+"answer_badges_enabled")
+            st.checkbox("Afficher le fond des cartes réponses",key=p+"answer_frame_bg_enabled")
+            st.checkbox("Afficher la bordure des cartes réponses",key=p+"answer_border_enabled")
+            a1,a2=st.columns(2)
+            with a1:
+                st.number_input("Réponses — position X",20,180,key=p+"answer_x")
+                st.number_input("Réponses — position Y",300,1050,key=p+"answer_y")
                 st.number_input("Largeur des cartes",600,1020,key=p+"answer_width",step=10)
                 st.number_input("Hauteur des cartes",50,150,key=p+"answer_h",step=5)
-        with c2:
-            st.markdown("**Titre**")
-            st.number_input("Taille du titre",22,86,key=p+"title_size")
-            if is_quiz:
+                st.number_input("Espacement entre les réponses",4,32,key=p+"answer_gap")
+            with a2:
                 st.number_input("Taille du texte des réponses",20,62,key=p+"answer_size")
-                st.number_input("Espacement des réponses",4,32,key=p+"answer_gap")
-                st.number_input("Arrondi des réponses",0,48,key=p+"answer_radius")
-                st.number_input("Taille indépendante du badge A/B/C/D",36,72,key=p+"answer_badge_size")
+                st.number_input("Taille des badges A/B/C/D",36,72,key=p+"answer_badge_size")
+                st.number_input("Arrondi des cartes",0,48,key=p+"answer_radius")
                 st.checkbox("Hauteur automatique des cartes",key=p+"answer_auto_height")
                 st.number_input("Marge du texte dans les cartes",12,40,key=p+"answer_text_padding")
-                st.number_input("Taille du compteur",20,72,key=p+"score_size")
-                st.markdown("**Compteur — position indépendante**")
-                st.number_input("↔ Compteur X — gauche 0 • centre 540 • droite 1080",0,1080,key=p+"score_x")
-                st.number_input("↕ Compteur Y — haut 0 • bas 1920",40,600,key=p+"score_y")
-                st.markdown("**Cadre d’explication**")
-                st.number_input("Taille du texte de l'explication",20,62,key=p+"explanation_size")
-                st.number_input("Largeur de l'explication",500,1020,key=p+"explanation_width",step=10)
-                st.number_input("Hauteur de l'explication",120,520,key=p+"explanation_h",step=10)
-                st.caption("💡 X = gauche ↔ droite • Y = haut ↕ bas. Désactive l’automatique pour placer l’explication librement.")
-            elif is_quiz and style=="2":
-                st.number_input("Largeur de l'historique",600,1000,key=p+"history_width")
-                # V31.28 — migration sûre : une ancienne valeur < 55 faisait
-                # planter Streamlit avec StreamlitValueBelowMinError.
-                _history_row_key = p + "history_row_h"
-                try:
-                    _history_row_value = int(st.session_state.get(_history_row_key, 78))
-                except (TypeError, ValueError):
-                    _history_row_value = 78
-                st.session_state[_history_row_key] = max(55, min(110, _history_row_value))
-                st.number_input("Hauteur d'une ligne",55,110,key=_history_row_key)
-                st.number_input("Taille du texte historique",20,52,key=p+"history_size")
-            elif not is_quiz and style=="2":
-                st.caption("Tableau cumulatif optimisé pour 1 à 15 lignes. À partir de 12 lignes, la hauteur et la taille du texte s'adaptent automatiquement.")
+        elif style=="2":
+            st.caption("Tableau cumulatif optimisé pour 1 à 15 lignes. À partir de 12 lignes, la hauteur et le texte s’adaptent automatiquement.")
+            t1,t2=st.columns(2)
+            with t1:
+                st.number_input("Tableau — X",20,160,key=p+"table_x",step=5)
+                st.number_input("Tableau — Y",280,700,key=p+"table_y",step=5)
+                st.number_input("Largeur du tableau",700,1000,key=p+"table_width",step=10)
+                st.number_input("Séparation français / traduction",400,650,key=p+"table_split",step=10)
+            with t2:
+                st.number_input("Hauteur d’une ligne",60,115,key=p+"table_row_h",step=5)
+                st.number_input("Espace entre lignes",0,24,key=p+"table_gap",step=2)
+                st.number_input("Arrondi du tableau",0,48,key=p+"table_radius")
                 st.number_input("Discrétion des anciennes lignes",0.55,1.0,key=p+"vocab_history_dim",step=0.05)
-                st.caption("La ligne active reste dominante ; les lignes déjà apprises restent visibles mais plus discrètes.")
-            else:
-                st.number_input("X traduction — Style 1",200,880,key=p+"translation_x")
-                st.number_input("Y traduction — Style 1",650,1200,key=p+"translation_y")
-                st.number_input("Largeur traduction",400,1000,key=p+"translation_width")
+        else:
+            st.info("Le Style 1 Vocabulaire affiche le mot principal et sa traduction ; les positions de traduction se trouvent dans « Explication / traduction ».")
 
     with tabs[3]:
-        c1,c2 = st.columns(2)
-        with c1:
-            st.color_picker("Accent / titre",key=p+"primary")
-            st.color_picker("Cartes principales",key=p+"answer")
-            st.color_picker("Cartes secondaires",key=p+"answer2")
-        with c2:
-            st.color_picker("Bonne réponse / traduction",key=p+"correct")
-            st.color_picker("Texte principal",key=p+"text")
-            st.color_picker("Texte secondaire",key=p+"muted")
-        st.markdown("**Visibilité des cadres**")
-        st.caption("Les interrupteurs de visibilité, fonds et bordures se trouvent dans l’onglet 🧩 Structure pour éviter les doublons et piloter directement le rendu live.")
-        st.markdown("**Bordures**")
-        bc1,bc2,bc3=st.columns(3)
-        with bc1: st.color_picker("Couleur",key=p+"border_color")
-        with bc2: st.number_input("Épaisseur",1,8,key=p+"border_width")
-        with bc3: st.number_input("Arrondi",0,48,key=p+"border_radius")
-
-    with tabs[4]:
-        st.selectbox("Animation principale",["Glissement","Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
-        c1,c2=st.columns(2)
-        with c1: st.number_input("Vitesse",0.5,2.0,key=p+"animation_speed")
-        with c2: st.number_input("Amplitude",0.0,2.0,key=p+"animation_strength")
-        st.number_input("Mouvement du fond",0.0,2.0,key=p+"motion_strength")
-        st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
-
-    with tabs[5]:
-        # Quiz Style 1 : le compte à rebours est une fonctionnalité fondamentale.
-        # IMPORTANT : sa valeur doit être fixée AVANT la création du widget Streamlit,
-        # sinon Streamlit lève StreamlitWidgetAlreadyInstantiatedError.
+        st.markdown("### ⏱️ Minuteur et compte à rebours")
         if is_quiz and style=="1":
             st.session_state[p+"show_timer"] = True
         st.checkbox("Afficher le compte à rebours",key=p+"show_timer",disabled=(is_quiz and style=="1"))
         if is_quiz and style=="1":
             st.checkbox("Position automatique sous les 4 réponses",key=p+"timer_auto_below_answers")
-        c1,c2=st.columns(2)
-        with c1:
-            if (not is_quiz) and style=="2":
-                st.info("Le minuteur du Style 2 est positionné dans la cellule de traduction. Utilise les réglages X/Y juste au-dessus pour l’ajuster.")
-            else:
-                st.number_input("Position X",0,1080,key=p+"timer_x")
-                # V31.30: normaliser toute ancienne valeur avant le slider pour éviter ValueAboveMax/BelowMin.
+        if (not is_quiz) and style=="2":
+            st.info("Le minuteur du Style 2 est positionné dans la cellule de traduction.")
+            st.number_input("Décalage X",-180,180,key=p+"vocab_timer_offset_x",step=5)
+            st.number_input("Décalage Y",-50,50,key=p+"vocab_timer_offset_y",step=5)
+            st.number_input("Taille du minuteur dans la cellule",24,70,key=p+"vocab_timer_size")
+        else:
+            tm1,tm2=st.columns(2)
+            with tm1:
+                st.number_input("Minuteur — position X",0,1080,key=p+"timer_x")
                 timer_y_key=p+"timer_y"
                 if timer_y_key not in st.session_state:
                     st.session_state[timer_y_key]=1110
                 else:
                     try: st.session_state[timer_y_key]=max(250,min(1450,int(st.session_state[timer_y_key])))
                     except Exception: st.session_state[timer_y_key]=1110
-                st.number_input("Position Y",250,1450,key=timer_y_key)
-                st.number_input("Taille",28,140,key=p+"timer_size")
-        with c2:
-            st.selectbox("Style",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style")
-            st.number_input("Taille du chiffre",20,112,key=p+"timer_text_size")
-            st.checkbox("Afficher le libellé",key=p+"timer_show_label")
-            st.text_input("Libellé",key=p+"timer_label")
-            st.color_picker("Couleur du minuteur",key=p+"timer_color")
-        if not (is_quiz and style=="1"):
-            st.caption("Le fond plein du minuteur est supprimé. Les styles Double cercle, Montre, Gouttes d’eau, Sablier, Anneau progressif et Numérique sont rendus directement selon ce choix.")
+                st.number_input("Minuteur — position Y",250,1450,key=timer_y_key)
+                st.number_input("Taille du minuteur",28,140,key=p+"timer_size")
+            with tm2:
+                st.selectbox("Style du minuteur",["Double cercle","Montre","Gouttes d’eau","Sablier","Anneau progressif","Numérique"],key=p+"timer_style")
+                st.number_input("Taille des chiffres",20,112,key=p+"timer_text_size")
+                st.color_picker("Couleur du minuteur",key=p+"timer_color")
+                st.checkbox("Afficher le libellé",key=p+"timer_show_label")
+                st.text_input("Libellé",key=p+"timer_label")
         if is_quiz and style=="1":
-            st.caption("Si « Position automatique sous les 4 réponses » est activée, la position Y manuelle est volontairement ignorée.")
-        st.markdown("**Effets sonores**")
+            st.caption("Le Style 1 Pro conserve le compte à rebours. Si la position automatique est activée, la position Y manuelle est ignorée.")
+        else:
+            st.caption("Choisis le style et la position du minuteur ici ; les effets sonores sont dans Audio.")
+
+    with tabs[4]:
+        st.markdown("### 💬 Explication, traduction et historique")
+        if is_quiz:
+            st.checkbox("Afficher l’explication",key=p+"show_explanation")
+            st.checkbox("Afficher le cadre de l’explication",key=p+"explanation_frame_enabled")
+            st.checkbox("Afficher le fond de l’explication",key=p+"explanation_frame_bg_enabled")
+            st.checkbox("Afficher la bordure de l’explication",key=p+"explanation_border_enabled")
+            e1,e2=st.columns(2)
+            with e1:
+                st.number_input("Explication — position X",0,1080,key=p+"explanation_x")
+                st.number_input("Explication — position Y",120,1750,key=p+"explanation_y")
+                st.number_input("Largeur de l’explication",500,1020,key=p+"explanation_width",step=10)
+            with e2:
+                st.number_input("Taille du texte de l’explication",20,62,key=p+"explanation_size")
+                st.number_input("Hauteur de l’explication",120,520,key=p+"explanation_h",step=10)
+                st.checkbox("Position automatique sous le minuteur",key=p+"explanation_auto_below_timer")
+                st.checkbox("Hauteur automatique de l’explication",key=p+"explanation_auto_height")
+            st.caption("Désactive la position automatique pour placer librement la carte d’explication.")
+            if style=="2":
+                st.markdown("#### Historique des réponses")
+                st.number_input("Largeur de l’historique",600,1000,key=p+"history_width")
+                _history_row_key=p+"history_row_h"
+                try: _history_row_value=int(st.session_state.get(_history_row_key,78))
+                except (TypeError,ValueError): _history_row_value=78
+                st.session_state[_history_row_key]=max(55,min(110,_history_row_value))
+                st.number_input("Hauteur d’une ligne d’historique",55,110,key=_history_row_key)
+                st.number_input("Taille du texte historique",20,52,key=p+"history_size")
+        elif style=="2":
+            st.markdown("#### En-têtes du tableau")
+            st.selectbox("Police des en-têtes du tableau",FONT_CHOICES,key=p+"table_header_font")
+            st.number_input("Hauteur de l’en-tête du tableau",46,78,key=p+"table_header_h")
+        else:
+            st.number_input("Traduction — position X",200,880,key=p+"translation_x")
+            st.number_input("Traduction — position Y",650,1200,key=p+"translation_y")
+            st.number_input("Largeur de la traduction",400,1000,key=p+"translation_width")
+            st.number_input("Taille du mot français",20,100,key=p+"vocab_fr_size")
+            st.number_input("Taille de la traduction",20,100,key=p+"vocab_tr_size")
+
+    with tabs[5]:
+        st.markdown("### 🎨 Apparence générale et animation")
+        c1,c2=st.columns(2)
+        with c1:
+            st.color_picker("Accent / titre",key=p+"primary")
+            st.color_picker("Cartes principales",key=p+"answer")
+            st.color_picker("Cartes secondaires",key=p+"answer2")
+            st.color_picker("Bonne réponse / traduction",key=p+"correct")
+        with c2:
+            st.color_picker("Texte principal",key=p+"text")
+            st.color_picker("Texte secondaire",key=p+"muted")
+            st.color_picker("Couleur de bordure",key=p+"border_color")
+            st.number_input("Épaisseur de bordure",1,8,key=p+"border_width")
+            st.number_input("Arrondi général",0,48,key=p+"border_radius")
+        st.markdown("#### Police")
+        st.selectbox("Police du style",FONT_CHOICES,key=p+"font_family")
+        st.caption("La police est utilisée par l’aperçu et le rendu vidéo de ce style uniquement.")
+        st.markdown("#### Animation")
+        st.selectbox("Animation principale",["Glissement","Glissement vertical","Fondu","Zoom doux","Rebond léger","Machine à écrire","Pop","Aucune"],key=p+"animation")
+        an1,an2=st.columns(2)
+        with an1: st.number_input("Vitesse de l’animation",0.5,2.0,key=p+"animation_speed")
+        with an2: st.number_input("Amplitude de l’animation",0.0,2.0,key=p+"animation_strength")
+        st.number_input("Mouvement du fond",0.0,2.0,key=p+"motion_strength")
+        st.caption("Les animations de la vidéo suivent la durée réelle de la voix.")
+
+    with tabs[6]:
+        st.markdown("### 🌄 Fond de la vidéo")
+        st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
+        if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
+            st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
+        f1,f2=st.columns(2)
+        with f1:
+            st.number_input("Fond : lumineux ↔ sombre",0,90,key=p+"bg_opacity",help="0 = fond sans assombrissement, 90 = fond fortement assombri.")
+            st.number_input("Zoom du fond",1.00,1.25,key=p+"bg_zoom",step=.01)
+        with f2:
+            st.number_input("Déplacement X du fond",-120,120,key=p+"bg_x")
+            st.number_input("Déplacement Y du fond",-120,120,key=p+"bg_y")
+        st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
+
+    with tabs[7]:
+        st.markdown("### 🎵 Audio et effets sonores")
         st.checkbox("Activer les effets sonores",key=p+"sfx_enabled")
-        st.number_input("Volume des effets",0.05,0.60,key=p+"sfx_volume",step=0.01)
+        st.number_input("Volume des effets sonores",0.05,0.60,key=p+"sfx_volume",step=0.01)
+        if is_quiz and style=="1":
+            st.markdown("#### Musique de fond — Quiz Style 1")
+            st.checkbox("Activer la musique de fond",key=p+"bg_music_enabled")
+            au1,au2=st.columns(2)
+            with au1:
+                st.selectbox("Ambiance musicale",["Suspense sombre","Mystère","Tension","Défi intense","Quiz futuriste","Cinématique","Suspense léger","Chill","Pop légère"],key=p+"bg_music_style")
+            with au2:
+                st.number_input("Volume musical",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
+            st.radio("Source musicale",["Musique générée par SuspenseLingo","Ma propre musique"],key=p+"bg_music_source",horizontal=True)
+            if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
+                st.file_uploader("Importer une musique",type=["mp3","wav","m4a","aac","ogg"],key=p+"bg_music_upload")
+            st.caption("La musique est intégrée au fichier vidéo final et bouclée si nécessaire ; la voix reste prioritaire.")
         if (not is_quiz) and style=="2":
             st.caption("Style 2 : pop à l’apparition du mot • 3 tics pendant 3 → 2 → 1 • ding à la fin de la réflexion • pop discret au démarrage de la traduction.")
         else:
             st.caption("Tic du chrono • entrée de question/mot • pop de révélation • ding de fin.")
 
-    with tabs[6]:
-        st.selectbox("Police du style",FONT_CHOICES,key=p+"font_family")
-        if (not is_quiz) and style=="2":
-            st.selectbox("Police des en-têtes du tableau",FONT_CHOICES,key=p+"table_header_font")
-            st.number_input("Hauteur de l’en-tête",46,78,key=p+"table_header_h")
-        st.caption("✅ Cette police est utilisée par l’aperçu et le rendu vidéo de CE style uniquement.")
-        st.info("Choisis une police une seule fois pour ce style. Les réglages des autres styles restent indépendants.")
-
-    with tabs[7]:
-        st.markdown("**Fond de la vidéo**")
-        st.radio("Source du fond",["✨ Automatique","🖼️ Personnalisé","◯ Aucun"],horizontal=True,key=p+"bg_mode")
-        if st.session_state.get(p+"bg_mode")=="🖼️ Personnalisé":
-            st.file_uploader("Image de fond",type=["png","jpg","jpeg"],key=p+"bg_upload")
-        c1,c2=st.columns(2)
-        with c1:
-            st.number_input("Fond : lumineux ↔ sombre",0,90,key=p+"bg_opacity",help="0 = fond sans assombrissement, 90 = fond fortement assombri.")
-            st.number_input("Zoom",1.00,1.25,key=p+"bg_zoom",step=.01)
-        with c2:
-            st.number_input("Déplacement X",-120,120,key=p+"bg_x")
-            st.number_input("Déplacement Y",-120,120,key=p+"bg_y")
-        st.caption("Le fond automatique est généré localement et ne consomme pas de quota Gemini.")
-
-    if is_quiz and style == "1":
-        with tabs[8]:
-            st.markdown("**🎵 Musique de fond du Quiz Style 1**")
-            st.checkbox("Activer la musique de fond", key=p+"bg_music_enabled")
-            c1,c2=st.columns(2)
-            with c1:
-                st.selectbox("Ambiance", ["Suspense sombre","Mystère","Tension","Défi intense","Quiz futuriste","Cinématique","Suspense léger","Chill","Pop légère"], key=p+"bg_music_style")
-            with c2:
-                st.number_input("Volume",0.00,0.30,key=p+"bg_music_volume",step=0.01,format="%.2f")
-            st.caption("La musique évolue : discrète au départ, tension progressive pendant la réflexion, pression renforcée pendant 3 → 2 → 1, puis impact à la révélation. La voix reste prioritaire.")
-            st.radio("Source", ["Musique générée par SuspenseLingo","Ma propre musique"], key=p+"bg_music_source", horizontal=True)
-            if st.session_state.get(p+"bg_music_source")=="Ma propre musique":
-                st.file_uploader("Importer une musique", type=["mp3","wav","m4a","aac","ogg"], key=p+"bg_music_upload")
-            st.caption("La musique choisie est intégrée au fichier vidéo final et bouclée si nécessaire.")
     _save_settings()
 
 
